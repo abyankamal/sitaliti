@@ -13,8 +13,8 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Inter', 'Figtree', ...defaultTheme.fontFamily.sans],
-                mono: ['JetBrains Mono', 'Fira Code', ...defaultTheme.fontFamily.mono],
+                sans: ['"Plus Jakarta Sans"', 'Inter', 'Figtree', ...defaultTheme.fontFamily.sans],
+                mono: ['"JetBrains Mono"', 'Fira Code', ...defaultTheme.fontFamily.mono],
             },
             colors: {
                 // Deep Government Navy Theme
