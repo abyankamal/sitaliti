@@ -1,0 +1,139 @@
+{
+    "meta": {
+        "fiscal_year": 2026,
+        "district": "Kecamatan Tarogong Kidul",
+        "district_code": "32.05.01",
+        "dataset_name": "RAK Perubahan 2026",
+        "total_budget": 14252126458,
+        "total_units": 6,
+        "total_sub_activities": 39,
+        "total_accounts": 132
+    },
+    "summary": {
+        "total_pagu": 14252126458,
+        "total_terserap": 5985893112,
+        "total_terkunci": 1245000000,
+        "total_sisa": 7021233346,
+        "persentase_realisasi": 42.0,
+        "pending_verification_count": 8,
+        "active_revisions_count": 3,
+        "verified_count": 47
+    },
+    "units": [
+        {
+            "id": 1,
+            "code": "4.01.0.00.0.00.01.0000",
+            "name": "Sekretariat Kecamatan Tarogong Kidul",
+            "pagu": 6850000000,
+            "terserap": 2980000000,
+            "terkunci": 450000000,
+            "sisa": 3420000000
+        },
+        {
+            "id": 2,
+            "code": "4.01.0.00.0.00.01.0001",
+            "name": "Seksi Tata Pemerintahan",
+            "pagu": 1820000000,
+            "terserap": 750000000,
+            "terkunci": 120000000,
+            "sisa": 950000000
+        },
+        {
+            "id": 3,
+            "code": "4.01.0.00.0.00.01.0002",
+            "name": "Seksi Ketenteraman dan Ketertiban",
+            "pagu": 1450000000,
+            "terserap": 620000000,
+            "terkunci": 95000000,
+            "sisa": 735000000
+        },
+        {
+            "id": 4,
+            "code": "4.01.0.00.0.00.01.0003",
+            "name": "Seksi Pemberdayaan Masyarakat dan Desa",
+            "pagu": 1382126458,
+            "terserap": 580000000,
+            "terkunci": 80000000,
+            "sisa": 722126458
+        },
+        {
+            "id": 5,
+            "code": "4.01.0.00.0.00.01.0004",
+            "name": "Seksi Kesejahteraan Masyarakat",
+            "pagu": 1250000000,
+            "terserap": 495893112,
+            "terkunci": 200000000,
+            "sisa": 554106888
+        },
+        {
+            "id": 6,
+            "code": "4.01.0.00.0.00.01.0005",
+            "name": "Kelurahan Sukagalih (BPP Pilot)",
+            "pagu": 1500000000,
+            "terserap": 560000000,
+            "terkunci": 300000000,
+            "sisa": 640000000
+        }
+    ],
+    "monthly_allocation": [
+        { "month": 1, "name": "Januari", "target": 980000000, "realisasi": 940000000, "status": "closed" },
+        { "month": 2, "name": "Februari", "target": 1150000000, "realisasi": 1120000000, "status": "closed" },
+        { "month": 3, "name": "Maret", "target": 1200000000, "realisasi": 1180000000, "status": "closed" },
+        { "month": 4, "name": "April", "target": 1100000000, "realisasi": 1050000000, "status": "closed" },
+        { "month": 5, "name": "Mei", "target": 1250000000, "realisasi": 1200000000, "status": "closed" },
+        { "month": 6, "name": "Juni", "target": 1350000000, "realisasi": 495893112, "status": "active" },
+        { "month": 7, "name": "Juli", "target": 1100000000, "realisasi": 0, "status": "upcoming" },
+        { "month": 8, "name": "Agustus", "target": 1250000000, "realisasi": 0, "status": "upcoming" },
+        { "month": 9, "name": "September", "target": 1300000000, "realisasi": 0, "status": "upcoming" },
+        { "month": 10, "name": "Oktober", "target": 1200000000, "realisasi": 0, "status": "upcoming" },
+        { "month": 11, "name": "November", "target": 1150000000, "realisasi": 0, "status": "upcoming" },
+        { "month": 12, "name": "Desember", "target": 1222126458, "realisasi": 0, "status": "upcoming" }
+    ],
+    "recent_activities": [
+        {
+            "id": "KW-2026-06-0042",
+            "unit": "Sekretariat Kecamatan",
+            "kegiatan": "Penyediaan Bahan Logistik Kantor",
+            "uraian": "Pengadaan ATK Kegiatan Rapat Koordinasi Wilayah",
+            "kategori": "B.1",
+            "nominal": 4750000,
+            "tanggal": "2026-06-12",
+            "status": "UNDER_REVIEW",
+            "verifikator": "H. Dedi Sutrisno, S.Sos"
+        },
+        {
+            "id": "KW-2026-06-0041",
+            "unit": "Seksi Tata Pemerintahan",
+            "kegiatan": "Fasilitasi Penataan Batas Wilayah",
+            "uraian": "Konsumsi Snack dan Makan Siang Tim Pemetaan",
+            "kategori": "B.2",
+            "nominal": 2150000,
+            "tanggal": "2026-06-11",
+            "status": "REVISION_MINOR",
+            "verifikator": "Ira Marlina, S.IP"
+        },
+        {
+            "id": "KW-2026-06-0040",
+            "unit": "Seksi Pemberdayaan Masyarakat dan Desa",
+            "kegiatan": "Bimbingan Teknis Pengelolaan Keuangan Desa",
+            "uraian": "Honorarium Narasumber Bimtek Angkatan II",
+            "kategori": "B.4",
+            "nominal": 3500000,
+            "tanggal": "2026-06-10",
+            "status": "VERIFIED",
+            "verifikator": "H. Dedi Sutrisno, S.Sos"
+        },
+        {
+            "id": "KW-2026-06-0039",
+            "unit": "Kelurahan Sukagalih",
+            "kegiatan": "Operasional Pelayanan Administrasi Kelurahan",
+            "uraian": "Belanja Penggantian Sparepart Mesin Genset Kantor",
+            "kategori": "B.5",
+            "nominal": 1850000,
+            "tanggal": "2026-06-09",
+            "status": "VERIFIED",
+            "verifikator": "Ira Marlina, S.IP"
+        }
+    ]
+}
+

@@ -1,0 +1,50 @@
+{
+    "B.1": [
+        { "id": "DOC_B1_01", "name": "Surat Pesanan / Nota Pesanan", "required": true, "description": "Ditandatangani oleh PPTK dan Penyedia" },
+        { "id": "DOC_B1_02", "name": "Kuitansi Pembayaran Bermaterai", "required": true, "description": "Materai Rp10.000 untuk transaksi > Rp5.000.000" },
+        { "id": "DOC_B1_03", "name": "Nota / Faktur Toko Asli", "required": true, "description": "Rincian barang stempel toko penyedia" },
+        { "id": "DOC_B1_04", "name": "Berita Acara Serah Terima (BAST)", "required": true, "description": "Ditandatangani pihak penyedia dan penerima barang" },
+        { "id": "DOC_B1_05", "name": "Dokumentasi / Foto Fisik Barang", "required": true, "description": "Foto barang yang telah diterima di kantor" },
+        { "id": "DOC_B1_06", "name": "Faktur Pajak Elektronik (e-Faktur / SSP)", "required": false, "description": "Wajib jika nilai transaksi di atas batas PKP / kena PPh-PPN" }
+    ],
+    "B.2": [
+        { "id": "DOC_B2_01", "name": "Surat Undangan Rapat / Kegiatan", "required": true, "description": "Mencantumkan tanggal, jam, tempat, dan agenda rapat" },
+        { "id": "DOC_B2_02", "name": "Daftar Hadir Peserta Rapat Asli", "required": true, "description": "Tanda tangan peserta sesuai jumlah pesanan konsumsi" },
+        { "id": "DOC_B2_03", "name": "Notula / Hasil Rapat", "required": true, "description": "Ringkasan pembahasan dan keputusan rapat" },
+        { "id": "DOC_B2_04", "name": "Kuitansi dan Nota Pembelian Konsumsi", "required": true, "description": "Dari katering / warung makan bermaterai (bila berlaku)" },
+        { "id": "DOC_B2_05", "name": "Foto Dokumentasi Pelaksanaan Rapat", "required": true, "description": "Memperlihatkan peserta dan jamuan konsumsi" },
+        { "id": "DOC_B2_06", "name": "Bukti Setor Pajak Restoran / PPh 23", "required": false, "description": "Sesuai tarif pajak daerah / PPh jasa boga" }
+    ],
+    "B.3": [
+        { "id": "DOC_B3_01", "name": "Surat Tugas (ST) Resmi", "required": true, "description": "Ditandatangani oleh Camat / Pejabat Berwenang" },
+        { "id": "DOC_B3_02", "name": "Surat Perintah Perjalanan Dinas (SPPD) Lembar 1 & 2", "required": true, "description": "Wajib distempel dan ditandatangani pejabat tujuan" },
+        { "id": "DOC_B3_03", "name": "Laporan Pelaksanaan Perjalanan Dinas", "required": true, "description": "Laporan hasil kunjungan / koordinasi" },
+        { "id": "DOC_B3_04", "name": "Rincian Biaya Perjalanan Dinas (Kuitansi Rampung)", "required": true, "description": "Uang harian, transport, dan penginapan riil" },
+        { "id": "DOC_B3_05", "name": "Tiket / Bukti Transport / Toll / Bahan Bakar", "required": true, "description": "Bukti pembayaran transport riil" },
+        { "id": "DOC_B3_06", "name": "Foto Dokumentasi di Lokasi Tujuan", "required": true, "description": "Foto koordinasi / kegiatan di tempat tujuan" }
+    ],
+    "B.4": [
+        { "id": "DOC_B4_01", "name": "Surat Keputusan (SK) Tim / Narasumber", "required": true, "description": "SK Camat tentang penetapan narasumber atau tim" },
+        { "id": "DOC_B4_02", "name": "Daftar Penerimaan Honorarium", "required": true, "description": "Mencantumkan nama, golongan, NPWP, jumlah jam/OB, dan TTD" },
+        { "id": "DOC_B4_03", "name": "Materi / Bahan Tayang Paparan", "required": true, "description": "Salinan slide materi narasumber" },
+        { "id": "DOC_B4_04", "name": "Daftar Hadir Peserta Sosialisasi / Bimtek", "required": true, "description": "Tanda tangan peserta acara" },
+        { "id": "DOC_B4_05", "name": "Bukti Potong PPh Pasal 21", "required": true, "description": "Bukti potongan pajak honorarium sesuai golongan/NPWP" },
+        { "id": "DOC_B4_06", "name": "Foto Dokumentasi Pemaparan Materi", "required": true, "description": "Foto narasumber saat membawakan materi" }
+    ],
+    "B.5": [
+        { "id": "DOC_B5_01", "name": "Surat Perintah Kerja (SPK) / Nota Pesanan Servis", "required": true, "description": "Perintah kerja pemeliharaan kendaraan atau peralatan" },
+        { "id": "DOC_B5_02", "name": "Kuitansi & Rincian Faktur Bengkel / Servis", "required": true, "description": "Rincian pergantian sparepart dan jasa ongkos kerja" },
+        { "id": "DOC_B5_03", "name": "Berita Acara Pemeriksaan Pekerjaan (BAPP)", "required": true, "description": "Pemeriksaan bahwa hasil servis berfungsi normal" },
+        { "id": "DOC_B5_04", "name": "Foto Fisik Sparepart Lama vs Baru (Before/After)", "required": true, "description": "Dokumentasi penggantian suku cadang mesin/kendaraan" },
+        { "id": "DOC_B5_05", "name": "Bukti Setor PPh Pasal 23 (Jasa Pemeliharaan)", "required": false, "description": "Potongan PPh 23 sebesar 2% atas ongkos jasa" }
+    ],
+    "B.6": [
+        { "id": "DOC_B6_01", "name": "Surat Pesanan (e-Katalog / Kontrak)", "required": true, "description": "Bukti pemesanan resmi tercatat" },
+        { "id": "DOC_B6_02", "name": "Berita Acara Serah Terima Barang (BAST-B)", "required": true, "description": "Ditandatangani penyedia dan Pengurus Barang Pengguna" },
+        { "id": "DOC_B6_03", "name": "Berita Acara Hasil Pemeriksaan (BAHP)", "required": true, "description": "Hasil pengecekan spesifikasi teknis peralatan" },
+        { "id": "DOC_B6_04", "name": "Kartu Inventaris Barang (KIB / Input SIMDA/SIPD-BMD)", "required": true, "description": "Bukti registrasi nomor kode barang aset daerah" },
+        { "id": "DOC_B6_05", "name": "Faktur Asli, e-Faktur Pajak & Surat Garansi", "required": true, "description": "Faktur pembelian resmi dan kartu garansi resmi distributor" },
+        { "id": "DOC_B6_06", "name": "Foto Fisik Aset Lengkap dengan Plat/Label Inventaris", "required": true, "description": "Foto barang modal terpasang label inventaris SKPD" }
+    ]
+}
+

@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+    /* Angka keuangan wajib presisi rata kanan dan lebar karakter sama */
+    .tabular-nums {
+        font-variant-numeric: tabular-nums;
+    }
+}
