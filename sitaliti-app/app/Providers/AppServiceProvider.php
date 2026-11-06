@@ -22,6 +22,11 @@ class AppServiceProvider extends ServiceProvider
             \App\Contracts\BudgetReservationServiceInterface::class,
             \App\Services\BudgetReservationService::class
         );
+
+        $this->app->bind(
+            \App\Contracts\RakImporterServiceInterface::class,
+            \App\Services\RakImporterService::class
+        );
     }
 
     /**

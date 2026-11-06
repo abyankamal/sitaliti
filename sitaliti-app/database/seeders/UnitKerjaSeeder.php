@@ -21,31 +21,31 @@ class UnitKerjaSeeder extends Seeder
             ],
             [
                 'kode_unit' => '7.01.0.00.0.00.41.0001',
-                'nama_unit' => 'Kelurahan Sukagalih',
-                'tipe' => 'KELURAHAN',
-                'is_active' => true,
-            ],
-            [
-                'kode_unit' => '7.01.0.00.0.00.41.0002',
-                'nama_unit' => 'Kelurahan Tarogong',
-                'tipe' => 'KELURAHAN',
-                'is_active' => true,
-            ],
-            [
-                'kode_unit' => '7.01.0.00.0.00.41.0003',
                 'nama_unit' => 'Kelurahan Pataruman',
                 'tipe' => 'KELURAHAN',
                 'is_active' => true,
             ],
             [
-                'kode_unit' => '7.01.0.00.0.00.41.0004',
-                'nama_unit' => 'Kelurahan Haurpanggung',
+                'kode_unit' => '7.01.0.00.0.00.41.0002',
+                'nama_unit' => 'Kelurahan Sukagalih',
                 'tipe' => 'KELURAHAN',
                 'is_active' => true,
             ],
             [
-                'kode_unit' => '7.01.0.00.0.00.41.0005',
+                'kode_unit' => '7.01.0.00.0.00.41.0006',
                 'nama_unit' => 'Kelurahan Jayawaras',
+                'tipe' => 'KELURAHAN',
+                'is_active' => true,
+            ],
+            [
+                'kode_unit' => '7.01.0.00.0.00.41.0009',
+                'nama_unit' => 'Kelurahan Sukakarya',
+                'tipe' => 'KELURAHAN',
+                'is_active' => true,
+            ],
+            [
+                'kode_unit' => '7.01.0.00.0.00.41.0012',
+                'nama_unit' => 'Kelurahan Sukajaya',
                 'tipe' => 'KELURAHAN',
                 'is_active' => true,
             ],
@@ -59,4 +59,3 @@ class UnitKerjaSeeder extends Seeder
         }
     }
 }
-
