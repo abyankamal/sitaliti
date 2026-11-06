@@ -16,6 +16,12 @@ class AppServiceProvider extends ServiceProvider
             \App\Contracts\TaxCalculationServiceInterface::class,
             \App\Services\TaxCalculationService::class
         );
+
+        // Bind BudgetReservationService as singleton for state consistency during lifecycle
+        $this->app->singleton(
+            \App\Contracts\BudgetReservationServiceInterface::class,
+            \App\Services\BudgetReservationService::class
+        );
     }
 
     /**
