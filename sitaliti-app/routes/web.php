@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Public\QrVerificationPublicController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -32,6 +33,9 @@ Route::get('/control-sheet/{id}', function ($id) {
 Route::get('/bundles', function () {
     return Inertia::render('Bundles/Index');
 })->name('bundles.index');
+
+// Rute Verifikasi Publik (Scan QR Code Fisik - Bebas Login)
+Route::get('/verify/{qr_token}', [QrVerificationPublicController::class, 'show'])->name('public.verify');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

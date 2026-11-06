@@ -3,11 +3,13 @@
 namespace App\Providers;
 
 use App\Contracts\BudgetReservationServiceInterface;
+use App\Contracts\ControlSheetGeneratorServiceInterface;
 use App\Contracts\RakImporterServiceInterface;
 use App\Contracts\SettlementServiceInterface;
 use App\Contracts\TaxCalculationServiceInterface;
 use App\Contracts\VerificationServiceInterface;
 use App\Services\BudgetReservationService;
+use App\Services\ControlSheetGeneratorService;
 use App\Services\RakImporterService;
 use App\Services\SettlementService;
 use App\Services\TaxCalculationService;
@@ -46,6 +48,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             SettlementServiceInterface::class,
             SettlementService::class
+        );
+
+        $this->app->bind(
+            ControlSheetGeneratorServiceInterface::class,
+            ControlSheetGeneratorService::class
         );
     }
 
