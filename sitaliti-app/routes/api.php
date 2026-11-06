@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\BudgetApiController;
 use App\Http\Controllers\Api\ReceiptApiController;
 use App\Http\Controllers\Api\SettlementApiController;
 use App\Http\Controllers\Api\VerificationApiController;
@@ -12,6 +13,14 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::prefix('v1')->group(function () {
+    // Budget & RAK Endpoints (Serving budgetService.js)
+    Route::prefix('budget')->group(function () {
+        Route::get('summary', [BudgetApiController::class, 'summary']);
+        Route::get('units', [BudgetApiController::class, 'units']);
+        Route::get('sub-activities', [BudgetApiController::class, 'subActivities']);
+        Route::get('rak-context/{rekeningId}', [BudgetApiController::class, 'rakContext']);
+    });
+
     // Receipts Endpoints (Serving receiptService.js)
     Route::prefix('receipts')->group(function () {
         Route::post('validate-draft', [ReceiptApiController::class, 'validateDraft']);
