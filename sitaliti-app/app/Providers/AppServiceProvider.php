@@ -2,6 +2,14 @@
 
 namespace App\Providers;
 
+use App\Contracts\BudgetReservationServiceInterface;
+use App\Contracts\RakImporterServiceInterface;
+use App\Contracts\TaxCalculationServiceInterface;
+use App\Contracts\VerificationServiceInterface;
+use App\Services\BudgetReservationService;
+use App\Services\RakImporterService;
+use App\Services\TaxCalculationService;
+use App\Services\VerificationService;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 
@@ -13,19 +21,24 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(
-            \App\Contracts\TaxCalculationServiceInterface::class,
-            \App\Services\TaxCalculationService::class
+            TaxCalculationServiceInterface::class,
+            TaxCalculationService::class
         );
 
         // Bind BudgetReservationService as singleton for state consistency during lifecycle
         $this->app->singleton(
-            \App\Contracts\BudgetReservationServiceInterface::class,
-            \App\Services\BudgetReservationService::class
+            BudgetReservationServiceInterface::class,
+            BudgetReservationService::class
         );
 
         $this->app->bind(
-            \App\Contracts\RakImporterServiceInterface::class,
-            \App\Services\RakImporterService::class
+            RakImporterServiceInterface::class,
+            RakImporterService::class
+        );
+
+        $this->app->bind(
+            VerificationServiceInterface::class,
+            VerificationService::class
         );
     }
 

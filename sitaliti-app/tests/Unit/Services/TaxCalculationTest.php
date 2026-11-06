@@ -12,7 +12,7 @@ class TaxCalculationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         // Resolusi instance service dari container atau instansiasi langsung
         $this->service = app(TaxCalculationServiceInterface::class);
     }
@@ -185,7 +185,7 @@ class TaxCalculationTest extends TestCase
         // Transaksi 6 juta -> wajib meterai Rp 10.000
         $res6Juta = $this->service->calculateTax('B1_ATK', 6000000.0, ['has_npwp' => true]);
         $this->assertEquals(10000.0, $res66Juta['bea_meterai'] ?? $res6Juta['bea_meterai']);
-        
+
         // Memastikan bea meterai tidak memotong neto pembayaran
         $dpp = round(6000000.0 / 1.11);
         $ppn = 6000000.0 - $dpp;
@@ -234,4 +234,3 @@ class TaxCalculationTest extends TestCase
         }
     }
 }
-

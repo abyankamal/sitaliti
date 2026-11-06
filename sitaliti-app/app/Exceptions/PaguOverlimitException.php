@@ -14,4 +14,3 @@ class PaguOverlimitException extends RuntimeException
         parent::__construct($message, $code, $previous);
     }
 }
-

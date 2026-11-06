@@ -8,8 +8,8 @@ interface TaxCalculationServiceInterface
      * Menghitung simulasi potongan pajak otomatis berdasarkan kategori belanja, nominal bruto, dan opsi NPWP/PPh.
      * Sesuai ketentuan UU HPP, UU HKPD (PBJT 10%), dan PMK 59/2022.
      *
-     * @param string $kategoriChecklist Contoh: 'B1_ATK', 'B2_MAMIN', 'B3_HONOR', 'B4_PERJADIN'
-     * @param float $nilaiBruto Nilai kuitansi bruto
+     * @param  string  $kategoriChecklist  Contoh: 'B1_ATK', 'B2_MAMIN', 'B3_HONOR', 'B4_PERJADIN'
+     * @param  float  $nilaiBruto  Nilai kuitansi bruto
      * @param array{
      *     has_npwp?: bool,
      *     golongan_asn?: string|null,
@@ -43,11 +43,6 @@ interface TaxCalculationServiceInterface
      * - Keseimbangan matematis: Bruto - Total Pajak = Neto
      * - Wajib meterai untuk transaksi > Rp 5.000.000
      * - Pemisahan mutlak: PPN 11% dan PBJT 10% tidak boleh dipungut bersamaan
-     *
-     * @param float $nilaiBruto
-     * @param array $taxDetails
-     * @return bool
      */
     public function validateTaxCompliance(float $nilaiBruto, array $taxDetails): bool;
 }
-

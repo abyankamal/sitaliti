@@ -21,6 +21,7 @@ class Kuitansi extends Model
         'unit_kerja_id',
         'anggaran_rekening_id',
         'user_id',
+        'verifikator_id',
         'bulan_anggaran',
         'nomor_bukti_toko',
         'tanggal_transaksi',
@@ -32,7 +33,9 @@ class Kuitansi extends Model
         'total_pajak',
         'nominal_neto',
         'status',
+        'qr_token',
         'catatan_verifikasi',
+        'tenggat_sla',
         'tanggal_submit',
         'tanggal_verifikasi',
     ];
@@ -48,6 +51,7 @@ class Kuitansi extends Model
             'nominal_bruto' => 'decimal:2',
             'total_pajak' => 'decimal:2',
             'nominal_neto' => 'decimal:2',
+            'tenggat_sla' => 'datetime',
             'tanggal_submit' => 'datetime',
             'tanggal_verifikasi' => 'datetime',
         ];
@@ -66,6 +70,11 @@ class Kuitansi extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function verifikator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'verifikator_id');
     }
 
     public function items(): HasMany
@@ -88,4 +97,3 @@ class Kuitansi extends Model
         return $this->hasMany(KuitansiVerifikasiChecklist::class, 'kuitansi_id');
     }
 }
-

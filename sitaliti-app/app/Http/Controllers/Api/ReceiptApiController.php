@@ -69,7 +69,7 @@ class ReceiptApiController extends Controller
 
         // Kumpulkan berkas lampiran yang diunggah
         $files = $request->file('files') ?? $request->file('lampiran') ?? [];
-        if (!is_array($files)) {
+        if (! is_array($files)) {
             $files = [$files];
         }
 

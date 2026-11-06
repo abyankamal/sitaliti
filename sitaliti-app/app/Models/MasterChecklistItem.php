@@ -42,4 +42,3 @@ class MasterChecklistItem extends Model
         return $this->hasMany(KuitansiVerifikasiChecklist::class, 'master_checklist_item_id');
     }
 }
-

@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Contracts\RakImporterServiceInterface;
 use App\Models\AnggaranKasBulanan;
 use App\Models\AnggaranRekening;
-use App\Models\UnitKerja;
+use Database\Seeders\UnitKerjaSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -14,6 +14,7 @@ class RakImportTest extends TestCase
     use RefreshDatabase;
 
     private RakImporterServiceInterface $importer;
+
     private string $rakFilePath;
 
     protected function setUp(): void
@@ -49,7 +50,7 @@ class RakImportTest extends TestCase
     public function test_impor_rak_menghasilkan_132_rekening_dan_pagu_tepat_14_miliar(): void
     {
         // Jalankan seeder unit kerja terlebih dahulu
-        $this->seed(\Database\Seeders\UnitKerjaSeeder::class);
+        $this->seed(UnitKerjaSeeder::class);
 
         $result = $this->importer->importFromFile($this->rakFilePath, 2026);
 
@@ -79,7 +80,7 @@ class RakImportTest extends TestCase
      */
     public function test_artisan_command_sitaliti_import_rak_berhasil(): void
     {
-        $this->seed(\Database\Seeders\UnitKerjaSeeder::class);
+        $this->seed(UnitKerjaSeeder::class);
 
         $this->artisan('sitaliti:import-rak', ['file' => $this->rakFilePath])
             ->assertSuccessful();

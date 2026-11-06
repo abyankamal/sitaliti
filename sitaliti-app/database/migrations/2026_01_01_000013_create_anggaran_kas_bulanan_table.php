@@ -37,4 +37,3 @@ return new class extends Migration
         Schema::dropIfExists('anggaran_kas_bulanan');
     }
 };
-

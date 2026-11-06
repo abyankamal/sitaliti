@@ -133,4 +133,3 @@ class ChecklistSeederTest extends TestCase
         ]);
     }
 }
-

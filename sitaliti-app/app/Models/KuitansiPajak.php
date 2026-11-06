@@ -42,4 +42,3 @@ class KuitansiPajak extends Model
         return $this->belongsTo(Kuitansi::class, 'kuitansi_id');
     }
 }
-

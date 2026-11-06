@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ApiResponseTrait;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class BudgetApiController extends Controller
 {
@@ -28,4 +27,3 @@ class BudgetApiController extends Controller
         return $this->successResponse([], 'Daftar unit kerja berhasil dimuat');
     }
 }
-

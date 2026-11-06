@@ -17,8 +17,8 @@ class RakImporterService implements RakImporterServiceInterface
      * Membaca dan mengimpor data hierarki RAK dari file XLSX menggunakan streaming parser hemat memori.
      * Mengisi tabel: master_unit_kerja, anggaran_rekening, dan anggaran_kas_bulanan (12 bulan).
      *
-     * @param string $filePath Path absolut file Excel RAK (.xlsx)
-     * @param int $tahunAnggaran Tahun anggaran RAK (default 2026)
+     * @param  string  $filePath  Path absolut file Excel RAK (.xlsx)
+     * @param  int  $tahunAnggaran  Tahun anggaran RAK (default 2026)
      * @return array{
      *     total_unit: int,
      *     total_subkegiatan: int,
@@ -30,7 +30,7 @@ class RakImporterService implements RakImporterServiceInterface
      */
     public function importFromFile(string $filePath, int $tahunAnggaran = 2026): array
     {
-        if (!file_exists($filePath)) {
+        if (! file_exists($filePath)) {
             throw new InvalidArgumentException("File RAK tidak ditemukan di: {$filePath}");
         }
 
@@ -120,17 +120,14 @@ class RakImporterService implements RakImporterServiceInterface
 
     /**
      * Memvalidasi format kolom dan integritas data file Excel RAK sebelum dieksekusi.
-     *
-     * @param string $filePath
-     * @return bool
      */
     public function validateFileFormat(string $filePath): bool
     {
-        if (!file_exists($filePath)) {
+        if (! file_exists($filePath)) {
             return false;
         }
 
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
         if ($zip->open($filePath) !== true) {
             return false;
         }
@@ -145,7 +142,6 @@ class RakImporterService implements RakImporterServiceInterface
     /**
      * Parsing internal file XLSX terkelompok per Unit Kerja.
      *
-     * @param string $filePath
      * @return array<string, array{
      *     kode_unit: string,
      *     nama_unit: string,
@@ -154,7 +150,7 @@ class RakImporterService implements RakImporterServiceInterface
      */
     private function parseXlsxFile(string $filePath): array
     {
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
         if ($zip->open($filePath) !== true) {
             throw new RuntimeException("Gagal membuka file zip XLSX: {$filePath}");
         }
@@ -188,7 +184,7 @@ class RakImporterService implements RakImporterServiceInterface
         }
 
         $sheet = simplexml_load_string($sheetXml);
-        if (!$sheet || !isset($sheet->sheetData->row)) {
+        if (! $sheet || ! isset($sheet->sheetData->row)) {
             throw new RuntimeException("Format lembar kerja RAK tidak valid: {$filePath}");
         }
 
@@ -230,13 +226,13 @@ class RakImporterService implements RakImporterServiceInterface
             $anggaran = (float) ($cells['C'] ?? 0);
 
             // Deteksi Unit Kerja (7.01.0.00.0.00.41.xxxx)
-            if (str_starts_with($kode, '7.01.0.00.0.00.41.') && !empty($uraian)) {
+            if (str_starts_with($kode, '7.01.0.00.0.00.41.') && ! empty($uraian)) {
                 $currentUnitKode = $kode;
                 $currentUnitNama = $uraian;
                 $currentSubkegKode = null;
                 $currentSubkegNama = null;
 
-                if (!isset($units[$currentUnitKode])) {
+                if (! isset($units[$currentUnitKode])) {
                     $units[$currentUnitKode] = [
                         'kode_unit' => $currentUnitKode,
                         'nama_unit' => $currentUnitNama,
@@ -260,7 +256,7 @@ class RakImporterService implements RakImporterServiceInterface
                 $currentSubkegKode = $kode;
                 $currentSubkegNama = $uraian;
 
-                if (!isset($units[$currentUnitKode]['subkegiatan'][$currentSubkegKode])) {
+                if (! isset($units[$currentUnitKode]['subkegiatan'][$currentSubkegKode])) {
                     $units[$currentUnitKode]['subkegiatan'][$currentSubkegKode] = [
                         'kode' => $currentSubkegKode,
                         'nama' => $currentSubkegNama,
@@ -294,10 +290,6 @@ class RakImporterService implements RakImporterServiceInterface
 
     /**
      * Menentukan kategori belanja default B.1 s.d. B.6 berdasarkan kode akun dan uraian SIPD-RI.
-     *
-     * @param string $kodeRekening
-     * @param string $uraian
-     * @return string
      */
     private function determineCategory(string $kodeRekening, string $uraian): string
     {

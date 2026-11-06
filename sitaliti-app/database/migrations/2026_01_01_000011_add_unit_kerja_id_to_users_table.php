@@ -17,6 +17,9 @@ return new class extends Migration
                 ->after('id')
                 ->constrained('master_unit_kerja')
                 ->nullOnDelete();
+            $table->string('role', 50)->default('OPERATOR')->after('unit_kerja_id');
+            $table->string('nip', 30)->nullable()->after('name');
+            $table->string('jabatan', 100)->nullable()->after('nip');
         });
     }
 
@@ -27,7 +30,7 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->dropConstrainedForeignId('unit_kerja_id');
+            $table->dropColumn(['role', 'nip', 'jabatan']);
         });
     }
 };
-

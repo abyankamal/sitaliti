@@ -31,7 +31,7 @@ class ImportRakCommand extends Command
         $fileArg = $this->argument('file');
         $tahun = (int) $this->option('tahun');
 
-        if (!$fileArg) {
+        if (! $fileArg) {
             // Default file path
             $defaultPaths = [
                 storage_path('app/rak/RAK_Belanja_7.01.0.00.0.00.41.0000 - Kecamatan Tarogong Kidul.xlsx'),
@@ -47,8 +47,9 @@ class ImportRakCommand extends Command
             }
         }
 
-        if (!$fileArg || !file_exists($fileArg)) {
-            $this->error("File RAK tidak ditemukan. Berikan path file yang valid sebagai argumen.");
+        if (! $fileArg || ! file_exists($fileArg)) {
+            $this->error('File RAK tidak ditemukan. Berikan path file yang valid sebagai argumen.');
+
             return self::FAILURE;
         }
 
@@ -74,12 +75,13 @@ class ImportRakCommand extends Command
                 ]
             );
 
-            $this->info("Impor RAK berhasil diselesaikan secara sempurna!");
+            $this->info('Impor RAK berhasil diselesaikan secara sempurna!');
+
             return self::SUCCESS;
         } catch (\Throwable $e) {
-            $this->error("Gagal melakukan impor RAK: " . $e->getMessage());
+            $this->error('Gagal melakukan impor RAK: '.$e->getMessage());
+
             return self::FAILURE;
         }
     }
 }
-

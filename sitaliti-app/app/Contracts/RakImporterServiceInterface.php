@@ -8,8 +8,8 @@ interface RakImporterServiceInterface
      * Membaca dan mengimpor data hierarki RAK dari file XLSX menggunakan streaming parser hemat memori.
      * Mengisi tabel: master_unit_kerja, anggaran_rekening, dan anggaran_kas_bulanan (12 bulan).
      *
-     * @param string $filePath Path absolut file Excel RAK (.xlsx)
-     * @param int $tahunAnggaran Tahun anggaran RAK (default 2026)
+     * @param  string  $filePath  Path absolut file Excel RAK (.xlsx)
+     * @param  int  $tahunAnggaran  Tahun anggaran RAK (default 2026)
      * @return array{
      *     total_unit: int,
      *     total_subkegiatan: int,
@@ -23,10 +23,6 @@ interface RakImporterServiceInterface
 
     /**
      * Memvalidasi format kolom dan integritas data file Excel RAK sebelum dieksekusi.
-     *
-     * @param string $filePath
-     * @return bool
      */
     public function validateFileFormat(string $filePath): bool;
 }
-

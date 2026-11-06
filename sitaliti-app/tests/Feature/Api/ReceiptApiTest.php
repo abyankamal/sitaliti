@@ -7,6 +7,7 @@ use App\Models\AnggaranRekening;
 use App\Models\Kuitansi;
 use App\Models\UnitKerja;
 use App\Models\User;
+use Database\Seeders\UnitKerjaSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -17,7 +18,9 @@ class ReceiptApiTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+
     private UnitKerja $unit;
+
     private AnggaranRekening $rekening;
 
     protected function setUp(): void
@@ -26,7 +29,7 @@ class ReceiptApiTest extends TestCase
 
         Storage::fake('local');
 
-        $this->seed(\Database\Seeders\UnitKerjaSeeder::class);
+        $this->seed(UnitKerjaSeeder::class);
         $this->unit = UnitKerja::first();
 
         $this->user = User::factory()->create([

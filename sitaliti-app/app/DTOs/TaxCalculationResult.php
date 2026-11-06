@@ -5,17 +5,7 @@ namespace App\DTOs;
 readonly class TaxCalculationResult
 {
     /**
-     * @param float $nilaiBruto
-     * @param float $dpp
-     * @param float $ppn
-     * @param float $pbjtMamin
-     * @param float $pph21
-     * @param float $pph22
-     * @param float $pph23
-     * @param float $beaMeterai
-     * @param float $totalPajak
-     * @param float $nilaiNeto
-     * @param array<int, array{kode_pajak: string, nama_pajak: string, tarif: float, tipe_tarif: string, nominal: float}> $rincianPajak
+     * @param  array<int, array{kode_pajak: string, nama_pajak: string, tarif: float, tipe_tarif: string, nominal: float}>  $rincianPajak
      */
     public function __construct(
         public float $nilaiBruto,
@@ -53,4 +43,3 @@ readonly class TaxCalculationResult
         ];
     }
 }
-

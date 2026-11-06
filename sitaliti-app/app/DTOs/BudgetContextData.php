@@ -33,4 +33,3 @@ readonly class BudgetContextData
         ];
     }
 }
-

@@ -9,6 +9,7 @@ use App\Models\KuitansiLampiran;
 use App\Models\KuitansiPajak;
 use App\Models\UnitKerja;
 use App\Models\User;
+use Database\Seeders\UnitKerjaSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -18,14 +19,16 @@ class ReceiptModelTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+
     private UnitKerja $unit;
+
     private AnggaranRekening $rekening;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->seed(\Database\Seeders\UnitKerjaSeeder::class);
+        $this->seed(UnitKerjaSeeder::class);
         $this->unit = UnitKerja::first();
 
         $this->user = User::factory()->create([
@@ -192,4 +195,3 @@ class ReceiptModelTest extends TestCase
         ]);
     }
 }
-

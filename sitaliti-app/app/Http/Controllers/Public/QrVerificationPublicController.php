@@ -20,4 +20,3 @@ class QrVerificationPublicController extends Controller
         ]);
     }
 }
-

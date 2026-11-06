@@ -282,4 +282,3 @@ class MasterChecklistSeeder extends Seeder
         }
     }
 }
-

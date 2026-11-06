@@ -33,4 +33,3 @@ class StoreReceiptRequest extends FormRequest
         ];
     }
 }
-

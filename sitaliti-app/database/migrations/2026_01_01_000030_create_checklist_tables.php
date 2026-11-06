@@ -61,4 +61,3 @@ return new class extends Migration
         Schema::dropIfExists('master_checklist_item');
     }
 };
-

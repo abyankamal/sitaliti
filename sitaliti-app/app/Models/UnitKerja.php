@@ -48,4 +48,3 @@ class UnitKerja extends Model
         return $this->hasMany(User::class, 'unit_kerja_id');
     }
 }
-

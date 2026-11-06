@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Contracts\BudgetReservationServiceInterface;
 use App\Contracts\TaxCalculationServiceInterface;
-use App\Exceptions\PaguOverlimitException;
 use App\Models\AnggaranRekening;
 use App\Models\Kuitansi;
 use App\Models\KuitansiItem;
@@ -27,7 +26,7 @@ class ReceiptService
     /**
      * Simulasi validasi draft kuitansi & perhitungan pajak (tanpa persistensi).
      *
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
     public function validateDraft(array $data): array
@@ -35,7 +34,7 @@ class ReceiptService
         $rekeningId = (string) ($data['anggaran_rekening_id'] ?? '');
         $bulan = (int) ($data['bulan_anggaran'] ?? (int) date('n'));
         $kategori = (string) ($data['kategori_belanja'] ?? 'B1_ATK');
-        $hasNpwp = (bool) ($data['has_npwp'] ?? !empty($data['npwp_penerima']));
+        $hasNpwp = (bool) ($data['has_npwp'] ?? ! empty($data['npwp_penerima']));
         $golonganAsn = $data['golongan_asn'] ?? null;
 
         // Hitung total belanja dari rincian barang
@@ -59,7 +58,7 @@ class ReceiptService
         $isExceedingBudget = $totalBruto > $sisaPagu;
 
         return [
-            'success' => !$isExceedingBudget,
+            'success' => ! $isExceedingBudget,
             'total_belanja' => $totalBruto,
             'sisa_pagu_tersedia' => $sisaPagu,
             'is_exceeding_budget' => $isExceedingBudget,
@@ -71,10 +70,8 @@ class ReceiptService
     /**
      * Menyimpan draft kuitansi baru beserta item, pajak, dan berkas fisik (dengan deteksi SHA-256 instan).
      *
-     * @param array<string, mixed> $data
-     * @param array<int, array{file: UploadedFile, checklist_code?: string, nama_dokumen?: string}>|array<int, UploadedFile> $attachments
-     * @param User|null $user
-     * @return Kuitansi
+     * @param  array<string, mixed>  $data
+     * @param  array<int, array{file: UploadedFile, checklist_code?: string, nama_dokumen?: string}>|array<int, UploadedFile>  $attachments
      */
     public function createDraft(array $data, array $attachments = [], ?User $user = null): Kuitansi
     {
@@ -87,7 +84,7 @@ class ReceiptService
         $processedAttachments = [];
         foreach ($attachments as $att) {
             $file = ($att instanceof UploadedFile) ? $att : ($att['file'] ?? null);
-            if (!$file instanceof UploadedFile) {
+            if (! $file instanceof UploadedFile) {
                 continue;
             }
 
@@ -120,7 +117,7 @@ class ReceiptService
         // 2. Hitung Total Bruto dan Rincian Barang
         $itemsData = $data['items'] ?? [];
         if (empty($itemsData)) {
-            throw new InvalidArgumentException("Kuitansi wajib memiliki minimal 1 rincian barang/jasa.");
+            throw new InvalidArgumentException('Kuitansi wajib memiliki minimal 1 rincian barang/jasa.');
         }
 
         $totalBruto = 0.0;
@@ -142,7 +139,7 @@ class ReceiptService
 
         // 3. Kalkulasi Pajak Sesuai Regulasi
         $kategori = $rekening->kategori_belanja ?? 'B1_ATK';
-        $hasNpwp = (bool) ($data['has_npwp'] ?? !empty($data['npwp_penerima']));
+        $hasNpwp = (bool) ($data['has_npwp'] ?? ! empty($data['npwp_penerima']));
         $golonganAsn = $data['golongan_asn'] ?? null;
 
         $taxCalc = $this->taxService->calculateTax($kategori, $totalBruto, [
@@ -236,16 +233,13 @@ class ReceiptService
 
     /**
      * Mengajukan kuitansi ke PPTK: memanggil reserveBudget() secara atomic dan mengubah status.
-     *
-     * @param int|string $kuitansiId
-     * @return Kuitansi
      */
     public function submitToPptk(int|string $kuitansiId): Kuitansi
     {
         $kuitansi = Kuitansi::findOrFail($kuitansiId);
 
-        if (!in_array($kuitansi->status, ['DRAFT', 'REVISI_MAYOR'])) {
-            throw new InvalidArgumentException("Hanya kuitansi berstatus DRAFT atau REVISI_MAYOR yang dapat diajukan ke PPTK.");
+        if (! in_array($kuitansi->status, ['DRAFT', 'REVISI_MAYOR'])) {
+            throw new InvalidArgumentException('Hanya kuitansi berstatus DRAFT atau REVISI_MAYOR yang dapat diajukan ke PPTK.');
         }
 
         // Kunci pagu anggaran via BudgetReservationService

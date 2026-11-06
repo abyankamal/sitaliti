@@ -56,4 +56,3 @@ class AnggaranRekening extends Model
         return $this->hasMany(AnggaranKasBulanan::class, 'anggaran_rekening_id');
     }
 }
-
