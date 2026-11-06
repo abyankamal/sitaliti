@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             UnitKerjaSeeder::class,
+            MasterChecklistSeeder::class,
         ]);
 
         // Otomatis jalankan import RAK jika file tersedia

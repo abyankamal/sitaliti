@@ -82,5 +82,10 @@ class Kuitansi extends Model
     {
         return $this->hasMany(KuitansiLampiran::class, 'kuitansi_id');
     }
+
+    public function checklistVerifikasi(): HasMany
+    {
+        return $this->hasMany(KuitansiVerifikasiChecklist::class, 'kuitansi_id');
+    }
 }
 
