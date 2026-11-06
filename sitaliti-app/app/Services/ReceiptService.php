@@ -164,6 +164,8 @@ class ReceiptService
             $rekening,
             $userId,
             $bulan,
+            $tahun,
+            $bulanStr,
             $data,
             $totalBruto,
             $totalPajak,

@@ -17,3 +17,4 @@ Route::prefix('v1')->group(function () {
         Route::post('{id}/submit', [ReceiptApiController::class, 'submit']);
     });
 });
+

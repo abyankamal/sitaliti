@@ -128,8 +128,6 @@ class ReceiptApiTest extends TestCase
         $response = $this->actingAs($this->user)
             ->postJson('/api/v1/receipts', $payload);
 
-        dump($response->json());
-
         $response->assertStatus(201)
             ->assertJson([
                 'success' => true,
