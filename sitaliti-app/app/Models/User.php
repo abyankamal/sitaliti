@@ -18,10 +18,19 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
+        'unit_kerja_id',
         'name',
         'email',
         'password',
     ];
+
+    /**
+     * Relasi ke unit kerja tempat pengguna bertugas.
+     */
+    public function unitKerja(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(UnitKerja::class, 'unit_kerja_id');
+    }
 
     /**
      * The attributes that should be hidden for serialization.

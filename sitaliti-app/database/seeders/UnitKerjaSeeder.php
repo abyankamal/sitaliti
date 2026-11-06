@@ -1,0 +1,62 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\UnitKerja;
+use Illuminate\Database\Seeder;
+
+class UnitKerjaSeeder extends Seeder
+{
+    /**
+     * Run the database seeds.
+     */
+    public function run(): void
+    {
+        $units = [
+            [
+                'kode_unit' => '7.01.0.00.0.00.41.0000',
+                'nama_unit' => 'Kecamatan Tarogong Kidul',
+                'tipe' => 'KECAMATAN',
+                'is_active' => true,
+            ],
+            [
+                'kode_unit' => '7.01.0.00.0.00.41.0001',
+                'nama_unit' => 'Kelurahan Sukagalih',
+                'tipe' => 'KELURAHAN',
+                'is_active' => true,
+            ],
+            [
+                'kode_unit' => '7.01.0.00.0.00.41.0002',
+                'nama_unit' => 'Kelurahan Tarogong',
+                'tipe' => 'KELURAHAN',
+                'is_active' => true,
+            ],
+            [
+                'kode_unit' => '7.01.0.00.0.00.41.0003',
+                'nama_unit' => 'Kelurahan Pataruman',
+                'tipe' => 'KELURAHAN',
+                'is_active' => true,
+            ],
+            [
+                'kode_unit' => '7.01.0.00.0.00.41.0004',
+                'nama_unit' => 'Kelurahan Haurpanggung',
+                'tipe' => 'KELURAHAN',
+                'is_active' => true,
+            ],
+            [
+                'kode_unit' => '7.01.0.00.0.00.41.0005',
+                'nama_unit' => 'Kelurahan Jayawaras',
+                'tipe' => 'KELURAHAN',
+                'is_active' => true,
+            ],
+        ];
+
+        foreach ($units as $unit) {
+            UnitKerja::updateOrCreate(
+                ['kode_unit' => $unit['kode_unit']],
+                $unit
+            );
+        }
+    }
+}
+
