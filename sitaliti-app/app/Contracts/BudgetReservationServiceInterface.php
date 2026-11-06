@@ -5,11 +5,12 @@ namespace App\Contracts;
 interface BudgetReservationServiceInterface
 {
     /**
-     * Mengambil alokasi kuota RAK bulanan beserta sisa akumulasi carry-over untuk Pop-up Selector / Dashboard.
+     * Mengambil alokasi kuota RAK bulanan beserta sisa akumulasi carry-over untuk rekening tertentu.
+     * Sesuai kebutuhan RAKSelectorModal.vue & budgetService.getRakContext().
      *
-     * @param string $unitKerjaId ID Unit Kerja
-     * @param int $tahun Tahun anggaran (misal 2026)
+     * @param string $anggaranRekeningId ID Rekening Belanja
      * @param int $bulanDipilih Bulan yang dipilih pengguna (1 s.d. 12)
+     * @param int|null $activeMonth Override bulan aktif sistem (untuk testing / penutupan buku)
      * @return array{
      *     rekening_id: string,
      *     selected_month: int,
@@ -23,7 +24,7 @@ interface BudgetReservationServiceInterface
      *     status_lock: string
      * }
      */
-    public function getPopupAllocationData(string $unitKerjaId, int $tahun, int $bulanDipilih): array;
+    public function getPopupAllocationData(string $anggaranRekeningId, int $bulanDipilih, ?int $activeMonth = null): array;
 
     /**
      * Mengunci pagu kuitansi saat disubmit ke PPTK menggunakan transaksi atomic pessimistic lock (lockForUpdate).
@@ -32,10 +33,12 @@ interface BudgetReservationServiceInterface
      * @param string $anggaranRekeningId
      * @param int $bulan
      * @param float $nominalBruto
+     * @param int|null $activeMonth
      * @throws \App\Exceptions\PaguOverlimitException Jika saldo tidak mencukupi atau melanggar jadwal kas
+     * @throws \InvalidArgumentException Jika nominal <= 0
      * @return void
      */
-    public function reserveBudget(string $anggaranRekeningId, int $bulan, float $nominalBruto): void;
+    public function reserveBudget(string $anggaranRekeningId, int $bulan, float $nominalBruto, ?int $activeMonth = null): void;
 
     /**
      * Melepas kuncian pagu jika kuitansi ditolak revisi mayor atau dibatalkan oleh operator.
@@ -57,4 +60,3 @@ interface BudgetReservationServiceInterface
      */
     public function settleBudget(string $anggaranRekeningId, int $bulan, float $nominalRealisasi): void;
 }
-
