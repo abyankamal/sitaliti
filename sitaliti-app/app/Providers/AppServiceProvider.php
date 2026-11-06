@@ -4,10 +4,12 @@ namespace App\Providers;
 
 use App\Contracts\BudgetReservationServiceInterface;
 use App\Contracts\RakImporterServiceInterface;
+use App\Contracts\SettlementServiceInterface;
 use App\Contracts\TaxCalculationServiceInterface;
 use App\Contracts\VerificationServiceInterface;
 use App\Services\BudgetReservationService;
 use App\Services\RakImporterService;
+use App\Services\SettlementService;
 use App\Services\TaxCalculationService;
 use App\Services\VerificationService;
 use Illuminate\Support\Facades\Vite;
@@ -39,6 +41,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             VerificationServiceInterface::class,
             VerificationService::class
+        );
+
+        $this->app->bind(
+            SettlementServiceInterface::class,
+            SettlementService::class
         );
     }
 

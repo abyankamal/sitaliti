@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Kuitansi extends Model
 {
@@ -95,5 +96,15 @@ class Kuitansi extends Model
     public function checklistVerifikasi(): HasMany
     {
         return $this->hasMany(KuitansiVerifikasiChecklist::class, 'kuitansi_id');
+    }
+
+    public function spjItems(): HasMany
+    {
+        return $this->hasMany(PengajuanSpjItem::class, 'kuitansi_id');
+    }
+
+    public function activeSpjItem(): HasOne
+    {
+        return $this->hasOne(PengajuanSpjItem::class, 'kuitansi_id')->where('status_item', 'AKTIF');
     }
 }

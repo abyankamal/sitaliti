@@ -1,0 +1,297 @@
+<?php
+
+namespace App\Services;
+
+use App\Contracts\BudgetReservationServiceInterface;
+use App\Contracts\SettlementServiceInterface;
+use App\Models\Kuitansi;
+use App\Models\PengajuanSpj;
+use App\Models\PengajuanSpjItem;
+use App\Models\User;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
+
+class SettlementService implements SettlementServiceInterface
+{
+    /**
+     * Template standar 9 Dokumen Wajib Bagian A untuk pengesahan SPP / LPJ.
+     *
+     * @var array<int, array{id: string, name: string, required: bool, checked: bool}>
+     */
+    protected array $defaultChecklistBagianA = [
+        ['id' => 'A_01', 'name' => 'Nota Pencairan Dana (NPD)', 'required' => true, 'checked' => true],
+        ['id' => 'A_02', 'name' => 'Lembar Pengiriman SPJ', 'required' => true, 'checked' => true],
+        ['id' => 'A_03', 'name' => 'Berita Acara Pemeriksaan Kas (BAP Kas)', 'required' => true, 'checked' => true],
+        ['id' => 'A_04', 'name' => 'Register Penutupan Kas', 'required' => true, 'checked' => true],
+        ['id' => 'A_05', 'name' => 'Laporan Pengeluaran Kas', 'required' => true, 'checked' => true],
+        ['id' => 'A_06', 'name' => 'SPJ Fungsional', 'required' => true, 'checked' => true],
+        ['id' => 'A_07', 'name' => 'Buku Kas Umum (BKU)', 'required' => true, 'checked' => true],
+        ['id' => 'A_08', 'name' => 'Buku Pembantu Pajak', 'required' => true, 'checked' => true],
+        ['id' => 'A_09', 'name' => 'Rekening Koran Bank Penampung', 'required' => true, 'checked' => true],
+    ];
+
+    public function __construct(
+        protected BudgetReservationServiceInterface $budgetService
+    ) {}
+
+    /**
+     * Membuat bundel pengajuan SPJ baru dan menggabungkan kuitansi lolos verifikasi.
+     *
+     * @param  array<string, mixed>  $data
+     * @param  array<int, int|string>  $kuitansiIds
+     */
+    public function createBundle(array $data, array $kuitansiIds, User $user): PengajuanSpj
+    {
+        if (empty($kuitansiIds)) {
+            throw new InvalidArgumentException('Bundel pengajuan SPJ wajib menyertakan minimal 1 kuitansi.');
+        }
+
+        $tahun = (int) ($data['tahun_anggaran'] ?? date('Y'));
+        $bulan = (int) ($data['bulan_periode'] ?? date('n'));
+        $jenis = (string) ($data['jenis_bundel'] ?? 'SPP_GU');
+        $unitId = $data['unit_kerja_id'] ?? $user->unit_kerja_id;
+
+        if (! $unitId) {
+            throw new InvalidArgumentException('Unit kerja pengaju SPJ wajib ditentukan.');
+        }
+
+        $seq = str_pad((string) mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
+        $bulanStr = str_pad((string) $bulan, 2, '0', STR_PAD_LEFT);
+        $nomorBundel = $data['nomor_bundel'] ?? "BND-{$jenis}/{$tahun}/{$bulanStr}/{$seq}";
+
+        return DB::transaction(function () use (
+            $nomorBundel,
+            $unitId,
+            $user,
+            $jenis,
+            $tahun,
+            $bulan,
+            $kuitansiIds,
+            $data
+        ) {
+            // 1. Validasi seluruh kuitansi: harus LOLOS_VERIFIKASI dan belum aktif di bundel lain
+            $receipts = Kuitansi::whereIn('id', $kuitansiIds)->get();
+
+            if ($receipts->count() !== count($kuitansiIds)) {
+                throw new InvalidArgumentException('Beberapa kuitansi yang dipilih tidak ditemukan dalam sistem.');
+            }
+
+            foreach ($receipts as $r) {
+                if ($r->status !== 'LOLOS_VERIFIKASI') {
+                    throw new InvalidArgumentException(
+                        "Kuitansi {$r->nomor_kuitansi} berstatus '{$r->status}', hanya kuitansi LOLOS_VERIFIKASI yang dapat dibundel."
+                    );
+                }
+            }
+
+            // 2. Buat record Pengajuan SPJ
+            $bundle = PengajuanSpj::create([
+                'nomor_bundel' => $nomorBundel,
+                'unit_kerja_id' => $unitId,
+                'user_id' => $user->id,
+                'jenis_bundel' => $jenis,
+                'tahun_anggaran' => $tahun,
+                'bulan_periode' => $bulan,
+                'total_bruto' => 0.00,
+                'total_pajak' => 0.00,
+                'total_neto' => 0.00,
+                'status_bundel' => $data['status_bundel'] ?? 'DRAFT',
+                'nomor_spp_sipd' => $data['nomor_spp_sipd'] ?? null,
+                'checklist_bagian_a' => $data['checklist_bagian_a'] ?? $this->defaultChecklistBagianA,
+            ]);
+
+            // 3. Masukkan setiap kuitansi ke pengajuan_spj_item dengan no urut ordner
+            $order = 1;
+            foreach ($receipts as $receipt) {
+                try {
+                    PengajuanSpjItem::create([
+                        'pengajuan_spj_id' => $bundle->id,
+                        'kuitansi_id' => $receipt->id,
+                        'no_urut_ordner' => $order++,
+                        'status_item' => 'AKTIF',
+                    ]);
+                } catch (QueryException $e) {
+                    if (str_contains($e->getMessage(), 'uq_satu_kuitansi_aktif') || $e->getCode() === '23000') {
+                        throw new InvalidArgumentException(
+                            "Kuitansi {$receipt->nomor_kuitansi} gagal dibundel karena telah aktif pada pengajuan SPJ lain (Proteksi Anti-Klaim Ganda)."
+                        );
+                    }
+                    throw $e;
+                }
+
+                // Update status kuitansi menjadi DIBUNDEL
+                $receipt->update(['status' => 'DIBUNDEL']);
+            }
+
+            // 4. Hitung akumulasi total bruto, pajak, dan neto
+            $bundle->recalculateTotals();
+
+            return $bundle->fresh(['unitKerja', 'creator', 'activeItems.kuitansi.rekening']);
+        });
+    }
+
+    /**
+     * Mengeluarkan kuitansi bermasalah dari bundel aktif (Unbundle).
+     */
+    public function unbundleReceipt(int|string $bundleId, int|string $kuitansiId, ?string $reason = null): bool
+    {
+        $item = PengajuanSpjItem::where('pengajuan_spj_id', $bundleId)
+            ->where(function ($q) use ($kuitansiId) {
+                $q->where('kuitansi_id', $kuitansiId)
+                    ->orWhereHas('kuitansi', function ($k) use ($kuitansiId) {
+                        $k->where('nomor_kuitansi', $kuitansiId);
+                    });
+            })
+            ->where('status_item', 'AKTIF')
+            ->first();
+
+        if (! $item) {
+            throw new InvalidArgumentException('Kuitansi tidak ditemukan dalam keadaan aktif pada bundel SPJ ini.');
+        }
+
+        return DB::transaction(function () use ($item) {
+            $bundle = $item->pengajuanSpj;
+            $kuitansi = $item->kuitansi;
+
+            // 1. Ubah status item menjadi DIKELUARKAN (membebaskan active_kuitansi_id via stored column)
+            $item->update(['status_item' => 'DIKELUARKAN']);
+
+            // 2. Kembalikan status kuitansi ke LOLOS_VERIFIKASI agar bisa dibundel ulang nanti
+            $kuitansi->update(['status' => 'LOLOS_VERIFIKASI']);
+
+            // 3. Hitung ulang total bundel
+            $bundle->recalculateTotals();
+
+            return true;
+        });
+    }
+
+    /**
+     * Mencatat nomor SP2D SIPD-RI dan memindahkan seluruh kuncian pagu kuitansi menjadi realisasi definitif.
+     */
+    public function recordSipdSp2d(int|string $bundleId, string $nomorSp2d, ?string $nomorSpp = null, ?string $tanggalSp2d = null): PengajuanSpj
+    {
+        $bundle = PengajuanSpj::with(['activeItems.kuitansi'])
+            ->where('id', $bundleId)
+            ->orWhere('nomor_bundel', $bundleId)
+            ->firstOrFail();
+
+        return DB::transaction(function () use ($bundle, $nomorSp2d, $nomorSpp, $tanggalSp2d) {
+            foreach ($bundle->activeItems as $item) {
+                $kuitansi = $item->kuitansi;
+                if ($kuitansi) {
+                    // Eksekusi pemindahan kuncian pagu menjadi realisasi definitif di ledger & RAK
+                    $this->budgetService->settleBudget(
+                        (string) $kuitansi->anggaran_rekening_id,
+                        $kuitansi->bulan_anggaran,
+                        (float) $kuitansi->nominal_bruto
+                    );
+
+                    $kuitansi->update(['status' => 'SELESAI_SP2D']);
+                }
+            }
+
+            $bundle->update([
+                'status_bundel' => 'SYNCED_SIPD',
+                'nomor_sp2d_sipd' => $nomorSp2d,
+                'nomor_spp_sipd' => $nomorSpp ?? $bundle->nomor_spp_sipd,
+                'tanggal_sp2d' => $tanggalSp2d ?? now()->toDateString(),
+            ]);
+
+            return $bundle->fresh(['unitKerja', 'creator', 'activeItems.kuitansi']);
+        });
+    }
+
+    /**
+     * Mengambil daftar bundel SPJ untuk dashboard/index view.
+     *
+     * @param  array<string, mixed>  $filters
+     * @return array<int, array<string, mixed>>
+     */
+    public function getBundles(array $filters = []): array
+    {
+        $query = PengajuanSpj::with(['unitKerja', 'activeItems.kuitansi.rekening'])
+            ->orderBy('created_at', 'desc');
+
+        if (! empty($filters['unit_id'])) {
+            $query->where('unit_kerja_id', $filters['unit_id']);
+        }
+
+        if (! empty($filters['status'])) {
+            $query->where('status_bundel', $filters['status']);
+        }
+
+        $bundles = $query->get();
+
+        return $bundles->map(function (PengajuanSpj $b) {
+            return [
+                'id' => $b->id,
+                'nomor_bundel' => $b->nomor_bundel,
+                'nomor_spp' => $b->nomor_spp_sipd ?? $b->nomor_bundel,
+                'jenis' => $b->jenis_bundel,
+                'unit' => $b->unitKerja?->nama_unit ?? 'Unit Kerja',
+                'tanggal' => $b->created_at?->format('Y-m-d'),
+                'total_nominal' => (float) $b->total_bruto,
+                'total_pajak' => (float) $b->total_pajak,
+                'total_neto' => (float) $b->total_neto,
+                'status' => $b->status_bundel,
+                'nomor_sipd' => $b->nomor_sp2d_sipd ?? $b->nomor_spp_sipd ?? '-',
+                'checklist_bagian_a' => $b->checklist_bagian_a ?? $this->defaultChecklistBagianA,
+                'kuitansi_list' => $b->activeItems->map(function (PengajuanSpjItem $item) {
+                    $k = $item->kuitansi;
+
+                    return [
+                        'id' => $k?->nomor_kuitansi ?? (string) $item->kuitansi_id,
+                        'kuitansi_id' => $item->kuitansi_id,
+                        'uraian' => $k?->uraian ?? '',
+                        'nominal' => (float) ($k?->nominal_bruto ?? 0),
+                        'kategori' => $k?->rekening?->kategori_belanja ?? 'B.1',
+                        'status' => $k?->status ?? 'VERIFIED',
+                    ];
+                })->values()->all(),
+            ];
+        })->toArray();
+    }
+
+    /**
+     * Mengambil detail lengkap suatu bundel SPJ.
+     *
+     * @return array<string, mixed>
+     */
+    public function getBundleDetail(int|string $bundleId): array
+    {
+        $bundle = PengajuanSpj::with([
+            'unitKerja',
+            'creator',
+            'ppk',
+            'activeItems.kuitansi.rekening',
+            'activeItems.kuitansi.items',
+            'activeItems.kuitansi.pajak',
+            'activeItems.kuitansi.lampiran',
+        ])
+            ->where('id', $bundleId)
+            ->orWhere('nomor_bundel', $bundleId)
+            ->firstOrFail();
+
+        return [
+            'id' => $bundle->id,
+            'nomor_bundel' => $bundle->nomor_bundel,
+            'nomor_spp' => $bundle->nomor_spp_sipd ?? $bundle->nomor_bundel,
+            'jenis' => $bundle->jenis_bundel,
+            'unit' => $bundle->unitKerja?->nama_unit ?? 'Unit Kerja',
+            'unit_kerja' => $bundle->unitKerja,
+            'tanggal' => $bundle->created_at?->format('Y-m-d'),
+            'total_nominal' => (float) $bundle->total_bruto,
+            'total_bruto' => (float) $bundle->total_bruto,
+            'total_pajak' => (float) $bundle->total_pajak,
+            'total_neto' => (float) $bundle->total_neto,
+            'status' => $bundle->status_bundel,
+            'nomor_sipd' => $bundle->nomor_sp2d_sipd ?? $bundle->nomor_spp_sipd ?? '-',
+            'nomor_sp2d_sipd' => $bundle->nomor_sp2d_sipd,
+            'tanggal_sp2d' => $bundle->tanggal_sp2d?->format('Y-m-d'),
+            'checklist_bagian_a' => $bundle->checklist_bagian_a ?? $this->defaultChecklistBagianA,
+            'items' => $bundle->activeItems,
+        ];
+    }
+}

@@ -109,4 +109,3 @@ class VerificationApiController extends Controller
         }
     }
 }
-
