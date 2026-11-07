@@ -113,6 +113,12 @@ async function handleSubmitDraft() {
     validationResult.value = null;
 
     try {
+        if (!form.value.nama_penerima) {
+            alert('Silakan isi Penerima / Nama Toko terlebih dahulu.');
+            isSubmitting.value = false;
+            return;
+        }
+
         const payload = {
             ...form.value,
             budget_context: budgetContext.value,
@@ -123,13 +129,51 @@ async function handleSubmitDraft() {
         const result = await receiptService.validateDraft(payload);
         validationResult.value = result;
 
-        if (result.success) {
-            const saveRes = await receiptService.saveReceipt(payload);
-            alert(`Berhasil! ${saveRes.message} (Nomor Bukti: ${saveRes.receipt_id})`);
-            router.visit(route('dashboard'));
+        if (result.missing_mandatory_docs && result.missing_mandatory_docs.length > 0) {
+            const missingList = result.missing_mandatory_docs.join('\n- ');
+            alert(`Peringatan Dokumen Wajib Belum Diunggah:\n- ${missingList}\n\nHarap lengkapi file dokumen wajib di tabel checklist.`);
+            isSubmitting.value = false;
+            return;
         }
+
+        if (result.is_exceeding_budget) {
+            alert('Nilai belanja melebihi sisa pagu anggaran kas yang tersedia!');
+            isSubmitting.value = false;
+            return;
+        }
+
+        // Siapkan multipart FormData untuk kirim file lampiran
+        const formData = new FormData();
+        formData.append('anggaran_rekening_id', budgetContext.value.account.id);
+        formData.append('bulan_anggaran', budgetContext.value.month || 6);
+        formData.append('nomor_bukti_toko', form.value.nomor_bukti);
+        formData.append('tanggal_transaksi', form.value.tanggal_bukti);
+        formData.append('nama_penerima', form.value.nama_penerima);
+        formData.append('npwp_penerima', form.value.npwp_penerima || '');
+        formData.append('uraian_belanja', form.value.uraian_belanja || 'Belanja Kuitansi');
+
+        // Tambahkan rincian belanja items
+        form.value.items.forEach((item, index) => {
+            formData.append(`items[${index}][nama_barang]`, item.nama_barang || 'Barang Belanja');
+            formData.append(`items[${index}][volume]`, item.volume || 1);
+            formData.append(`items[${index}][satuan]`, item.satuan || 'Pcs');
+            formData.append(`items[${index}][harga_satuan]`, item.harga_satuan);
+        });
+
+        // Tambahkan berkas lampiran
+        checklistItems.value.forEach(item => {
+            if (item.file) {
+                formData.append('files[]', item.file);
+            }
+        });
+
+        const saveRes = await receiptService.storeReceipt(formData);
+        alert(`Berhasil! ${saveRes.message || 'Kuitansi berhasil disimpan.'} (Nomor Bukti: ${saveRes.data?.receipt_id || form.value.nomor_bukti})`);
+        router.visit(route('dashboard'));
     } catch (err) {
-        alert('Terjadi kesalahan saat menyimpan draft.');
+        console.error('Submit error:', err);
+        const errMsg = err.response?.data?.error?.message || err.response?.data?.message || err.message || 'Terjadi kesalahan saat menyimpan draft.';
+        alert(`Gagal menyimpan: ${errMsg}`);
     } finally {
         isSubmitting.value = false;
     }

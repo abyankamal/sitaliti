@@ -1,4 +1,7 @@
+import axios from 'axios';
 import checklistData from '@/Mocks/checklistTemplatesMock.json';
+
+const API_BASE = '/api/v1/receipts';
 
 /**
  * Service adapter untuk pengelolaan checklist dokumen dan draft kuitansi
@@ -10,7 +13,6 @@ export const receiptService = {
      */
     async getChecklistByCategory(categoryCode) {
         const list = checklistData[categoryCode] || checklistData['B.1'];
-        // Format dengan status awal file null
         const formatted = list.map(item => ({
             ...item,
             file: null,
@@ -25,18 +27,24 @@ export const receiptService = {
      * Simulasi validasi draft kuitansi ke backend (Contract-First)
      */
     async validateDraft(payload) {
-        // Backend Source of Truth validation check
-        const totalNilai = payload.items.reduce((acc, curr) => acc + (curr.volume * curr.harga_satuan), 0);
-        const sisaPagu = payload.budget_context?.rakContext?.sisa_dapat_digunakan || 0;
+        try {
+            const response = await axios.post(`${API_BASE}/validate-draft`, payload);
+            if (response.data && response.data.success) {
+                return response.data.data;
+            }
+        } catch (error) {
+            console.warn('Fallback to local draft validation:', error);
+        }
 
+        // Fallback local calculation
+        const totalNilai = (payload.items || []).reduce((acc, curr) => acc + (curr.volume * curr.harga_satuan), 0);
+        const sisaPagu = payload.budget_context?.rakContext?.sisa_dapat_digunakan || 0;
         const isExceedingBudget = totalNilai > sisaPagu;
-        
-        // Cek kelengkapan dokumen wajib
         const missingMandatoryDocs = (payload.checklist || [])
             .filter(doc => doc.required && !doc.file)
             .map(doc => doc.name);
 
-        return Promise.resolve({
+        return {
             success: !isExceedingBudget && missingMandatoryDocs.length === 0,
             total_belanja: totalNilai,
             is_exceeding_budget: isExceedingBudget,
@@ -47,19 +55,26 @@ export const receiptService = {
                 pph22: payload.tax_settings?.apply_pph22 ? Math.round(totalNilai * 0.015) : 0,
                 pph23: payload.tax_settings?.apply_pph23 ? Math.round(totalNilai * 0.02) : 0,
             }
-        });
+        };
     },
 
     /**
-     * Simpan kuitansi baru (Simulasi POST /api/v1/receipts)
+     * Simpan kuitansi draft ke backend database
      */
-    async saveReceipt(payload) {
-        return Promise.resolve({
-            success: true,
-            receipt_id: `KW-2026-06-${Math.floor(1000 + Math.random() * 9000)}`,
-            message: 'Kuitansi dan berkas pendukung berhasil disimpan sebagai draft.',
-            status: 'DRAFT'
+    async storeReceipt(formData) {
+        const response = await axios.post(API_BASE, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            }
         });
+        return response.data;
+    },
+
+    /**
+     * Submit kuitansi ke verifikator / PPTK
+     */
+    async submitReceipt(receiptId) {
+        const response = await axios.post(`${API_BASE}/${receiptId}/submit`);
+        return response.data;
     }
 };
-

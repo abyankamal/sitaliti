@@ -3,8 +3,8 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -24,11 +24,43 @@ class DatabaseSeeder extends Seeder
             $this->command->call('sitaliti:import-rak', ['file' => $rakPath]);
         }
 
-        if (User::where('email', 'test@example.com')->doesntExist()) {
-            User::factory()->create([
+        // Akun Resmi Percontohan Sesuai Struktur Brief SI-TALITI v2.0
+        $officialUsers = [
+            [
+                'name' => 'Operator BPP Kecamatan',
+                'email' => 'operator@tarkid.garutkab.go.id',
+                'role' => 'OPERATOR',
+            ],
+            [
+                'name' => 'Pejabat Pelaksana Teknis Kegiatan (PPTK)',
+                'email' => 'pptk@tarkid.garutkab.go.id',
+                'role' => 'PPTK',
+            ],
+            [
+                'name' => 'Tim Verifikator Akuntabilitas',
+                'email' => 'verifikator@tarkid.garutkab.go.id',
+                'role' => 'VERIFIKATOR',
+            ],
+            [
+                'name' => 'Camat Tarogong Kidul (KPA)',
+                'email' => 'camat@tarkid.garutkab.go.id',
+                'role' => 'KPA',
+            ],
+            [
                 'name' => 'Test User',
                 'email' => 'test@example.com',
-            ]);
+                'role' => 'OPERATOR',
+            ],
+        ];
+
+        foreach ($officialUsers as $userData) {
+            User::updateOrCreate(
+                ['email' => $userData['email']],
+                [
+                    'name' => $userData['name'],
+                    'password' => Hash::make('password'),
+                ]
+            );
         }
     }
 }

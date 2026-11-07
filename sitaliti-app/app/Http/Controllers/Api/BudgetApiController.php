@@ -67,32 +67,33 @@ class BudgetApiController extends Controller
             $query->where('unit_kerja_id', $unitId);
         }
 
-        $subActivities = $query->select(
-            'id',
-            'unit_kerja_id',
-            'kode_sub_kegiatan',
-            'nama_sub_kegiatan',
-            'kode_rekening',
-            'nama_rekening',
-            'pagu_perubahan',
-            'kategori_belanja'
-        )
-            ->orderBy('kode_sub_kegiatan')
-            ->get()
-            ->map(function ($r) {
-                return [
-                    'id' => $r->id,
-                    'unit_id' => $r->unit_kerja_id,
-                    'code' => $r->kode_sub_kegiatan,
-                    'name' => $r->nama_sub_kegiatan,
-                    'kode_rekening' => $r->kode_rekening,
-                    'nama_rekening' => $r->nama_rekening,
-                    'pagu' => (float) $r->pagu_perubahan,
-                    'category' => $r->kategori_belanja,
-                ];
-            });
+        $records = $query->orderBy('kode_sub_kegiatan')
+            ->orderBy('kode_rekening')
+            ->get();
 
-        return $this->successResponse($subActivities, 'Daftar sub kegiatan dan rekening berhasil dimuat');
+        // Group by subkegiatan agar sesuai struktur RAKSelectorModal (subkegiatan memiliki anak array rekening)
+        $grouped = $records->groupBy('kode_sub_kegiatan')->map(function ($items) {
+            $first = $items->first();
+            return [
+                'id' => $first->kode_sub_kegiatan, // ID subkegiatan untuk selector
+                'unit_id' => $first->unit_kerja_id,
+                'code' => $first->kode_sub_kegiatan,
+                'name' => $first->nama_sub_kegiatan,
+                'category' => $first->kategori_belanja ?? 'B.1',
+                'rekening' => $items->map(function ($r) {
+                    return [
+                        'id' => $r->id,
+                        'code' => $r->kode_rekening,
+                        'name' => $r->nama_rekening,
+                        'kategori' => $r->kategori_belanja ?? 'B.1',
+                        'pagu_murni' => (float) $r->pagu_murni,
+                        'pagu_perubahan' => (float) $r->pagu_perubahan,
+                    ];
+                })->values()->all(),
+            ];
+        })->values()->all();
+
+        return $this->successResponse($grouped, 'Daftar sub kegiatan dan rekening berhasil dimuat');
     }
 
     /**

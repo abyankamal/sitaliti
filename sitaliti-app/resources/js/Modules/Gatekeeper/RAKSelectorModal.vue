@@ -52,8 +52,8 @@ watch(selectedSubActivityId, (newVal) => {
     rakContext.value = null;
 
     if (newVal) {
-        const found = subActivities.value.find(s => s.id === Number(newVal));
-        accounts.value = found ? found.rekening : [];
+        const found = subActivities.value.find(s => String(s.id) === String(newVal) || s.code === newVal);
+        accounts.value = found ? (found.rekening || []) : [];
     } else {
         accounts.value = [];
     }

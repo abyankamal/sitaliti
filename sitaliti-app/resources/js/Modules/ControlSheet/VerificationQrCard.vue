@@ -1,5 +1,6 @@
 <script setup>
-import { computed } from 'vue';
+import { ref, watch, onMounted } from 'vue';
+import QRCode from 'qrcode';
 
 const props = defineProps({
     value: {
@@ -16,9 +17,32 @@ const props = defineProps({
     },
 });
 
-// Menggunakan API rendering QR Code standar berkecepatan tinggi tanpa dependensi eksternal berat
-const qrUrl = computed(() => {
-    return `https://api.qrserver.com/v1/create-qr-code/?size=${props.size}x${props.size}&data=${encodeURIComponent(props.value)}&margin=4`;
+const qrDataUrl = ref('');
+
+async function generateQr() {
+    if (!props.value) return;
+    try {
+        qrDataUrl.value = await QRCode.toDataURL(props.value, {
+            width: props.size,
+            margin: 1,
+            color: {
+                dark: '#0f172a',
+                light: '#ffffff'
+            }
+        });
+    } catch (err) {
+        console.error('Error generating offline QR code:', err);
+        // Fallback jika terjadi error
+        qrDataUrl.value = `https://api.qrserver.com/v1/create-qr-code/?size=${props.size}x${props.size}&data=${encodeURIComponent(props.value)}&margin=4`;
+    }
+}
+
+onMounted(() => {
+    generateQr();
+});
+
+watch(() => props.value, () => {
+    generateQr();
 });
 </script>
 
@@ -26,17 +50,23 @@ const qrUrl = computed(() => {
     <div class="inline-flex flex-col items-center">
         <div class="p-2 bg-white rounded-lg border border-slate-300 shadow-xs inline-block">
             <img
-                :src="qrUrl"
+                v-if="qrDataUrl"
+                :src="qrDataUrl"
                 :alt="value"
                 :width="size"
                 :height="size"
                 class="block"
-                loading="lazy"
             />
+            <div
+                v-else
+                :style="{ width: `${size}px`, height: `${size}px` }"
+                class="bg-slate-100 flex items-center justify-center text-[10px] text-slate-400"
+            >
+                Memuat QR...
+            </div>
         </div>
         <span v-if="label" class="text-[10px] text-slate-500 font-mono mt-1 text-center truncate max-w-[140px]">
             {{ label }}
         </span>
     </div>
 </template>
-

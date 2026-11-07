@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 
 const props = defineProps({
     fileUrl: {
@@ -14,6 +14,12 @@ const props = defineProps({
 
 const zoomLevel = ref(100);
 const rotation = ref(0);
+
+const isImage = computed(() => {
+    if (!props.fileUrl && !props.fileName) return false;
+    const target = (props.fileName || props.fileUrl).toLowerCase();
+    return target.endsWith('.jpg') || target.endsWith('.jpeg') || target.endsWith('.png') || target.endsWith('.webp') || target.includes('image/');
+});
 
 function zoomIn() {
     if (zoomLevel.value < 200) zoomLevel.value += 25;
@@ -44,6 +50,12 @@ function resetView() {
                     </svg>
                 </span>
                 <span class="text-xs font-medium text-slate-200 truncate">{{ fileName }}</span>
+                <span v-if="isImage" class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-900/60 text-emerald-300 font-mono">
+                    IMAGE
+                </span>
+                <span v-else-if="fileUrl" class="text-[10px] px-1.5 py-0.5 rounded bg-sky-900/60 text-sky-300 font-mono">
+                    PDF
+                </span>
             </div>
 
             <div class="flex items-center gap-1.5 shrink-0">
@@ -98,8 +110,17 @@ function resetView() {
                     transform: `scale(${zoomLevel / 100}) rotate(${rotation}deg)`
                 }"
             >
+                <!-- Image Viewer untuk Foto Nota/Kuitansi Fisik -->
+                <img
+                    v-if="isImage"
+                    :src="fileUrl"
+                    :alt="fileName"
+                    class="max-w-full max-h-[650px] object-contain p-2"
+                />
+
                 <!-- Native Iframe Viewer untuk Dokumen PDF -->
                 <iframe
+                    v-else
                     :src="fileUrl"
                     class="w-full h-[650px] border-0"
                     title="PDF Viewer"
@@ -108,9 +129,9 @@ function resetView() {
 
             <div v-else class="text-center text-slate-500 text-xs py-16">
                 <svg class="w-12 h-12 mx-auto text-slate-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                Pilih salah satu dokumen di panel kanan untuk melihat lampiran
+                <p>Pilih salah satu dokumen checklist di panel kanan untuk meneliti fisik berkas bukti.</p>
             </div>
         </div>
     </div>

@@ -1,5 +1,8 @@
+import axios from 'axios';
 import budgetRakData from '@/Mocks/budgetRakMock.json';
 import subActivitiesData from '@/Mocks/subActivitiesMock.json';
+
+const API_BASE = '/api/v1/budget';
 
 /**
  * Service adapter untuk data anggaran dan RAK (Contract-First)
@@ -9,49 +12,88 @@ export const budgetService = {
      * Dapatkan ringkasan dashboard eksekutif
      */
     async getDashboardSummary() {
-        return Promise.resolve({
+        try {
+            const response = await axios.get(`${API_BASE}/summary`);
+            if (response.data && response.data.success) {
+                return {
+                    meta: budgetRakData.meta,
+                    summary: response.data.data,
+                    units: budgetRakData.units,
+                    monthly_allocation: budgetRakData.monthly_allocation,
+                    recent_activities: budgetRakData.recent_activities,
+                };
+            }
+        } catch (error) {
+            console.warn('Fallback to budget mock data:', error);
+        }
+
+        return {
             meta: budgetRakData.meta,
             summary: budgetRakData.summary,
             units: budgetRakData.units,
             monthly_allocation: budgetRakData.monthly_allocation,
             recent_activities: budgetRakData.recent_activities,
-        });
+        };
     },
 
     /**
      * Dapatkan daftar 6 unit organisasi
      */
     async getUnits() {
-        return Promise.resolve(budgetRakData.units);
+        try {
+            const response = await axios.get(`${API_BASE}/units`);
+            if (response.data && response.data.success && response.data.data.length > 0) {
+                return response.data.data;
+            }
+        } catch (error) {
+            console.warn('Fallback to unit mock data:', error);
+        }
+        return budgetRakData.units;
     },
 
     /**
      * Dapatkan subkegiatan berdasarkan unit_id terpilih
      */
     async getSubActivitiesByUnit(unitId) {
-        if (!unitId) return Promise.resolve([]);
-        const filtered = subActivitiesData.filter(item => item.unit_id === Number(unitId));
-        return Promise.resolve(filtered);
+        if (!unitId) return [];
+        try {
+            const response = await axios.get(`${API_BASE}/sub-activities`, {
+                params: { unit_id: unitId }
+            });
+            if (response.data && response.data.success && response.data.data.length > 0) {
+                return response.data.data;
+            }
+        } catch (error) {
+            console.warn('Fallback to subActivities mock data:', error);
+        }
+        return subActivitiesData.filter(item => item.unit_id === Number(unitId));
     },
 
     /**
      * Dapatkan alokasi RAK 12 bulan dan status carry-over per rekening belanja
      */
     async getRakContext(rekeningId, selectedMonth = 6) {
-        // Simulasi alokasi bulanan rekening spesifik
-        const activeMonth = 6; // Juni (bulan berjalan simulasi)
-        
-        // Pagu bulanan tipikal (contoh total pagu ~125jt dibagi 12 bulan)
+        try {
+            const response = await axios.get(`${API_BASE}/rak-context/${rekeningId}`, {
+                params: { month: selectedMonth }
+            });
+            if (response.data && response.data.success) {
+                return response.data.data;
+            }
+        } catch (error) {
+            console.warn('Fallback to rakContext mock calculation:', error);
+        }
+
+        const activeMonth = 6;
         const targetPerBulan = 10400000;
         const realisasiBulanLalu = 8200000;
         const sisaCarryOver = (targetPerBulan - realisasiBulanLalu) * (selectedMonth > 1 ? (selectedMonth - 1) : 0);
-
         const paguMurniBulan = targetPerBulan;
         const paguEligibleTotal = paguMurniBulan + sisaCarryOver;
         const paguTerkunciBulan = 2500000;
         const paguSisaBulan = paguEligibleTotal - paguTerkunciBulan;
 
-        return Promise.resolve({
+        return {
             rekening_id: rekeningId,
             selected_month: selectedMonth,
             active_system_month: activeMonth,
@@ -62,8 +104,6 @@ export const budgetService = {
             terkunci_komitmen: paguTerkunciBulan,
             sisa_dapat_digunakan: selectedMonth > activeMonth ? 0 : paguSisaBulan,
             status_lock: selectedMonth > activeMonth ? 'LOCKED_FUTURE' : 'AVAILABLE'
-        });
+        };
     }
 };
-
-
