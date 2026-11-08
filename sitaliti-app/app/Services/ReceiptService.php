@@ -256,4 +256,53 @@ class ReceiptService
 
         return $kuitansi;
     }
+
+    /**
+     * Persetujuan PPTK: Memvalidasi kuitansi berstatus MENUNGGU_PPTK dan memindahkan ke MENUNGGU_VERIFIKASI.
+     * Tidak mengunci ulang pagu karena pagu telah dikunci saat submit oleh operator (Zero-Double-Lock).
+     */
+    public function approveByPptk(int|string $kuitansiId, ?string $catatan = null, ?User $actor = null): Kuitansi
+    {
+        $kuitansi = Kuitansi::findOrFail($kuitansiId);
+
+        if ($kuitansi->status !== 'MENUNGGU_PPTK') {
+            throw new InvalidArgumentException('Hanya kuitansi berstatus MENUNGGU_PPTK yang dapat disetujui oleh PPTK.');
+        }
+
+        $kuitansi->update([
+            'status' => 'MENUNGGU_VERIFIKASI',
+            'pptk_user_id' => $actor?->id,
+            'tanggal_pptk_approve' => now(),
+            'catatan_pptk' => $catatan,
+        ]);
+
+        return $kuitansi;
+    }
+
+    /**
+     * Penolakan PPTK: Mengembalikan kuitansi ke DRAFT dan memulihkan pagu kas via releaseBudget.
+     */
+    public function rejectByPptk(int|string $kuitansiId, string $alasan, ?User $actor = null): Kuitansi
+    {
+        $kuitansi = Kuitansi::findOrFail($kuitansiId);
+
+        if ($kuitansi->status !== 'MENUNGGU_PPTK') {
+            throw new InvalidArgumentException('Hanya kuitansi berstatus MENUNGGU_PPTK yang dapat ditolak oleh PPTK.');
+        }
+
+        // Pulihkan pagu anggaran yang terkunci
+        $this->budgetService->releaseBudget(
+            (string) $kuitansi->anggaran_rekening_id,
+            $kuitansi->bulan_anggaran,
+            (float) $kuitansi->nominal_bruto
+        );
+
+        $kuitansi->update([
+            'status' => 'DRAFT',
+            'pptk_user_id' => $actor?->id,
+            'catatan_pptk' => $alasan,
+        ]);
+
+        return $kuitansi;
+    }
 }
