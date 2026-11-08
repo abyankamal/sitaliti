@@ -116,4 +116,9 @@ class Kuitansi extends Model
     {
         return $this->hasOne(PengajuanSpjItem::class, 'kuitansi_id')->where('status_item', 'AKTIF');
     }
+
+    public function riwayat(): HasMany
+    {
+        return $this->hasMany(KuitansiRiwayat::class, 'kuitansi_id');
+    }
 }

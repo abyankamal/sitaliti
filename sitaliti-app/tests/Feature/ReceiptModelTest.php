@@ -7,6 +7,7 @@ use App\Models\Kuitansi;
 use App\Models\KuitansiItem;
 use App\Models\KuitansiLampiran;
 use App\Models\KuitansiPajak;
+use App\Models\KuitansiRiwayat;
 use App\Models\UnitKerja;
 use App\Models\User;
 use Database\Seeders\UnitKerjaSeeder;
@@ -193,5 +194,61 @@ class ReceiptModelTest extends TestCase
             'mime_type' => 'application/pdf',
             'file_hash' => $fileHashIdentik,
         ]);
+    }
+
+    /**
+     * Test model KuitansiRiwayat, relasi riwayat, dan integritas nullOnDelete pada user_id
+     */
+    public function test_kuitansi_riwayat_audit_trail_dan_null_on_delete_user(): void
+    {
+        $kuitansi = Kuitansi::create([
+            'nomor_kuitansi' => 'KW-2026-06-0003',
+            'unit_kerja_id' => $this->unit->id,
+            'anggaran_rekening_id' => $this->rekening->id,
+            'user_id' => $this->user->id,
+            'bulan_anggaran' => 6,
+            'tanggal_transaksi' => '2026-06-17',
+            'uraian' => 'Pengadaan Kebutuhan Rapat Koordinasi',
+            'nama_penerima' => 'CV Toko ATK Sejahtera',
+            'nominal_bruto' => 1500000.00,
+            'total_pajak' => 0.00,
+            'nominal_neto' => 1500000.00,
+            'status' => 'DRAFT',
+        ]);
+
+        $actor = User::factory()->create([
+            'unit_kerja_id' => $this->unit->id,
+            'role' => 'VERIFIKATOR',
+        ]);
+
+        $riwayat = KuitansiRiwayat::create([
+            'kuitansi_id' => $kuitansi->id,
+            'user_id' => $actor->id,
+            'action' => 'SUBMIT_PPTK',
+            'status_lama' => 'DRAFT',
+            'status_baru' => 'MENUNGGU_PPTK',
+            'catatan' => 'Pengajuan berkas tahap awal.',
+            'metadata' => ['pagu_dikunci' => 1500000.00, 'bulan' => 6],
+            'ip_address' => '127.0.0.1',
+        ]);
+
+        // Verifikasi relasi dari kuitansi
+        $this->assertCount(1, $kuitansi->riwayat);
+        $this->assertEquals('SUBMIT_PPTK', $kuitansi->riwayat->first()->action);
+
+        // Verifikasi relasi dari riwayat
+        $this->assertEquals($kuitansi->id, $riwayat->kuitansi->id);
+        $this->assertEquals($actor->id, $riwayat->user->id);
+        $this->assertIsArray($riwayat->metadata);
+        $this->assertEquals(1500000.00, $riwayat->metadata['pagu_dikunci']);
+
+        // Verifikasi nullOnDelete: Jika user aktor dihapus/dimutasi, riwayat audit BPK tidak boleh hilang
+        $actor->delete();
+
+        $riwayatRefreshed = $riwayat->fresh();
+        $this->assertNotNull($riwayatRefreshed);
+        $this->assertNull($riwayatRefreshed->user_id);
+        $this->assertNull($riwayatRefreshed->user);
+        $this->assertEquals('SUBMIT_PPTK', $riwayatRefreshed->action);
     }
 }
