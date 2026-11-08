@@ -1,93 +1,116 @@
-# 📊 Laporan Progres Pengembangan Backend: SI-TALITI v2.0
+# 📊 Laporan Progres Pengembangan: SI-TALITI v2.0
 
 > **Sistem Informasi Tata Kelola, Asistensi, dan Verifikasi Akuntabilitas SPJ**  
 > **Wilayah Implementasi:** Kecamatan Tarogong Kidul & 5 Kelurahan (Kabupaten Garut)  
 > **Periode:** Siklus Anggaran Perubahan Tahun 2026  
-> **Penyusun:** Developer 1 (Backend Lead)  
-> **Status:** ✅ **Phase 1 s.d. Phase 6 Selesai 100% (Semua Modul Terverifikasi Penuh)**
+> **Penyusun:** Antigravity AI & Tim Pengembang SI-TALITI  
+> **Status:** ✅ **Phase 1 s.d. Phase 12 SELESAI 100% (Semua Modul Terverifikasi Penuh)**
 
 ---
 
 ## 1. Ringkasan Eksekutif (Executive Summary)
 
-Pengembangan core engine dan sistem backend SI-TALITI v2.0 telah berhasil diselesaikan secara komprehensif mengadopsi pendekatan **Engine-First** dan **Test-Driven Development (TDD)**. 
+Pengembangan seluruh arsitektur backend, tata kelola kepatuhan regulasi (*statutory governance*), alur verifikasi dua tingkat (Operator $\rightarrow$ PPTK $\rightarrow$ Verifikator $\rightarrow$ BPP $\rightarrow$ KPA), rekam jejak audit (*Audit Trail* akuntabilitas BPK RI), dasbor analitik real-time, pencetakan berkas dinas offline PDF dengan QR Code, serta pemantauan Service Level Agreement (SLA) 2 hari kerja telah berhasil diselesaikan 100%.
 
-Seluruh aspek tata kelola keuangan daerah—mulai dari otomasi kepatuhan pajak multi-regulasi (PMK 59/2022, UU HKPD 1/2022, PP 80/2010), tata kelola pagu kas RAK 12 bulan (Rp 14,25 Miliar), pencegahan nota kembar berbasis SHA-256, workspace verifikasi split-screen dengan 35 butir checklist dinamis dan pelacakan SLA 2 hari kerja, hingga pembundelan Two-Tier Settlement berproteksi anti-klaim ganda dan verifikasi QR Code publik—telah beroperasi secara penuh dan teruji dengan **73 automated tests (268 assertions) 100% HIJAU**.
+Pengembangan dieksekusi secara disiplin mengikuti prinsip **Test-Driven Development (TDD)**, **Incremental Implementation**, dan **Karpathy Guidelines** (surgical, minimal, non-speculative). Seluruh fungsionalitas sistem telah dibuktikan melalui **98 automated tests (497 assertions) 100% HIJAU (PASS)**, kepatuhan gaya kode PSR-12 melalui Laravel Pint (**119 files clean**), dan kompilasi aset frontend Vite yang bersih tanpa error.
 
 ---
 
 ## 2. Metrik Kualitas & Performa Sistem
 
-| Indikator | Nilai Terukur | Keterangan |
-| :--- | :---: | :--- |
-| **Total Automated Tests** | **73 Tests (268 Assertions)** | 100% Pass pada unit & feature suite |
-| **Durasi Eksekusi Test Suite** | **~2.9 detik** | Sangat cepat dan deterministik via SQLite memory/Sail |
-| **Total Pagu RAK Dikelola** | **Rp 14.252.126.458** | Tersebar di 6 unit kerja & 39 subkegiatan |
-| **Jumlah Rekening Belanja Leaf** | **132 Rekening** | Masing-masing memiliki alokasi 12 bulan (1.584 baris kas) |
-| **Kecepatan Impor Master RAK** | **0.2 detik (< 30 MB RAM)** | Menggunakan native streaming `ZipArchive` & `XML` |
-| **Drift Pembulatan Pajak** | **Rp 0.00 (Zero-Drift)** | Rumus: $\text{DPP} = \text{round}(\text{Bruto}/1.11)$, $\text{PPN} = \text{Bruto}-\text{DPP}$ |
-| **Kepatuhan Gaya Kode (Linting)** | **0 Warning / Error** | Standar PSR-12 & Laravel Pint |
+| Indikator | Capaian v1.0 (Phase 1-6) | Capaian v2.0 Final (Phase 1-12) | Keterangan & Dampak Tata Kelola |
+| :--- | :---: | :---: | :--- |
+| **Total Automated Tests** | 73 Tests (268 Assertions) | **98 Tests (497 Assertions)** | Cakupan pengujian unit, fitur, konsol, PDF, dan API |
+| **Durasi Eksekusi Test Suite** | ~2.9 detik | **~4.4 detik** | Eksekusi deterministik cepat via in-memory SQLite |
+| **Peran Pengguna (RBAC)** | Terbatas (3 peran) | **5 Peran Resmi Permendagri** | `OPERATOR`, `PPTK`, `VERIFIKATOR`, `BENDAHARA`, `CAMAT` |
+| **Alur Otorisasi Belanja** | 1 Tingkat (Operator $\rightarrow$ Verifikator) | **2-Tier Approval Flow** | Menjamin verifikasi berjenjang PPTK sebelum verifikator |
+| **Rekam Jejak Audit (BPK)** | Belum ada riwayat mutasi | **Audit Trail Lengkap (Tabel `kuitansi_riwayat`)** | Setiap mutasi status, nilai uang, dan penolakan tercatat |
+| **Analitik Dasbor** | Mock data / Statis | **100% Live DB Aggregation** | RAK 12-bulan, breakdown 6 unit kerja, antrean dinamis |
+| **Lembar Kendali Verifikasi** | Belum terintegrasi server PDF | **Server-Side Offline PDF + QR Code** | Menggunakan DomPDF & BaconQrCode SVG offline murni |
+| **Monitoring SLA Revisi** | Pelacakan lokal | **Stateless SLA + Artisan Scanner** | Perhitungan sisa jam real-time & command `sitaliti:check-sla` |
+| **Pagu Anggaran RAK Dikelola** | Rp 14.252.126.458 | **Rp 14.252.126.458 (132 Rekening)** | Tersebar di 6 unit kerja (Kecamatan + 5 Kelurahan) |
+| **Kepatuhan Gaya Kode (Pint)** | 0 Warning / Error | **119 File PHP 100% Clean** | Standar PSR-12 Laravel Pint |
+| **Build Frontend (Vite)** | - | **0 Error (Built in 1.36s)** | Kesiapan integrasi antarmuka Vue 3 |
 
 ---
 
-## 3. Rincian Capaian per Fase Pengembangan
+## 3. Rincian Capaian Komprehensif per Fase Pengembangan
 
 ### Phase 1: Statutory Tax Engine (`mod-tax-engine`)
-- **Tujuan:** Menghilangkan risiko temuan BPK terkait salah hitung pajak daerah vs pusat dan *rounding drift* Rp 1.
-- **Implementasi:**
-  - Belanja ATK (B.1) $\le \text{Rp } 2.000.000$ bebas pungut PPN dan PPh 22 sesuai PMK 59/2022.
-  - Belanja Makan Minum Rapat/Katering (B.2) memungut Pajak Barang dan Jasa Tertentu (PBJT) 10% dan mutlak membebaskan PPN pusat 11% sesuai UU HKPD No. 1/2022.
-  - Honorarium ASN (B.3) memungut PPh 21 berbasis Golongan (Gol I/II 0%, III 5%, IV 15%, Non-ASN 5%) sesuai PP 80/2010.
-  - Surcharge penalti tarif 100% bagi rekanan yang tidak memiliki NPWP (PPh 22 dari 1.5% menjadi 3.0%, PPh 23 dari 2% menjadi 4%).
-  - Bea Meterai Rp 10.000 otomatis aktif pada belanja $> \text{Rp } 5.000.000$ tanpa memotong neto rekanan.
-  - Invarian matematis mutlak: $\text{Nominal Neto} = \text{Nominal Bruto} - \sum \text{Pajak Dipungut}$.
+- Menerapkan formula *Zero-Rounding Drift*: $\text{DPP} = \text{round}(\text{Nominal Bruto} / 1.11)$, $\text{PPN} = \text{Nominal Bruto} - \text{DPP}$.
+- Kepatuhan PMK 59/2022 (ATK $\le \text{Rp } 2.000.000$ bebas pungut PPN dan PPh 22).
+- Kepatuhan UU HKPD 1/2022 (Mamin resto/katering memungut PBJT 10% dan mutlak bebas PPN pusat 11%).
+- Kepatuhan PP 80/2010 (PPh 21 Honor ASN berbasis Golongan I-IV).
+- Penalti tarif 100% rekanan non-NPWP dan Bea Meterai Rp 10.000 (transaksi $> \text{Rp } 5.000.000$).
+- Invarian matematis mutlak: $\text{Nominal Neto} = \text{Nominal Bruto} - \sum \text{Pajak Dipungut}$.
 
 ### Phase 2: Budget Reservation Engine (`mod-budget-reservation`)
-- **Tujuan:** Menjaga agar pengeluaran kuitansi tidak melebihi kuota RAK bulanan dan akumulasi carry-over.
-- **Implementasi:**
-  - Kalkulasi kuota dinamis:
-    $$\text{Pagu Tersedia Bulan } n = \sum_{m=1}^{n-1} (\text{Alokasi}_m - \text{Realisasi}_m - \text{Terkunci}_m) + \text{Alokasi}_n - \text{Realisasi}_n - \text{Terkunci}_n$$
-  - Otomatis mengunci bulan masa depan ($n > \text{activeMonth}$) berstatus `LOCKED_FUTURE` dengan sisa 0.
-  - Penolakan nominal $\le 0$ dan nominal melebihi sisa pagu via `PaguOverlimitException`.
-  - Proteksi underflow pada saat pelepasan pagu kuitansi.
+- Mengelola saldo alokasi kas bulanan RAK 12 bulan dan akumulasi carry-over sisa bulan lalu ($m = 1 \dots n-1$).
+- Proteksi penguncian otomatis bulan masa depan ($n > \text{activeMonth}$) berstatus `LOCKED_FUTURE` dengan sisa pagu Rp 0.
+- Penolakan nominal $\le 0$ dan pelemparan `PaguOverlimitException` saat saldo tidak mencukupi.
+- Proteksi underflow pada saat pelepasan kuncian pagu.
 
 ### Phase 3: RAK Master Ledger & High-Speed Streaming Importer (`mod-budget-rak`)
-- **Tujuan:** Mengakomodasi 132 rekening leaf dan alokasi kas bulanan dari file resmi RAK Perubahan 2026.
-- **Implementasi:**
-  - Migrasi database 6 unit kerja, `anggaran_rekening`, dan `anggaran_kas_bulanan` (12 baris kas per rekening).
-  - Service `RakImporterService` berbasis native PHP `ZipArchive` dan `SimpleXMLElement` yang mampu membaca file XLSX secara *streaming* dalam 0.2 detik tanpa pembengkakan memori.
-  - Artisan Command `php artisan sitaliti:import-rak` untuk otomatisasi migrasi dan seeding data.
-  - Akurasi pagu tepat Rp 14.252.126.458.
+- Impor data hierarki 6 unit kerja, 39 subkegiatan, dan 132 rekening leaf (1.584 baris alokasi bulanan) dari file resmi SIPD-RI.
+- Streaming parser native PHP `ZipArchive` & `SimpleXMLElement` (eksekusi 0.2 detik, memori $< 30$ MB).
+- Artisan Command `php artisan sitaliti:import-rak`.
 
 ### Phase 4: Atomic Receipt Pipeline & SHA-256 Anti-Duplication (`mod-receipt-core`)
-- **Tujuan:** Menyediakan API transaksi kuitansi dengan proteksi mutlak terhadap kecurangan nota fiktif ganda.
-- **Implementasi:**
-  - Skema tabel `kuitansi`, `kuitansi_item`, `kuitansi_pajak`, dan `kuitansi_lampiran` dengan check constraint keseimbangan:
-    `ALTER TABLE kuitansi ADD CONSTRAINT chk_keseimbangan CHECK (nominal_neto = nominal_bruto - total_pajak)`.
-  - **Deteksi Nota Kembar Sinkron:** Saat unggah berkas, sistem menghitung hash SHA-256 berkas secara instan. Jika berkas dengan hash identik sudah ada pada rekening belanja yang sama, request ditolak HTTP 422 `DUPLICATE_RECEIPT_ATTACHMENT`.
-  - Transisi submit ke PPTK yang mengunci pagu RAK secara atomic (`lockForUpdate`).
+- Check constraint integritas database: `CHECK (nominal_neto = nominal_bruto - total_pajak)`.
+- Deteksi nota fiktif ganda sinkron instan berbasis hash SHA-256 lampiran kuitansi per rekening belanja (HTTP 422 `DUPLICATE_RECEIPT_ATTACHMENT`).
+- Kuncian transaksi atomik (`DB::transaction` & `lockForUpdate`).
 
 ### Phase 5: Verification Workspace & SLA Loopback Tracking (`mod-verification-workspace`)
-- **Tujuan:** Memfasilitasi tim verifikator memeriksa berkas secara split-screen, mencatat SLA revisi, dan mengelola state persetujuan.
-- **Implementasi:**
-  - Seeder 35 butir checklist dinamis Form Pembinaan Kecamatan (B.1 ATK, B.2 Mamin, B.3 Honor, B.4 Perjadin, B.5 Jasa, B.6 Modal).
-  - Siklus State Machine:
-    - `VERIFIED`: Status menjadi `LOLOS_VERIFIKASI`, menerbitkan `qr_token` UUID untuk Lembar Kendali.
-    - `REVISION_MINOR`: Menghitung batas waktu SLA 2 hari kerja efektif via `Carbon::now()->addWeekdays(2)` (otomatis melompati hari Sabtu & Minggu).
-    - `REVISION_MAJOR`: Otomatis memulihkan pagu anggaran yang terkunci ke tabel `anggaran_kas_bulanan`.
+- 35 butir checklist dinamis Form Pembinaan Kecamatan Garut (B.1 ATK, B.2 Mamin, B.3 Honor, B.4 Perjadin, B.5 Jasa, B.6 Modal).
+- Transisi status:
+  - `VERIFIED`: Berubah ke `LOLOS_VERIFIKASI` dan menghasilkan `qr_token` UUID publik.
+  - `REVISION_MINOR`: Tenggat SLA 2 hari kerja efektif (`now()->addWeekdays(2)` melompati akhir pekan).
+  - `REVISION_MAJOR`: Otomatis mengembalikan kuncian pagu anggaran.
 
 ### Phase 6: Two-Tier Settlement Bundling & Public QR Verification (`mod-settlement-bundling` & `mod-control-sheet-qr`)
-- **Tujuan:** Pengesahan berkas SPP-GU/TU/LS (Tier 2) bebas klaim ganda, pencatatan SP2D, dan verifikasi QR Code publik.
-- **Implementasi:**
-  - Pembundelan kuitansi lolos verifikasi ke dalam tabel `pengajuan_spj` dan `pengajuan_spj_item`.
-  - **Proteksi Anti-Klaim Ganda ANSI SQL:** Kolom *stored generated* `active_kuitansi_id` dengan unique constraint memastikan kuitansi yang sama tidak bisa dimasukkan ke dua draf SPP aktif secara bersamaan.
-  - Fitur *unbundle* kuitansi bermasalah yang secara aman memulihkan status kuitansi ke `LOLOS_VERIFIKASI`.
-  - Pencatatan SP2D SIPD-RI yang memicu `BudgetReservationService::settleBudget()` memindahkan pagu terkunci ke realisasi definitif.
-  - Endpoint publik `/verify/{qr_token}` dengan penyensoran data sensitif (PII) rekanan sesuai Undang-Undang Perlindungan Data Pribadi (UU PDP).
+- Pembundelan kuitansi lolos verifikasi ke berkas SPP-GU/TU/LS (Tier 2).
+- Proteksi anti-klaim ganda ANSI SQL dengan *stored generated column* `active_kuitansi_id` dan unique constraint.
+- Fitur *unbundle* kuitansi bermasalah yang mengembalikan status kuitansi ke `LOLOS_VERIFIKASI`.
+- Pencatatan SP2D definitif memindahkan pagu terkunci ke realisasi riil via `settleBudget()`.
+- Endpoint publik `/verify/{qr_token}` dengan perlindungan privasi data pribadi rekanan (UU PDP).
+
+### Phase 7: RBAC Multi-Peran & Proteksi Batas Otoritas (`mod-rbac-authorization`)
+- Mendefinisikan 5 peran resmi: `OPERATOR`, `PPTK`, `VERIFIKATOR`, `BENDAHARA` (BPP), dan `CAMAT` (KPA).
+- Middleware `role:...` dan policy otorisasi granular di seluruh endpoint API.
+- Proteksi isolasi: Operator hanya dapat mengelola kuitansi unit kerjanya, Verifikator dilarang membuat draf kuitansi, PPTK hanya dapat memvalidasi antrean unitnya.
+
+### Phase 8: Two-Tier Approval Flow (Persetujuan PPTK) (`mod-pptk-workflow`)
+- Transisi status terstruktur: `DRAFT` $\rightarrow$ `MENUNGGU_PPTK` $\rightarrow$ `MENUNGGU_VERIFIKASI`.
+- Verifikator dilindungi dari memverifikasi kuitansi yang belum disetujui oleh PPTK.
+- Penolakan oleh PPTK mengembalikan status kuitansi ke `DRAFT` dan melepaskan pagu yang terkunci.
+
+### Phase 9: Audit Trail & Akuntabilitas BPK RI (`mod-audit-trail`)
+- Pembuatan tabel `kuitansi_riwayat` dengan `nullOnDelete` untuk actor user agar audit log abadi jika user dihapus.
+- `AuditTrailService` merekam mutasi: pembuatan draf, submit, persetujuan PPTK, lolos verifikasi, revisi minor/mayor, pembundelan SPP, hingga realisasi SP2D.
+- Endpoint `GET /api/v1/receipts/{id}/history` menyajikan kronologi lengkap untuk pengawasan Inspektorat dan BPK RI.
+
+### Phase 10: Live Dashboard Analytics (`mod-dashboard-analytics`)
+- Menggantikan seluruh data mock dengan kalkulasi SQL agregat langsung:
+  - 12 bulan alokasi vs realisasi RAK Kecamatan dan Kelurahan.
+  - Distribusi penyerapan anggaran per unit kerja (Kecamatan + 5 Kelurahan).
+  - Penghitungan antrean dinamis (`menunggu_pptk`, `menunggu_verifikasi`, `revisi_minor`, `lolos_verifikasi`).
+  - Feed aktivitas riil 10 mutasi terakhir dari `kuitansi_riwayat`.
+
+### Phase 11: Server-Side Offline PDF Lembar Kendali (`mod-pdf-generator`)
+- Template resmi Form Pembinaan Kecamatan Garut berstandar CSS 2.1 table-based layout via `barryvdh/laravel-dompdf`.
+- Penjanaan QR Code verifikasi offline murni berbasis format SVG via `bacon/bacon-qr-code` tanpa bergantung pada koneksi internet pihak ketiga.
+- Endpoint pengunduhan berkas PDF `/api/v1/control-sheet/{id}/pdf` dan route web dinas `/control-sheet/{id}/download-pdf`.
+
+### Phase 12: Stateless SLA Monitoring & Alerting (`mod-sla-monitor`)
+- Accessor dinamis pada model `Kuitansi`: `is_sla_breached` dan `sla_remaining_hours`.
+- Artisan Command `php artisan sitaliti:check-sla` yang dapat dijadwalkan secara periodik (cron job):
+  - Memindai kuitansi yang melampaui tenggat revisi 2 hari kerja.
+  - Mencatat event `SLA_BREACHED` ke dalam audit trail secara idempoten (tidak terjadi duplikasi).
+  - Menyajikan tabel ringkasan konsol bagi administrator sistem.
 
 ---
 
-## 4. Struktur Database yang Dihasilkan
+## 4. Diagram Relasi Entitas (ERD) Final
 
 ```mermaid
 erDiagram
@@ -96,6 +119,11 @@ erDiagram
     MASTER_UNIT_KERJA ||--o{ KUITANSI : "memiliki transaksi"
     MASTER_UNIT_KERJA ||--o{ PENGAJUAN_SPJ : "mengajukan bundel"
     
+    USERS ||--o{ KUITANSI : "membuat (creator)"
+    USERS ||--o{ KUITANSI : "menyetujui (pptk)"
+    USERS ||--o{ KUITANSI : "memverifikasi"
+    USERS ||--o{ KUITANSI_RIWAYAT : "aktor audit"
+    
     ANGGARAN_REKENING ||--o{ ANGGARAN_KAS_BULANAN : "alokasi 12 bulan"
     ANGGARAN_REKENING ||--o{ KUITANSI : "dasar pembebanan"
     
@@ -103,6 +131,7 @@ erDiagram
     KUITANSI ||--o{ KUITANSI_PAJAK : "potongan pajak"
     KUITANSI ||--o{ KUITANSI_LAMPIRAN : "berkas fisik SHA-256"
     KUITANSI ||--o{ KUITANSI_VERIFIKASI_CHECKLIST : "hasil periksa B.1-B.6"
+    KUITANSI ||--o{ KUITANSI_RIWAYAT : "jejak kronologis audit"
     KUITANSI ||--o{ PENGAJUAN_SPJ_ITEM : "tergabung di SPP"
     
     PENGAJUAN_SPJ ||--o{ PENGAJUAN_SPJ_ITEM : "koleksi kuitansi aktif"
@@ -110,9 +139,11 @@ erDiagram
 
 ---
 
-## 5. Kesiapan Integrasi Frontend
+## 5. Kesiapan Produksi & Rekomendasi Deployment
 
-Seluruh endpoint API yang dibutuhkan oleh frontend (`receiptService.js`, `budgetService.js`, `verificationService.js`, dan antarmuka `Bundles/Index.vue`) telah berstatus **LIVE** dan dapat langsung diakses melalui dokumentasi di [`docs/FRONTEND_INTEGRATION_GUIDE.md`](file:///Users/muhammadabyankamal/proyek/sitaliti/sitaliti-app/docs/FRONTEND_INTEGRATION_GUIDE.md).
-
-Developer 2 hanya perlu mengalihkan resolusi mock lokal ke live endpoint Axios yang telah disediakan.
-
+1. **Jadwal Task Scheduler (Cron):**
+   Tambahkan eksekusi jadwal Laravel di crontab server produksi (`* * * * * cd /path/to/sitaliti-app && php artisan schedule:run >> /dev/null 2>&1`) dan jadwalkan `sitaliti:check-sla` setiap hari kerja pukul 08.00 dan 16.00 WIB.
+2. **Kapasitas Penyimpanan Lampiran:**
+   Direktori `storage/app/receipts` harus memiliki izin tulis (*write permission*) untuk proses hashing SHA-256 dan upload berkas pendukung.
+3. **Kesiapan Frontend:**
+   Frontend telah siap dikompilasi dengan `npm run build` dan memanfaatkan panduan integrasi terbaru di [`docs/FRONTEND_INTEGRATION_GUIDE.md`](file:///Users/muhammadabyankamal/proyek/sitaliti/sitaliti-app/docs/FRONTEND_INTEGRATION_GUIDE.md).
