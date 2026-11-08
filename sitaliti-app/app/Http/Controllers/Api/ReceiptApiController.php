@@ -6,9 +6,11 @@ use App\Exceptions\PaguOverlimitException;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ApiResponseTrait;
 use App\Services\ReceiptService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 use Throwable;
 
 class ReceiptApiController extends Controller
@@ -126,6 +128,100 @@ class ReceiptApiController extends Controller
         } catch (Throwable $e) {
             return $this->errorResponse(
                 'SUBMIT_RECEIPT_FAILED',
+                $e->getMessage(),
+                null,
+                400
+            );
+        }
+    }
+
+    /**
+     * Endpoint persetujuan kuitansi oleh PPTK (POST /api/v1/receipts/{id}/pptk-approve).
+     */
+    public function pptkApprove(Request $request, int|string $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'catatan' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        try {
+            $kuitansi = $this->receiptService->approveByPptk(
+                $id,
+                $validated['catatan'] ?? null,
+                $request->user()
+            );
+
+            return $this->successResponse([
+                'id' => $kuitansi->id,
+                'nomor_kuitansi' => $kuitansi->nomor_kuitansi,
+                'status' => $kuitansi->status,
+                'pptk_user_id' => $kuitansi->pptk_user_id,
+                'tanggal_pptk_approve' => $kuitansi->tanggal_pptk_approve,
+                'catatan_pptk' => $kuitansi->catatan_pptk,
+            ], 'Kuitansi berhasil disetujui oleh PPTK dan diteruskan ke Tim Verifikator');
+        } catch (ModelNotFoundException $e) {
+            return $this->errorResponse(
+                'RECEIPT_NOT_FOUND',
+                'Kuitansi tidak ditemukan.',
+                null,
+                404
+            );
+        } catch (InvalidArgumentException $e) {
+            return $this->errorResponse(
+                'INVALID_STATE',
+                $e->getMessage(),
+                null,
+                422
+            );
+        } catch (Throwable $e) {
+            return $this->errorResponse(
+                'PPTK_APPROVE_FAILED',
+                $e->getMessage(),
+                null,
+                400
+            );
+        }
+    }
+
+    /**
+     * Endpoint penolakan kuitansi oleh PPTK (POST /api/v1/receipts/{id}/pptk-reject).
+     */
+    public function pptkReject(Request $request, int|string $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'alasan' => ['required', 'string', 'min:3', 'max:1000'],
+        ]);
+
+        try {
+            $kuitansi = $this->receiptService->rejectByPptk(
+                $id,
+                $validated['alasan'],
+                $request->user()
+            );
+
+            return $this->successResponse([
+                'id' => $kuitansi->id,
+                'nomor_kuitansi' => $kuitansi->nomor_kuitansi,
+                'status' => $kuitansi->status,
+                'catatan_pptk' => $kuitansi->catatan_pptk,
+            ], 'Kuitansi ditolak oleh PPTK dan pagu anggaran telah dipulihkan');
+        } catch (ModelNotFoundException $e) {
+            return $this->errorResponse(
+                'RECEIPT_NOT_FOUND',
+                'Kuitansi tidak ditemukan.',
+                null,
+                404
+            );
+        } catch (InvalidArgumentException $e) {
+            return $this->errorResponse(
+                'INVALID_STATE',
+                $e->getMessage(),
+                null,
+                422
+            );
+        } catch (Throwable $e) {
+            return $this->errorResponse(
+                'PPTK_REJECT_FAILED',
                 $e->getMessage(),
                 null,
                 400

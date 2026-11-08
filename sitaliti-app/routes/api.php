@@ -30,6 +30,10 @@ Route::prefix('v1')->group(function () {
                 ->middleware('permission:kuitansi.create');
             Route::post('{id}/submit', [ReceiptApiController::class, 'submit'])
                 ->middleware('permission:kuitansi.submit_pptk');
+            Route::post('{id}/pptk-approve', [ReceiptApiController::class, 'pptkApprove'])
+                ->middleware('permission:kuitansi.pptk_approve');
+            Route::post('{id}/pptk-reject', [ReceiptApiController::class, 'pptkReject'])
+                ->middleware('permission:kuitansi.pptk_reject');
         });
 
         // Verification Workspace Endpoints
