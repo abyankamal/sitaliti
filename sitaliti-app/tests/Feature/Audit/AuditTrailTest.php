@@ -281,4 +281,78 @@ class AuditTrailTest extends TestCase
         $this->assertEquals('REVISION_MAJOR', $logRevMajor->action);
         $this->assertEquals('REVISI_MAYOR', $logRevMajor->status_baru);
     }
+
+    public function test_history_api_endpoint_returns_chronological_timeline(): void
+    {
+        $bulan = 2;
+
+        $kuitansi = $this->receiptService->createDraft([
+            'anggaran_rekening_id' => $this->rekening->id,
+            'bulan_anggaran' => $bulan,
+            'nomor_kuitansi' => 'KW-AUDIT-API-01',
+            'nomor_bukti_toko' => 'INV-AUDIT-API-01',
+            'tanggal_transaksi' => '2026-02-15',
+            'uraian' => 'Pengadaan ATK untuk Uji API History',
+            'nama_penerima' => 'CV Sumber Makmur',
+            'kategori_belanja' => 'B1_ATK',
+            'items' => [
+                ['nama_barang' => 'Kertas F4', 'volume' => 10, 'satuan' => 'Rim', 'harga_satuan' => 50000],
+            ],
+        ], [], $this->operator);
+
+        $this->receiptService->submitToPptk($kuitansi->id, $this->operator);
+        $this->receiptService->approveByPptk($kuitansi->id, 'Disetujui PPTK.', $this->pptk);
+
+        // 1. Unauthenticated -> 401
+        $resUnauth = $this->getJson("/api/v1/receipts/{$kuitansi->id}/history");
+        $resUnauth->assertStatus(401);
+
+        // 2. Not found -> 404
+        $resNotFound = $this->actingAs($this->operator)->getJson('/api/v1/receipts/999999/history');
+        $resNotFound->assertStatus(404);
+
+        // 3. Authenticated -> 200 with chronological timeline
+        $resSuccess = $this->actingAs($this->operator)->getJson("/api/v1/receipts/{$kuitansi->id}/history");
+        $resSuccess->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'message' => 'Riwayat aktivitas kuitansi berhasil diambil',
+            ])
+            ->assertJsonStructure([
+                'success',
+                'message',
+                'data' => [
+                    '*' => [
+                        'id',
+                        'kuitansi_id',
+                        'action',
+                        'status_lama',
+                        'status_baru',
+                        'catatan',
+                        'metadata',
+                        'ip_address',
+                        'user_id',
+                        'actor_name',
+                        'actor_role',
+                        'created_at',
+                        'created_at_formatted',
+                    ],
+                ],
+            ]);
+
+        $data = $resSuccess->json('data');
+        $this->assertCount(3, $data);
+        $this->assertEquals('DRAFT_CREATED', $data[0]['action']);
+        $this->assertEquals('SUBMITTED_TO_PPTK', $data[1]['action']);
+        $this->assertEquals('PPTK_APPROVED', $data[2]['action']);
+        $this->assertEquals($this->operator->name, $data[0]['actor_name']);
+        $this->assertEquals($this->pptk->name, $data[2]['actor_name']);
+
+        // 4. Verifikasi fallback actor_name jika akun dihapus (nullOnDelete)
+        $this->pptk->delete();
+        $resAfterDelete = $this->actingAs($this->operator)->getJson("/api/v1/receipts/{$kuitansi->id}/history");
+        $dataAfterDelete = $resAfterDelete->json('data');
+        $this->assertNull($dataAfterDelete[2]['user_id']);
+        $this->assertEquals('Sistem / Arsip Pegawai', $dataAfterDelete[2]['actor_name']);
+    }
 }

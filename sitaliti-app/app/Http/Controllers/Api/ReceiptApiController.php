@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Exceptions\PaguOverlimitException;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ApiResponseTrait;
+use App\Models\Kuitansi;
 use App\Services\ReceiptService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
@@ -227,5 +228,49 @@ class ReceiptApiController extends Controller
                 400
             );
         }
+    }
+
+    /**
+     * Endpoint riwayat aktivitas / audit trail kuitansi (GET /api/v1/receipts/{id}/history).
+     */
+    public function history(int|string $id): JsonResponse
+    {
+        $kuitansi = Kuitansi::where('id', $id)
+            ->orWhere('nomor_kuitansi', $id)
+            ->first();
+
+        if (! $kuitansi) {
+            return $this->errorResponse(
+                'RECEIPT_NOT_FOUND',
+                'Kuitansi tidak ditemukan.',
+                null,
+                404
+            );
+        }
+
+        $riwayat = $kuitansi->riwayat()
+            ->with('user')
+            ->orderBy('created_at', 'asc')
+            ->orderBy('id', 'asc')
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'kuitansi_id' => $item->kuitansi_id,
+                    'action' => $item->action,
+                    'status_lama' => $item->status_lama,
+                    'status_baru' => $item->status_baru,
+                    'catatan' => $item->catatan,
+                    'metadata' => $item->metadata,
+                    'ip_address' => $item->ip_address,
+                    'user_id' => $item->user_id,
+                    'actor_name' => $item->user?->name ?? 'Sistem / Arsip Pegawai',
+                    'actor_role' => $item->user?->role ?? null,
+                    'created_at' => $item->created_at?->toIso8601String(),
+                    'created_at_formatted' => $item->created_at?->format('d/m/Y H:i'),
+                ];
+            });
+
+        return $this->successResponse($riwayat, 'Riwayat aktivitas kuitansi berhasil diambil');
     }
 }
