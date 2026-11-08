@@ -318,4 +318,46 @@ class VerificationActionTest extends TestCase
             ->first();
         $this->assertEquals(0.00, (float) $kasRefreshed->terkunci_bulan);
     }
+
+    public function test_anti_bypass_guard_rejects_verification_on_menunggu_pptk_and_filters_from_queue(): void
+    {
+        $kuitansiPptk = Kuitansi::create([
+            'unit_kerja_id' => $this->unit->id,
+            'anggaran_rekening_id' => $this->rekening->id,
+            'user_id' => $this->verifier->id,
+            'nomor_kuitansi' => 'KW-ANTI-BYPASS-01',
+            'bulan_anggaran' => 3,
+            'tanggal_transaksi' => '2026-03-01',
+            'uraian' => 'Kuitansi belum lolos PPTK',
+            'nama_penerima' => 'Toko Alat Tulis',
+            'nominal_bruto' => 1500000.00,
+            'total_pajak' => 0.00,
+            'nominal_neto' => 1500000.00,
+            'status' => 'MENUNGGU_PPTK',
+        ]);
+
+        // 1. Kuitansi berstatus MENUNGGU_PPTK tidak boleh muncul di antrean verifikator secara default
+        $queueResponse = $this->actingAs($this->verifier)->getJson('/api/v1/verification/queue');
+        $queueResponse->assertStatus(200);
+        $queueItems = collect($queueResponse->json('data'));
+        $this->assertFalse(
+            $queueItems->contains('kuitansi_id', $kuitansiPptk->id),
+            'Kuitansi berstatus MENUNGGU_PPTK tidak boleh tampil di antrean verifikator'
+        );
+
+        // 2. Jika verifikator mencoba memproses aksi verifikasi, sistem menolak dengan HTTP 422
+        $actionResponse = $this->actingAs($this->verifier)->postJson("/api/v1/verification/{$kuitansiPptk->id}/action", [
+            'action' => 'VERIFIED',
+            'notes' => 'Mencoba memverifikasi tanpa izin PPTK',
+        ]);
+
+        $actionResponse->assertStatus(422)
+            ->assertJson([
+                'success' => false,
+                'error' => [
+                    'code' => 'INVALID_ACTION',
+                    'message' => 'Kuitansi harus disetujui oleh PPTK terlebih dahulu sebelum dapat diverifikasi.',
+                ],
+            ]);
+    }
 }

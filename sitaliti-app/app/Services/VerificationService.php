@@ -31,6 +31,14 @@ class VerificationService implements VerificationServiceInterface
 
         if (! empty($filters['status'])) {
             $query->where('status', $filters['status']);
+        } else {
+            // Default antrean verifikasi mengecualikan DRAFT dan MENUNGGU_PPTK
+            $query->whereIn('status', [
+                'MENUNGGU_VERIFIKASI',
+                'REVISI_MINOR',
+                'REVISI_MAYOR',
+                'LOLOS_VERIFIKASI',
+            ]);
         }
 
         if (! empty($filters['unit_id'])) {
@@ -159,6 +167,11 @@ class VerificationService implements VerificationServiceInterface
         $kuitansi = Kuitansi::where('id', $kuitansiId)
             ->orWhere('nomor_kuitansi', $kuitansiId)
             ->firstOrFail();
+
+        // Anti-bypass guard: Kuitansi harus disetujui PPTK terlebih dahulu sebelum diverifikasi
+        if (in_array($kuitansi->status, ['DRAFT', 'MENUNGGU_PPTK'])) {
+            throw new InvalidArgumentException('Kuitansi harus disetujui oleh PPTK terlebih dahulu sebelum dapat diverifikasi.');
+        }
 
         $notes = $payload['notes'] ?? '';
         $checklistResults = $payload['checklist_results'] ?? [];
