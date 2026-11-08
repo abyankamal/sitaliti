@@ -7,6 +7,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\ApiResponseTrait;
 use App\Models\AnggaranKasBulanan;
 use App\Models\AnggaranRekening;
+use App\Models\Kuitansi;
+use App\Models\KuitansiRiwayat;
 use App\Models\UnitKerja;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -28,14 +30,138 @@ class BudgetApiController extends Controller
         $totalTerkunci = (float) AnggaranKasBulanan::sum('terkunci_bulan');
         $totalRealisasi = (float) AnggaranKasBulanan::sum('realisasi_bulan');
         $sisaPagu = max(0.0, $totalPagu - $totalTerkunci - $totalRealisasi);
+        $persentaseRealisasi = $totalPagu > 0 ? round(($totalRealisasi / $totalPagu) * 100, 2) : 0;
 
-        return $this->successResponse([
+        $pendingVerificationCount = Kuitansi::where('status', 'MENUNGGU_VERIFIKASI')->count();
+        $activeRevisionsCount = Kuitansi::whereIn('status', ['REVISI_MINOR', 'REVISI_MAYOR'])->count();
+        $verifiedCount = Kuitansi::whereIn('status', ['LOLOS_VERIFIKASI', 'DIBUNDEL', 'SELESAI_SP2D'])->count();
+
+        $summaryData = [
             'total_pagu' => $totalPagu,
-            'total_terkunci' => $totalTerkunci,
+            'total_terserap' => $totalRealisasi,
             'total_realisasi' => $totalRealisasi,
+            'total_terkunci' => $totalTerkunci,
+            'total_sisa' => $sisaPagu,
             'sisa_pagu' => $sisaPagu,
-            'persentase_realisasi' => $totalPagu > 0 ? round(($totalRealisasi / $totalPagu) * 100, 2) : 0,
-        ], 'Ringkasan RAK berhasil dimuat');
+            'persentase_realisasi' => $persentaseRealisasi,
+            'pending_verification_count' => $pendingVerificationCount,
+            'active_revisions_count' => $activeRevisionsCount,
+            'verified_count' => $verifiedCount,
+        ];
+
+        // 1. Alokasi 12 Bulan RAK
+        $monthNames = [
+            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
+        ];
+
+        $monthlySums = AnggaranKasBulanan::selectRaw('
+            bulan,
+            SUM(alokasi_pagu) as target,
+            SUM(realisasi_bulan) as realisasi,
+            SUM(terkunci_bulan) as terkunci
+        ')
+            ->groupBy('bulan')
+            ->get()
+            ->keyBy('bulan');
+
+        $currentMonth = (int) date('n');
+
+        $monthlyAllocation = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $row = $monthlySums->get($m);
+            $target = (float) ($row?->target ?? 0);
+            $realisasi = (float) ($row?->realisasi ?? 0);
+            $terkunci = (float) ($row?->terkunci ?? 0);
+            $sisa = max(0.0, $target - $realisasi - $terkunci);
+
+            if ($m < $currentMonth) {
+                $status = 'closed';
+            } elseif ($m === $currentMonth) {
+                $status = 'active';
+            } else {
+                $status = 'upcoming';
+            }
+
+            $monthlyAllocation[] = [
+                'month' => $m,
+                'name' => $monthNames[$m],
+                'target' => $target,
+                'realisasi' => $realisasi,
+                'terkunci' => $terkunci,
+                'sisa' => $sisa,
+                'status' => $status,
+            ];
+        }
+
+        // 2. Agregasi Realisasi 6 Unit Kerja
+        $units = UnitKerja::where('is_active', true)->orderBy('id')->get()->map(function (UnitKerja $unit) {
+            $rekeningIds = AnggaranRekening::where('unit_kerja_id', $unit->id)->pluck('id');
+            $pagu = (float) AnggaranRekening::where('unit_kerja_id', $unit->id)->sum('pagu_perubahan');
+
+            $terserap = 0.0;
+            $terkunci = 0.0;
+            if ($rekeningIds->isNotEmpty()) {
+                $terserap = (float) AnggaranKasBulanan::whereIn('anggaran_rekening_id', $rekeningIds)->sum('realisasi_bulan');
+                $terkunci = (float) AnggaranKasBulanan::whereIn('anggaran_rekening_id', $rekeningIds)->sum('terkunci_bulan');
+            }
+
+            $sisa = max(0.0, $pagu - $terserap - $terkunci);
+
+            return [
+                'id' => $unit->id,
+                'code' => $unit->kode_unit,
+                'name' => $unit->nama_unit,
+                'pagu' => $pagu,
+                'terserap' => $terserap,
+                'terkunci' => $terkunci,
+                'sisa' => $sisa,
+            ];
+        })->values()->all();
+
+        // 3. Aktivitas Terkini dari KuitansiRiwayat
+        $recentActivities = KuitansiRiwayat::with(['kuitansi.unitKerja', 'kuitansi.rekening', 'user'])
+            ->latest('id')
+            ->take(10)
+            ->get()
+            ->map(function (KuitansiRiwayat $riwayat) {
+                $kuitansi = $riwayat->kuitansi;
+
+                return [
+                    'id' => $kuitansi?->nomor_kuitansi ?? "LOG-{$riwayat->id}",
+                    'unit' => $kuitansi?->unitKerja?->nama_unit ?? 'Unit Kerja',
+                    'kegiatan' => $kuitansi?->rekening?->nama_sub_kegiatan ?? $riwayat->action,
+                    'uraian' => $riwayat->catatan ?: ($kuitansi?->uraian ?? 'Aktivitas Verifikasi'),
+                    'kategori' => $kuitansi?->rekening?->kategori_belanja ?? 'B.1',
+                    'nominal' => (float) ($kuitansi?->nominal_bruto ?? 0),
+                    'tanggal' => $riwayat->created_at?->format('Y-m-d') ?? date('Y-m-d'),
+                    'status' => $riwayat->status_baru ?: ($kuitansi?->status ?? 'DRAFT'),
+                    'verifikator' => $riwayat->user?->name ?? 'Sistem / Verifikator',
+                ];
+            })->values()->all();
+
+        // 4. Meta Dataset
+        $meta = [
+            'fiscal_year' => (int) date('Y'),
+            'district' => 'Kecamatan Tarogong Kidul',
+            'district_code' => '32.05.01',
+            'dataset_name' => 'RAK Perubahan '.date('Y'),
+            'total_budget' => $totalPagu,
+            'total_units' => UnitKerja::where('is_active', true)->count(),
+            'total_sub_activities' => AnggaranRekening::distinct('kode_sub_kegiatan')->count('kode_sub_kegiatan'),
+            'total_accounts' => AnggaranRekening::count(),
+        ];
+
+        $payload = array_merge($summaryData, [
+            'summary' => $summaryData,
+            'meta' => $meta,
+            'units' => $units,
+            'monthly_allocation' => $monthlyAllocation,
+            'recent_activities' => $recentActivities,
+        ]);
+
+        return $this->successResponse($payload, 'Ringkasan RAK berhasil dimuat');
     }
 
     /**

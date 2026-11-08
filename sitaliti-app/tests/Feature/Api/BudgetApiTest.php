@@ -4,6 +4,7 @@ namespace Tests\Feature\Api;
 
 use App\Models\AnggaranKasBulanan;
 use App\Models\AnggaranRekening;
+use App\Models\Kuitansi;
 use App\Models\UnitKerja;
 use App\Models\User;
 use Database\Seeders\UnitKerjaSeeder;
@@ -111,6 +112,68 @@ class BudgetApiTest extends TestCase
      */
     public function test_get_budget_summary_returns_aggregated_totals(): void
     {
+        // Buat kuitansi untuk menguji penghitungan antrean live
+        Kuitansi::create([
+            'nomor_kuitansi' => 'KW-SUMM-001',
+            'unit_kerja_id' => $this->unit->id,
+            'anggaran_rekening_id' => $this->rekening->id,
+            'user_id' => $this->user->id,
+            'bulan_anggaran' => 2,
+            'tanggal_transaksi' => '2026-02-15',
+            'uraian' => 'Pengadaan Kebutuhan ATK Rapat',
+            'nama_penerima' => 'CV Makmur',
+            'nominal_bruto' => 500000.00,
+            'total_pajak' => 0.00,
+            'nominal_neto' => 500000.00,
+            'status' => 'MENUNGGU_VERIFIKASI',
+        ]);
+
+        Kuitansi::create([
+            'nomor_kuitansi' => 'KW-SUMM-002',
+            'unit_kerja_id' => $this->unit->id,
+            'anggaran_rekening_id' => $this->rekening->id,
+            'user_id' => $this->user->id,
+            'bulan_anggaran' => 2,
+            'tanggal_transaksi' => '2026-02-16',
+            'uraian' => 'Pengadaan Kebutuhan ATK Revisi',
+            'nama_penerima' => 'CV Makmur',
+            'nominal_bruto' => 300000.00,
+            'total_pajak' => 0.00,
+            'nominal_neto' => 300000.00,
+            'status' => 'REVISI_MINOR',
+        ]);
+
+        // Buat kuitansi untuk menguji penghitungan antrean live
+        \App\Models\Kuitansi::create([
+            'nomor_kuitansi' => 'KW-SUMM-001',
+            'unit_kerja_id' => $this->unit->id,
+            'anggaran_rekening_id' => $this->rekening->id,
+            'user_id' => $this->user->id,
+            'bulan_anggaran' => 2,
+            'tanggal_transaksi' => '2026-02-15',
+            'uraian' => 'Pengadaan Kebutuhan ATK Rapat',
+            'nama_penerima' => 'CV Makmur',
+            'nominal_bruto' => 500000.00,
+            'total_pajak' => 0.00,
+            'nominal_neto' => 500000.00,
+            'status' => 'MENUNGGU_VERIFIKASI',
+        ]);
+
+        \App\Models\Kuitansi::create([
+            'nomor_kuitansi' => 'KW-SUMM-002',
+            'unit_kerja_id' => $this->unit->id,
+            'anggaran_rekening_id' => $this->rekening->id,
+            'user_id' => $this->user->id,
+            'bulan_anggaran' => 2,
+            'tanggal_transaksi' => '2026-02-16',
+            'uraian' => 'Pengadaan Kebutuhan ATK Revisi',
+            'nama_penerima' => 'CV Makmur',
+            'nominal_bruto' => 300000.00,
+            'total_pajak' => 0.00,
+            'nominal_neto' => 300000.00,
+            'status' => 'REVISI_MINOR',
+        ]);
+
         $response = $this->actingAs($this->user)->getJson('/api/v1/budget/summary');
 
         $response->assertStatus(200)
@@ -120,7 +183,27 @@ class BudgetApiTest extends TestCase
                     'total_pagu' => 24000000,
                     'total_terkunci' => 500000,
                     'total_realisasi' => 1000000,
+                    'pending_verification_count' => 1,
+                    'active_revisions_count' => 1,
+                    'meta' => [
+                        'district' => 'Kecamatan Tarogong Kidul',
+                        'total_units' => 6,
+                    ],
                 ],
             ]);
+
+        $data = $response->json('data');
+        $this->assertCount(12, $data['monthly_allocation']);
+        $this->assertEquals(1, $data['monthly_allocation'][0]['month']);
+        $this->assertEquals('Januari', $data['monthly_allocation'][0]['name']);
+        $this->assertEquals(2000000, $data['monthly_allocation'][0]['target']);
+        $this->assertEquals(1000000, $data['monthly_allocation'][0]['realisasi']);
+
+        $this->assertCount(6, $data['units']);
+        $this->assertEquals($this->unit->id, $data['units'][0]['id']);
+        $this->assertEquals(24000000, $data['units'][0]['pagu']);
+        $this->assertEquals(1000000, $data['units'][0]['terserap']);
+        $this->assertEquals(500000, $data['units'][0]['terkunci']);
+        $this->assertArrayHasKey('recent_activities', $data);
     }
 }
