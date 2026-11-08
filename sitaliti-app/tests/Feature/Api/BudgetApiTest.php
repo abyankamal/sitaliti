@@ -143,37 +143,6 @@ class BudgetApiTest extends TestCase
             'status' => 'REVISI_MINOR',
         ]);
 
-        // Buat kuitansi untuk menguji penghitungan antrean live
-        \App\Models\Kuitansi::create([
-            'nomor_kuitansi' => 'KW-SUMM-001',
-            'unit_kerja_id' => $this->unit->id,
-            'anggaran_rekening_id' => $this->rekening->id,
-            'user_id' => $this->user->id,
-            'bulan_anggaran' => 2,
-            'tanggal_transaksi' => '2026-02-15',
-            'uraian' => 'Pengadaan Kebutuhan ATK Rapat',
-            'nama_penerima' => 'CV Makmur',
-            'nominal_bruto' => 500000.00,
-            'total_pajak' => 0.00,
-            'nominal_neto' => 500000.00,
-            'status' => 'MENUNGGU_VERIFIKASI',
-        ]);
-
-        \App\Models\Kuitansi::create([
-            'nomor_kuitansi' => 'KW-SUMM-002',
-            'unit_kerja_id' => $this->unit->id,
-            'anggaran_rekening_id' => $this->rekening->id,
-            'user_id' => $this->user->id,
-            'bulan_anggaran' => 2,
-            'tanggal_transaksi' => '2026-02-16',
-            'uraian' => 'Pengadaan Kebutuhan ATK Revisi',
-            'nama_penerima' => 'CV Makmur',
-            'nominal_bruto' => 300000.00,
-            'total_pajak' => 0.00,
-            'nominal_neto' => 300000.00,
-            'status' => 'REVISI_MINOR',
-        ]);
-
         $response = $this->actingAs($this->user)->getJson('/api/v1/budget/summary');
 
         $response->assertStatus(200)

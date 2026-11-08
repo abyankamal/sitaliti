@@ -15,12 +15,13 @@ export const budgetService = {
         try {
             const response = await axios.get(`${API_BASE}/summary`);
             if (response.data && response.data.success) {
+                const data = response.data.data;
                 return {
-                    meta: budgetRakData.meta,
-                    summary: response.data.data,
-                    units: budgetRakData.units,
-                    monthly_allocation: budgetRakData.monthly_allocation,
-                    recent_activities: budgetRakData.recent_activities,
+                    meta: data.meta || budgetRakData.meta,
+                    summary: data.summary || data,
+                    units: (data.units && data.units.length > 0) ? data.units : budgetRakData.units,
+                    monthly_allocation: (data.monthly_allocation && data.monthly_allocation.length > 0) ? data.monthly_allocation : budgetRakData.monthly_allocation,
+                    recent_activities: data.recent_activities || [],
                 };
             }
         } catch (error) {
