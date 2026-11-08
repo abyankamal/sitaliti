@@ -23,4 +23,3 @@ class ControlSheetPdfController extends Controller
         return $pdf->download($filename);
     }
 }
-

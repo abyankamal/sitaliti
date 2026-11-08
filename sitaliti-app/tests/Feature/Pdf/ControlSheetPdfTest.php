@@ -155,4 +155,3 @@ class ControlSheetPdfTest extends TestCase
         $response->assertStatus(404);
     }
 }
-

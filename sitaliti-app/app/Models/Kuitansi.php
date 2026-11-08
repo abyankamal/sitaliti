@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -60,6 +61,30 @@ class Kuitansi extends Model
             'tanggal_pptk_approve' => 'datetime',
             'tanggal_verifikasi' => 'datetime',
         ];
+    }
+
+    /**
+     * SLA terlampaui: dihitung real-time, hanya untuk kuitansi REVISI_MINOR yang lewat tenggat.
+     */
+    protected function isSlaBreached(): Attribute
+    {
+        return Attribute::get(fn (): bool => $this->status === 'REVISI_MINOR'
+            && $this->tenggat_sla !== null
+            && now()->gt($this->tenggat_sla));
+    }
+
+    /**
+     * Sisa jam menuju tenggat SLA (negatif bila terlambat); null bila tidak berlaku.
+     */
+    protected function slaRemainingHours(): Attribute
+    {
+        return Attribute::get(function (): ?float {
+            if ($this->status !== 'REVISI_MINOR' || $this->tenggat_sla === null) {
+                return null;
+            }
+
+            return round(now()->floatDiffInHours($this->tenggat_sla, false), 2);
+        });
     }
 
     public function unitKerja(): BelongsTo
