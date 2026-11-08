@@ -54,4 +54,3 @@ class SlaMonitoringTest extends TestCase
         $this->assertEquals(-1.0, $k->sla_remaining_hours);
     }
 }
-
