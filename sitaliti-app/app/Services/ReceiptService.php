@@ -18,10 +18,15 @@ use InvalidArgumentException;
 
 class ReceiptService
 {
+    protected AuditTrailService $auditTrailService;
+
     public function __construct(
         protected TaxCalculationServiceInterface $taxService,
-        protected BudgetReservationServiceInterface $budgetService
-    ) {}
+        protected BudgetReservationServiceInterface $budgetService,
+        ?AuditTrailService $auditTrailService = null
+    ) {
+        $this->auditTrailService = $auditTrailService ?? app(AuditTrailService::class);
+    }
 
     /**
      * Simulasi validasi draft kuitansi & perhitungan pajak (tanpa persistensi).
@@ -160,6 +165,7 @@ class ReceiptService
             $nomorKuitansi,
             $rekening,
             $userId,
+            $user,
             $bulan,
             $tahun,
             $bulanStr,
@@ -227,6 +233,20 @@ class ReceiptService
                 ]);
             }
 
+            $this->auditTrailService->log(
+                $kuitansi,
+                'DRAFT_CREATED',
+                null,
+                'DRAFT',
+                'Pembuatan draft kuitansi belanja',
+                $user,
+                [
+                    'nominal_bruto' => (float) $kuitansi->nominal_bruto,
+                    'nominal_neto' => (float) $kuitansi->nominal_neto,
+                    'bulan_anggaran' => $kuitansi->bulan_anggaran,
+                ]
+            );
+
             return $kuitansi->load(['items', 'pajak', 'lampiran', 'rekening', 'unitKerja']);
         });
     }
@@ -234,13 +254,15 @@ class ReceiptService
     /**
      * Mengajukan kuitansi ke PPTK: memanggil reserveBudget() secara atomic dan mengubah status.
      */
-    public function submitToPptk(int|string $kuitansiId): Kuitansi
+    public function submitToPptk(int|string $kuitansiId, ?User $actor = null): Kuitansi
     {
         $kuitansi = Kuitansi::findOrFail($kuitansiId);
 
         if (! in_array($kuitansi->status, ['DRAFT', 'REVISI_MAYOR'])) {
             throw new InvalidArgumentException('Hanya kuitansi berstatus DRAFT atau REVISI_MAYOR yang dapat diajukan ke PPTK.');
         }
+
+        $statusLama = $kuitansi->status;
 
         // Kunci pagu anggaran via BudgetReservationService
         $this->budgetService->reserveBudget(
@@ -253,6 +275,19 @@ class ReceiptService
             'status' => 'MENUNGGU_PPTK',
             'tanggal_submit' => now(),
         ]);
+
+        $this->auditTrailService->log(
+            $kuitansi,
+            'SUBMITTED_TO_PPTK',
+            $statusLama,
+            'MENUNGGU_PPTK',
+            'Pengajuan kuitansi ke PPTK dan penguncian pagu kas',
+            $actor,
+            [
+                'pagu_dikunci' => (float) $kuitansi->nominal_bruto,
+                'bulan_anggaran' => $kuitansi->bulan_anggaran,
+            ]
+        );
 
         return $kuitansi;
     }
@@ -269,12 +304,23 @@ class ReceiptService
             throw new InvalidArgumentException('Hanya kuitansi berstatus MENUNGGU_PPTK yang dapat disetujui oleh PPTK.');
         }
 
+        $statusLama = $kuitansi->status;
+
         $kuitansi->update([
             'status' => 'MENUNGGU_VERIFIKASI',
             'pptk_user_id' => $actor?->id,
             'tanggal_pptk_approve' => now(),
             'catatan_pptk' => $catatan,
         ]);
+
+        $this->auditTrailService->log(
+            $kuitansi,
+            'PPTK_APPROVED',
+            $statusLama,
+            'MENUNGGU_VERIFIKASI',
+            $catatan ?? 'Disetujui oleh PPTK',
+            $actor
+        );
 
         return $kuitansi;
     }
@@ -290,6 +336,8 @@ class ReceiptService
             throw new InvalidArgumentException('Hanya kuitansi berstatus MENUNGGU_PPTK yang dapat ditolak oleh PPTK.');
         }
 
+        $statusLama = $kuitansi->status;
+
         // Pulihkan pagu anggaran yang terkunci
         $this->budgetService->releaseBudget(
             (string) $kuitansi->anggaran_rekening_id,
@@ -302,6 +350,19 @@ class ReceiptService
             'pptk_user_id' => $actor?->id,
             'catatan_pptk' => $alasan,
         ]);
+
+        $this->auditTrailService->log(
+            $kuitansi,
+            'PPTK_REJECTED',
+            $statusLama,
+            'DRAFT',
+            $alasan,
+            $actor,
+            [
+                'pagu_dipulihkan' => (float) $kuitansi->nominal_bruto,
+                'bulan_anggaran' => $kuitansi->bulan_anggaran,
+            ]
+        );
 
         return $kuitansi;
     }

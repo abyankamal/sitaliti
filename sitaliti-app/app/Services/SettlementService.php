@@ -31,9 +31,14 @@ class SettlementService implements SettlementServiceInterface
         ['id' => 'A_09', 'name' => 'Rekening Koran Bank Penampung', 'required' => true, 'checked' => true],
     ];
 
+    protected AuditTrailService $auditTrailService;
+
     public function __construct(
-        protected BudgetReservationServiceInterface $budgetService
-    ) {}
+        protected BudgetReservationServiceInterface $budgetService,
+        ?AuditTrailService $auditTrailService = null
+    ) {
+        $this->auditTrailService = $auditTrailService ?? app(AuditTrailService::class);
+    }
 
     /**
      * Membuat bundel pengajuan SPJ baru dan menggabungkan kuitansi lolos verifikasi.
@@ -122,6 +127,16 @@ class SettlementService implements SettlementServiceInterface
 
                 // Update status kuitansi menjadi DIBUNDEL
                 $receipt->update(['status' => 'DIBUNDEL']);
+
+                $this->auditTrailService->log(
+                    $receipt,
+                    'BUNDLED',
+                    'LOLOS_VERIFIKASI',
+                    'DIBUNDEL',
+                    "Kuitansi dimasukkan ke dalam bundel SPJ {$nomorBundel}",
+                    $user,
+                    ['pengajuan_spj_id' => $bundle->id, 'nomor_bundel' => $nomorBundel]
+                );
             }
 
             // 4. Hitung akumulasi total bruto, pajak, dan neto
@@ -160,6 +175,16 @@ class SettlementService implements SettlementServiceInterface
             // 2. Kembalikan status kuitansi ke LOLOS_VERIFIKASI agar bisa dibundel ulang nanti
             $kuitansi->update(['status' => 'LOLOS_VERIFIKASI']);
 
+            $this->auditTrailService->log(
+                $kuitansi,
+                'UNBUNDLED',
+                'DIBUNDEL',
+                'LOLOS_VERIFIKASI',
+                $reason ?? "Kuitansi dikeluarkan dari bundel SPJ {$bundle->nomor_bundel}",
+                null,
+                ['pengajuan_spj_id' => $bundle->id, 'nomor_bundel' => $bundle->nomor_bundel]
+            );
+
             // 3. Hitung ulang total bundel
             $bundle->recalculateTotals();
 
@@ -189,6 +214,21 @@ class SettlementService implements SettlementServiceInterface
                     );
 
                     $kuitansi->update(['status' => 'SELESAI_SP2D']);
+
+                    $this->auditTrailService->log(
+                        $kuitansi,
+                        'SP2D_SETTLED',
+                        'DIBUNDEL',
+                        'SELESAI_SP2D',
+                        "Pencairan SP2D SIPD-RI terkonfirmasi: {$nomorSp2d}",
+                        null,
+                        [
+                            'nomor_sp2d' => $nomorSp2d,
+                            'nomor_spp' => $nomorSpp ?? $bundle->nomor_spp_sipd,
+                            'pengajuan_spj_id' => $bundle->id,
+                            'realisasi_pagu' => (float) $kuitansi->nominal_bruto,
+                        ]
+                    );
                 }
             }
 

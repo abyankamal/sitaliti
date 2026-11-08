@@ -7,6 +7,7 @@ use App\Contracts\VerificationServiceInterface;
 use App\Models\Kuitansi;
 use App\Models\KuitansiVerifikasiChecklist;
 use App\Models\MasterChecklistItem;
+use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -14,9 +15,14 @@ use InvalidArgumentException;
 
 class VerificationService implements VerificationServiceInterface
 {
+    protected AuditTrailService $auditTrailService;
+
     public function __construct(
-        protected BudgetReservationServiceInterface $budgetService
-    ) {}
+        protected BudgetReservationServiceInterface $budgetService,
+        ?AuditTrailService $auditTrailService = null
+    ) {
+        $this->auditTrailService = $auditTrailService ?? app(AuditTrailService::class);
+    }
 
     /**
      * Mengambil daftar antrean kuitansi yang perlu diverifikasi berdasarkan peran login pengguna.
@@ -177,6 +183,9 @@ class VerificationService implements VerificationServiceInterface
         $checklistResults = $payload['checklist_results'] ?? [];
 
         return DB::transaction(function () use ($kuitansi, $action, $notes, $checklistResults, $verifierUserId) {
+            $statusLama = $kuitansi->status;
+            $verifierUser = User::find($verifierUserId);
+
             // 1. Simpan/update setiap butir checklist verifikasi
             foreach ($checklistResults as $cr) {
                 if (! isset($cr['item_id'])) {
@@ -220,6 +229,16 @@ class VerificationService implements VerificationServiceInterface
                         'tanggal_verifikasi' => now(),
                     ]);
 
+                    $this->auditTrailService->log(
+                        $kuitansi,
+                        'VERIFIED',
+                        $statusLama,
+                        $newStatus,
+                        $notes ?: 'Dokumen diverifikasi akuntabel dan lengkap.',
+                        $verifierUser,
+                        ['qr_token' => $qrToken]
+                    );
+
                     $message = 'Berkas kuitansi dinyatakan Lolos Verifikasi Akuntabel. Lembar Kendali diterbitkan.';
                     break;
 
@@ -236,6 +255,16 @@ class VerificationService implements VerificationServiceInterface
                         'verifikator_id' => $verifierUserId,
                         'tanggal_verifikasi' => now(),
                     ]);
+
+                    $this->auditTrailService->log(
+                        $kuitansi,
+                        'REVISION_MINOR',
+                        $statusLama,
+                        $newStatus,
+                        $notes,
+                        $verifierUser,
+                        ['tenggat_sla' => $tenggatSla->toIso8601String()]
+                    );
 
                     $message = sprintf(
                         'Catatan pengembalian berkas revisi minor berhasil dikirim ke pembuat SPJ (Tenggat SLA: %s).',
@@ -261,6 +290,19 @@ class VerificationService implements VerificationServiceInterface
                         'verifikator_id' => $verifierUserId,
                         'tanggal_verifikasi' => now(),
                     ]);
+
+                    $this->auditTrailService->log(
+                        $kuitansi,
+                        'REVISION_MAJOR',
+                        $statusLama,
+                        $newStatus,
+                        $notes,
+                        $verifierUser,
+                        [
+                            'pagu_dipulihkan' => (float) $kuitansi->nominal_bruto,
+                            'bulan_anggaran' => $kuitansi->bulan_anggaran,
+                        ]
+                    );
 
                     $message = 'Kuitansi dikembalikan untuk revisi mayor dan pagu anggaran telah dipulihkan.';
                     break;

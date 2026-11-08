@@ -107,10 +107,10 @@ class ReceiptApiController extends Controller
     /**
      * Endpoint pengajuan kuitansi ke PPTK yang mengunci pagu anggaran (POST /api/v1/receipts/{id}/submit).
      */
-    public function submit(int|string $id): JsonResponse
+    public function submit(Request $request, int|string $id): JsonResponse
     {
         try {
-            $kuitansi = $this->receiptService->submitToPptk($id);
+            $kuitansi = $this->receiptService->submitToPptk($id, $request->user());
 
             return $this->successResponse([
                 'id' => $kuitansi->id,
