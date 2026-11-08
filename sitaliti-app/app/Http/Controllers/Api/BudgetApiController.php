@@ -74,6 +74,7 @@ class BudgetApiController extends Controller
         // Group by subkegiatan agar sesuai struktur RAKSelectorModal (subkegiatan memiliki anak array rekening)
         $grouped = $records->groupBy('kode_sub_kegiatan')->map(function ($items) {
             $first = $items->first();
+
             return [
                 'id' => $first->kode_sub_kegiatan, // ID subkegiatan untuk selector
                 'unit_id' => $first->unit_kerja_id,

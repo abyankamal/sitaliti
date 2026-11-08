@@ -13,34 +13,47 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::prefix('v1')->group(function () {
-    // Budget & RAK Endpoints (Serving budgetService.js)
-    Route::prefix('budget')->group(function () {
-        Route::get('summary', [BudgetApiController::class, 'summary']);
-        Route::get('units', [BudgetApiController::class, 'units']);
-        Route::get('sub-activities', [BudgetApiController::class, 'subActivities']);
-        Route::get('rak-context/{rekeningId}', [BudgetApiController::class, 'rakContext']);
-    });
+    // Seluruh rute API operasional wajib terautentikasi (auth / stateful session)
+    Route::middleware(['auth'])->group(function () {
+        // Budget & RAK Endpoints (Open Access Terpusat: Semua peran terautentikasi dapat melihat)
+        Route::prefix('budget')->group(function () {
+            Route::get('summary', [BudgetApiController::class, 'summary']);
+            Route::get('units', [BudgetApiController::class, 'units']);
+            Route::get('sub-activities', [BudgetApiController::class, 'subActivities']);
+            Route::get('rak-context/{rekeningId}', [BudgetApiController::class, 'rakContext']);
+        });
 
-    // Receipts Endpoints (Serving receiptService.js)
-    Route::prefix('receipts')->group(function () {
-        Route::post('validate-draft', [ReceiptApiController::class, 'validateDraft']);
-        Route::post('/', [ReceiptApiController::class, 'store']);
-        Route::post('{id}/submit', [ReceiptApiController::class, 'submit']);
-    });
+        // Receipts Endpoints
+        Route::prefix('receipts')->group(function () {
+            Route::post('validate-draft', [ReceiptApiController::class, 'validateDraft']);
+            Route::post('/', [ReceiptApiController::class, 'store'])
+                ->middleware('permission:kuitansi.create');
+            Route::post('{id}/submit', [ReceiptApiController::class, 'submit'])
+                ->middleware('permission:kuitansi.submit_pptk');
+        });
 
-    // Verification Workspace Endpoints
-    Route::prefix('verification')->group(function () {
-        Route::get('queue', [VerificationApiController::class, 'getQueue']);
-        Route::get('{id}', [VerificationApiController::class, 'getDetail']);
-        Route::post('{id}/action', [VerificationApiController::class, 'processAction']);
-    });
+        // Verification Workspace Endpoints
+        Route::prefix('verification')->group(function () {
+            Route::get('queue', [VerificationApiController::class, 'getQueue'])
+                ->middleware('permission:verification.queue');
+            Route::get('{id}', [VerificationApiController::class, 'getDetail'])
+                ->middleware('permission:verification.audit');
+            Route::post('{id}/action', [VerificationApiController::class, 'processAction'])
+                ->middleware('permission:verification.process_action');
+        });
 
-    // Bundles / Settlement Endpoints (Two-Tier Settlement)
-    Route::prefix('bundles')->group(function () {
-        Route::get('/', [SettlementApiController::class, 'index']);
-        Route::post('/', [SettlementApiController::class, 'store']);
-        Route::get('{id}', [SettlementApiController::class, 'show']);
-        Route::post('{id}/unbundle/{kuitansiId}', [SettlementApiController::class, 'unbundle']);
-        Route::post('{id}/sp2d', [SettlementApiController::class, 'recordSp2d']);
+        // Bundles / Settlement Endpoints (Two-Tier Settlement: BPP & KPA)
+        Route::prefix('bundles')->group(function () {
+            Route::get('/', [SettlementApiController::class, 'index'])
+                ->middleware('permission:bundle.view');
+            Route::post('/', [SettlementApiController::class, 'store'])
+                ->middleware('permission:bundle.create');
+            Route::get('{id}', [SettlementApiController::class, 'show'])
+                ->middleware('permission:bundle.view');
+            Route::post('{id}/unbundle/{kuitansiId}', [SettlementApiController::class, 'unbundle'])
+                ->middleware('permission:bundle.unbundle');
+            Route::post('{id}/sp2d', [SettlementApiController::class, 'recordSp2d'])
+                ->middleware('permission:bundle.record_sp2d');
+        });
     });
 });
