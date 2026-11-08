@@ -4,6 +4,12 @@ namespace App\Services;
 
 use App\Contracts\ControlSheetGeneratorServiceInterface;
 use App\Models\Kuitansi;
+use BaconQrCode\Renderer\Image\SvgImageBackEnd;
+use BaconQrCode\Renderer\ImageRenderer;
+use BaconQrCode\Renderer\RendererStyle\RendererStyle;
+use BaconQrCode\Writer;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Barryvdh\DomPDF\PDF as DomPdfInstance;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class ControlSheetGeneratorService implements ControlSheetGeneratorServiceInterface
@@ -67,6 +73,30 @@ class ControlSheetGeneratorService implements ControlSheetGeneratorServiceInterf
                 ];
             })->all(),
         ];
+    }
+
+    /**
+     * Menghasilkan dokumen PDF Lembar Kendali resmi siap unduh/cetak.
+     */
+    public function generatePdf(string|int $kuitansiIdOrNumber): DomPdfInstance
+    {
+        $data = $this->generateData((string) $kuitansiIdOrNumber);
+
+        // Render QR Code SVG offline menggunakan BaconQrCode
+        $verificationUrl = $data['verification_url'] ?? ($data['qr_token'] ? url("/verify/{$data['qr_token']}") : url("/verify/{$kuitansiIdOrNumber}"));
+
+        $renderer = new ImageRenderer(
+            new RendererStyle(120, 1),
+            new SvgImageBackEnd
+        );
+        $writer = new Writer($renderer);
+        $data['qr_code_svg'] = $writer->writeString($verificationUrl);
+
+        /** @var DomPdfInstance $pdf */
+        $pdf = Pdf::loadView('pdf.lembar-kendali', $data);
+        $pdf->setPaper('a4', 'portrait');
+
+        return $pdf;
     }
 
     /**

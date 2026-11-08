@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ControlSheetPdfController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Public\QrVerificationPublicController;
 use Illuminate\Support\Facades\Route;
@@ -29,6 +30,10 @@ Route::get('/verification/{id}/workspace', function ($id) {
 Route::get('/control-sheet/{id}', function ($id) {
     return Inertia::render('ControlSheet/Show', ['id' => $id]);
 })->name('control-sheet.show');
+
+Route::get('/control-sheet/{id}/download-pdf', [ControlSheetPdfController::class, 'download'])
+    ->middleware('auth')
+    ->name('control-sheet.download-pdf');
 
 Route::get('/bundles', function () {
     return Inertia::render('Bundles/Index');

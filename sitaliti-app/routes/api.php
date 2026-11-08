@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\BudgetApiController;
 use App\Http\Controllers\Api\ReceiptApiController;
 use App\Http\Controllers\Api\SettlementApiController;
 use App\Http\Controllers\Api\VerificationApiController;
+use App\Http\Controllers\ControlSheetPdfController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -60,6 +61,12 @@ Route::prefix('v1')->group(function () {
                 ->middleware('permission:bundle.unbundle');
             Route::post('{id}/sp2d', [SettlementApiController::class, 'recordSp2d'])
                 ->middleware('permission:bundle.record_sp2d');
+        });
+
+        // Control Sheet PDF Endpoints
+        Route::prefix('control-sheet')->group(function () {
+            Route::get('{id}/pdf', [ControlSheetPdfController::class, 'download'])
+                ->middleware('permission:kuitansi.view');
         });
     });
 });
