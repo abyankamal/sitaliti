@@ -194,4 +194,3 @@ class DashboardApiTest extends TestCase
         $this->assertEquals(500000.00, (float) $latest['nominal']);
     }
 }
-
