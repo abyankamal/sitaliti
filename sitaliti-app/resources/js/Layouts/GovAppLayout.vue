@@ -10,32 +10,55 @@ defineProps({
 });
 
 const page = usePage();
-const user = computed(() => page.props.auth?.user || { name: 'Bendahara Pengeluaran', email: 'bendahara@tarogongkidul.garutkab.go.id' });
+const user = computed(() => page.props.auth?.user || {
+    name: 'Operator SPJ',
+    email: 'operator@tarogongkidul.garutkab.go.id',
+    role: 'OPERATOR'
+});
 
 const isSidebarOpen = ref(true);
 
-const navItems = [
+const ROLE_DISPLAY_NAMES = {
+    OPERATOR: 'Operator SPJ / Seksi',
+    PPTK: 'Pejabat Pelaksana Teknis (PPTK)',
+    VERIFIKATOR: 'Verifikator Kecamatan (PPK)',
+    BPP: 'Bendahara Pengeluaran (BPP)',
+    KPA: 'Camat / KPA',
+};
+
+// Definisi item navigasi beserta peran yang diizinkan melihatnya
+const allNavItems = [
     {
         name: 'Dashboard Anggaran',
         route: 'dashboard',
         icon: 'dashboard',
+        roles: ['OPERATOR', 'PPTK', 'VERIFIKATOR', 'BPP', 'KPA'],
     },
     {
         name: 'Kuitansi & SPJ',
-        route: 'receipts.index',
+        route: 'receipts.create',
         icon: 'receipt',
+        roles: ['OPERATOR', 'KPA'],
     },
     {
         name: 'Workspace Verifikasi',
         route: 'verification.index',
         icon: 'verification',
+        roles: ['PPTK', 'VERIFIKATOR', 'KPA'],
     },
     {
         name: 'Bundel SPP (GU/TU/LS)',
         route: 'bundles.index',
         icon: 'bundle',
+        roles: ['BPP', 'KPA', 'VERIFIKATOR'],
     },
 ];
+
+// Filter navigasi berdasarkan peran aktif pengguna
+const navItems = computed(() => {
+    const userRole = user.value?.role || 'OPERATOR';
+    return allNavItems.filter(item => !item.roles || item.roles.includes(userRole));
+});
 </script>
 
 <template>
@@ -85,11 +108,13 @@ const navItems = [
                         <!-- User Profile Badge -->
                         <div class="flex items-center gap-3 pl-2">
                             <div class="w-8 h-8 rounded-full bg-gov-navy-800 border border-slate-600 flex items-center justify-center text-xs font-semibold text-white">
-                                {{ user.name.charAt(0) }}
+                                {{ user.name?.charAt(0) || 'U' }}
                             </div>
                             <div class="hidden sm:block text-left leading-tight">
                                 <p class="text-xs font-medium text-white">{{ user.name }}</p>
-                                <p class="text-[10px] text-slate-400">Operator SPJ</p>
+                                <p class="text-[10px] text-gov-gold-400 font-medium">
+                                    {{ ROLE_DISPLAY_NAMES[user.role] || user.role || 'Pegawai' }}
+                                </p>
                             </div>
                         </div>
                     </div>
