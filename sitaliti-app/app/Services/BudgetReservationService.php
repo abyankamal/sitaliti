@@ -6,6 +6,7 @@ use App\Contracts\BudgetReservationServiceInterface;
 use App\DTOs\BudgetContextData;
 use App\Exceptions\PaguOverlimitException;
 use App\Models\AnggaranKasBulanan;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 class BudgetReservationService implements BudgetReservationServiceInterface
@@ -83,13 +84,40 @@ class BudgetReservationService implements BudgetReservationServiceInterface
     }
 
     /**
+     * Memeriksa apakah data AnggaranKasBulanan tersedia di database untuk rekening yang bersangkutan.
+     */
+    protected function hasDatabaseRows(string $anggaranRekeningId): bool
+    {
+        try {
+            return AnggaranKasBulanan::where('anggaran_rekening_id', $anggaranRekeningId)->exists();
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    /**
      * Mengambil alokasi kuota RAK bulanan beserta sisa akumulasi carry-over untuk rekening tertentu.
      *
      * @return array<string, mixed>
      */
     public function getPopupAllocationData(string $anggaranRekeningId, int $bulanDipilih, ?int $activeMonth = null): array
     {
-        $this->ensureRekeningInitialized($anggaranRekeningId);
+        if ($this->hasDatabaseRows($anggaranRekeningId)) {
+            $dbRows = AnggaranKasBulanan::where('anggaran_rekening_id', $anggaranRekeningId)
+                ->orderBy('bulan', 'asc')
+                ->get();
+
+            $this->ledger[$anggaranRekeningId] = [];
+            foreach ($dbRows as $row) {
+                $this->ledger[$anggaranRekeningId][$row->bulan] = [
+                    'alokasi_pagu' => (float) $row->alokasi_pagu,
+                    'terkunci_komitmen' => (float) $row->terkunci_bulan,
+                    'realisasi_bulan' => (float) $row->realisasi_bulan,
+                ];
+            }
+        } else {
+            $this->ensureRekeningInitialized($anggaranRekeningId);
+        }
 
         $systemMonth = $activeMonth ?? (int) date('n');
         $isFutureMonth = $bulanDipilih > $systemMonth;
@@ -140,6 +168,7 @@ class BudgetReservationService implements BudgetReservationServiceInterface
 
     /**
      * Mengunci pagu kuitansi saat disubmit ke PPTK.
+     * Menggunakan transaksi atomik dan pessimistic row locking jika data database tersedia.
      *
      * @throws PaguOverlimitException
      * @throws InvalidArgumentException
@@ -151,7 +180,6 @@ class BudgetReservationService implements BudgetReservationServiceInterface
             throw new InvalidArgumentException("Nominal reservasi anggaran harus lebih besar dari 0. Diberikan: {$nominalBruto}");
         }
 
-        $this->ensureRekeningInitialized($anggaranRekeningId);
         $systemMonth = $activeMonth ?? (int) date('n');
 
         // 2. Proteksi bulan masa depan
@@ -159,7 +187,62 @@ class BudgetReservationService implements BudgetReservationServiceInterface
             throw new PaguOverlimitException("Tidak dapat mereservasi pagu untuk bulan masa depan (Bulan {$bulan} > Bulan Aktif {$systemMonth}).");
         }
 
-        // 3. Evaluasi sisa pagu tersedia
+        // Jika data database tersedia, gunakan transaksi atomik dan pessimistic locking
+        if ($this->hasDatabaseRows($anggaranRekeningId)) {
+            DB::transaction(function () use ($anggaranRekeningId, $bulan, $nominalBruto) {
+                // Kunci baris dengan urutan deterministik ORDER BY bulan ASC untuk mencegah race condition & deadlock
+                $rows = AnggaranKasBulanan::where('anggaran_rekening_id', $anggaranRekeningId)
+                    ->orderBy('bulan', 'asc')
+                    ->lockForUpdate()
+                    ->get()
+                    ->keyBy('bulan');
+
+                $targetRow = $rows->get($bulan);
+                if (! $targetRow) {
+                    throw new PaguOverlimitException("Data alokasi kas bulan {$bulan} tidak ditemukan.");
+                }
+
+                $carryOverLalu = 0.0;
+                for ($m = 1; $m < $bulan; $m++) {
+                    if ($prevRow = $rows->get($m)) {
+                        $sisaBulanLalu = (float) $prevRow->alokasi_pagu - (float) $prevRow->realisasi_bulan - (float) $prevRow->terkunci_bulan;
+                        if ($sisaBulanLalu > 0) {
+                            $carryOverLalu += $sisaBulanLalu;
+                        }
+                    }
+                }
+
+                $paguMurniBulan = (float) $targetRow->alokasi_pagu;
+                $terkunciKomitmen = (float) $targetRow->terkunci_bulan;
+                $realisasiBulan = (float) $targetRow->realisasi_bulan;
+
+                $totalTersedia = $paguMurniBulan + $carryOverLalu - $realisasiBulan;
+                $sisaDapatDigunakan = max(0.0, $totalTersedia - $terkunciKomitmen);
+
+                if ($nominalBruto > $sisaDapatDigunakan) {
+                    throw new PaguOverlimitException(
+                        sprintf(
+                            'Alokasi pagu tidak mencukupi. Dibutuhkan: Rp %s, Tersedia: Rp %s.',
+                            number_format($nominalBruto, 2, ',', '.'),
+                            number_format($sisaDapatDigunakan, 2, ',', '.')
+                        )
+                    );
+                }
+
+                $targetRow->terkunci_bulan = (float) $targetRow->terkunci_bulan + $nominalBruto;
+                $targetRow->save();
+
+                if (isset($this->ledger[$anggaranRekeningId][$bulan])) {
+                    $this->ledger[$anggaranRekeningId][$bulan]['terkunci_komitmen'] = (float) $targetRow->terkunci_bulan;
+                }
+            });
+
+            return;
+        }
+
+        // In-memory fallback untuk unit testing atau saat DB belum tersedia
+        $this->ensureRekeningInitialized($anggaranRekeningId);
+
         $currentContext = $this->getPopupAllocationData($anggaranRekeningId, $bulan, $activeMonth);
 
         if ($nominalBruto > $currentContext['sisa_dapat_digunakan']) {
@@ -172,37 +255,42 @@ class BudgetReservationService implements BudgetReservationServiceInterface
             );
         }
 
-        // 4. Lakukan penguncian pagu
         $this->ledger[$anggaranRekeningId][$bulan]['terkunci_komitmen'] += $nominalBruto;
-
-        try {
-            AnggaranKasBulanan::where('anggaran_rekening_id', $anggaranRekeningId)
-                ->where('bulan', $bulan)
-                ->update(['terkunci_bulan' => $this->ledger[$anggaranRekeningId][$bulan]['terkunci_komitmen']]);
-        } catch (\Throwable $e) {
-            // Abaikan jika running di standalone unit test
-        }
     }
 
     /**
      * Melepas kuncian pagu jika kuitansi ditolak revisi mayor atau dibatalkan oleh operator.
-     * Dilengkapi proteksi underflow (tidak pernah negatif).
+     * Dilengkapi proteksi underflow (tidak pernah negatif) dan transaksi database jika tersedia.
      */
     public function releaseBudget(string $anggaranRekeningId, int $bulan, float $nominalBruto): void
     {
+        if ($this->hasDatabaseRows($anggaranRekeningId)) {
+            DB::transaction(function () use ($anggaranRekeningId, $bulan, $nominalBruto) {
+                $targetRow = AnggaranKasBulanan::where('anggaran_rekening_id', $anggaranRekeningId)
+                    ->where('bulan', $bulan)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($targetRow) {
+                    $newLocked = max(0.0, (float) $targetRow->terkunci_bulan - $nominalBruto);
+                    $targetRow->terkunci_bulan = $newLocked;
+                    $targetRow->save();
+                }
+
+                if (isset($this->ledger[$anggaranRekeningId][$bulan])) {
+                    $this->ledger[$anggaranRekeningId][$bulan]['terkunci_komitmen'] = max(0.0, ($this->ledger[$anggaranRekeningId][$bulan]['terkunci_komitmen'] ?? 0.0) - $nominalBruto);
+                }
+            });
+
+            return;
+        }
+
+        // In-memory fallback
         $this->ensureRekeningInitialized($anggaranRekeningId);
 
         $currentLocked = $this->ledger[$anggaranRekeningId][$bulan]['terkunci_komitmen'] ?? 0.0;
         $newLocked = max(0.0, $currentLocked - $nominalBruto);
         $this->ledger[$anggaranRekeningId][$bulan]['terkunci_komitmen'] = $newLocked;
-
-        try {
-            AnggaranKasBulanan::where('anggaran_rekening_id', $anggaranRekeningId)
-                ->where('bulan', $bulan)
-                ->update(['terkunci_bulan' => $newLocked]);
-        } catch (\Throwable $e) {
-            // Abaikan jika running di standalone unit test
-        }
     }
 
     /**
@@ -210,25 +298,36 @@ class BudgetReservationService implements BudgetReservationServiceInterface
      */
     public function settleBudget(string $anggaranRekeningId, int $bulan, float $nominalRealisasi): void
     {
+        if ($this->hasDatabaseRows($anggaranRekeningId)) {
+            DB::transaction(function () use ($anggaranRekeningId, $bulan, $nominalRealisasi) {
+                $targetRow = AnggaranKasBulanan::where('anggaran_rekening_id', $anggaranRekeningId)
+                    ->where('bulan', $bulan)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($targetRow) {
+                    $newLocked = max(0.0, (float) $targetRow->terkunci_bulan - $nominalRealisasi);
+                    $targetRow->terkunci_bulan = $newLocked;
+                    $targetRow->realisasi_bulan = (float) $targetRow->realisasi_bulan + $nominalRealisasi;
+                    $targetRow->save();
+                }
+
+                if (isset($this->ledger[$anggaranRekeningId][$bulan])) {
+                    $this->ledger[$anggaranRekeningId][$bulan]['terkunci_komitmen'] = max(0.0, ($this->ledger[$anggaranRekeningId][$bulan]['terkunci_komitmen'] ?? 0.0) - $nominalRealisasi);
+                    $this->ledger[$anggaranRekeningId][$bulan]['realisasi_bulan'] = ($this->ledger[$anggaranRekeningId][$bulan]['realisasi_bulan'] ?? 0.0) + $nominalRealisasi;
+                }
+            });
+
+            return;
+        }
+
+        // In-memory fallback
         $this->ensureRekeningInitialized($anggaranRekeningId);
 
-        // Lepas kuncian komitmen
         $currentLocked = $this->ledger[$anggaranRekeningId][$bulan]['terkunci_komitmen'] ?? 0.0;
         $newLocked = max(0.0, $currentLocked - $nominalRealisasi);
         $this->ledger[$anggaranRekeningId][$bulan]['terkunci_komitmen'] = $newLocked;
 
-        // Tambah realisasi definitif
         $this->ledger[$anggaranRekeningId][$bulan]['realisasi_bulan'] += $nominalRealisasi;
-
-        try {
-            AnggaranKasBulanan::where('anggaran_rekening_id', $anggaranRekeningId)
-                ->where('bulan', $bulan)
-                ->update([
-                    'terkunci_bulan' => $newLocked,
-                    'realisasi_bulan' => $this->ledger[$anggaranRekeningId][$bulan]['realisasi_bulan'],
-                ]);
-        } catch (\Throwable $e) {
-            // Abaikan jika running di standalone unit test
-        }
     }
 }

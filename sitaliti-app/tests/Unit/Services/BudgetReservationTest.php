@@ -4,11 +4,17 @@ namespace Tests\Unit\Services;
 
 use App\Contracts\BudgetReservationServiceInterface;
 use App\Exceptions\PaguOverlimitException;
+use App\Models\AnggaranKasBulanan;
+use App\Models\AnggaranRekening;
+use App\Models\UnitKerja;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use InvalidArgumentException;
 use Tests\TestCase;
 
 class BudgetReservationTest extends TestCase
 {
+    use RefreshDatabase;
+
     private BudgetReservationServiceInterface $service;
 
     protected function setUp(): void
@@ -210,5 +216,115 @@ class BudgetReservationTest extends TestCase
             $after['terkunci_komitmen'],
             'Kuncian komitmen harus berkurang saat dibukukan menjadi realisasi'
         );
+    }
+
+    /**
+     * Test 9: Integrasi transaksi database atomik saat baris AnggaranKasBulanan tersedia di DB.
+     */
+    public function test_reserve_release_settle_dengan_database_rows_dan_atomic_lock(): void
+    {
+        $unit = UnitKerja::create([
+            'kode_unit' => '7.01.01',
+            'nama_unit' => 'Kecamatan Tarogong Kidul',
+            'tipe' => 'KECAMATAN',
+            'is_active' => true,
+        ]);
+
+        $rekening = AnggaranRekening::create([
+            'unit_kerja_id' => $unit->id,
+            'kode_sub_kegiatan' => '7.01.01.2.01.0001',
+            'nama_sub_kegiatan' => 'Administrasi Umum',
+            'kode_rekening' => '5.1.02.01.001.00024',
+            'nama_rekening' => 'Belanja Alat Tulis Kantor',
+            'pagu_murni' => 120000000.00,
+            'pagu_perubahan' => 120000000.00,
+            'kategori_belanja' => 'B.1',
+            'is_leaf' => true,
+        ]);
+
+        for ($b = 1; $b <= 12; $b++) {
+            AnggaranKasBulanan::create([
+                'anggaran_rekening_id' => $rekening->id,
+                'bulan' => $b,
+                'alokasi_pagu' => ($b === 2) ? 15000000.00 : 10000000.00,
+                'terkunci_bulan' => 0.00,
+                'realisasi_bulan' => ($b === 1) ? 6000000.00 : 0.00,
+            ]);
+        }
+
+        $rekeningId = (string) $rekening->id;
+
+        // 1. Validasi alokasi popup membaca database dan menghitung carry-over
+        $data = $this->service->getPopupAllocationData($rekeningId, 2, 2);
+        $this->assertEquals(4000000.00, $data['carry_over_lalu']);
+        $this->assertEquals(19000000.00, $data['total_tersedia']);
+        $this->assertEquals(19000000.00, $data['sisa_dapat_digunakan']);
+
+        // 2. Reserve budget mengunci baris database secara atomik
+        $this->service->reserveBudget($rekeningId, 2, 3000000.00, 2);
+
+        $rowBulan2 = AnggaranKasBulanan::where('anggaran_rekening_id', $rekening->id)
+            ->where('bulan', 2)
+            ->first();
+        $this->assertEquals(3000000.00, (float) $rowBulan2->terkunci_bulan);
+
+        // 3. Overlimit reservation melempar PaguOverlimitException
+        $this->expectException(PaguOverlimitException::class);
+        $this->service->reserveBudget($rekeningId, 2, 25000000.00, 2);
+    }
+
+    /**
+     * Test 10: Release dan settle budget mengupdate row database secara atomik.
+     */
+    public function test_release_dan_settle_budget_memperbarui_database_rows(): void
+    {
+        $unit = UnitKerja::create([
+            'kode_unit' => '7.01.02',
+            'nama_unit' => 'Kelurahan Sukagalih',
+            'tipe' => 'KELURAHAN',
+            'is_active' => true,
+        ]);
+
+        $rekening = AnggaranRekening::create([
+            'unit_kerja_id' => $unit->id,
+            'kode_sub_kegiatan' => '7.01.01.2.01.0001',
+            'nama_sub_kegiatan' => 'Administrasi Umum',
+            'kode_rekening' => '5.1.02.01.001.00025',
+            'nama_rekening' => 'Belanja Pemeliharaan',
+            'pagu_murni' => 50000000.00,
+            'pagu_perubahan' => 50000000.00,
+            'kategori_belanja' => 'B.5',
+            'is_leaf' => true,
+        ]);
+
+        for ($b = 1; $b <= 12; $b++) {
+            AnggaranKasBulanan::create([
+                'anggaran_rekening_id' => $rekening->id,
+                'bulan' => $b,
+                'alokasi_pagu' => 10000000.00,
+                'terkunci_bulan' => 0.00,
+                'realisasi_bulan' => 0.00,
+            ]);
+        }
+
+        $rekeningId = (string) $rekening->id;
+
+        // Reserve 4 juta
+        $this->service->reserveBudget($rekeningId, 2, 4000000.00, 2);
+
+        // Release 1.5 juta
+        $this->service->releaseBudget($rekeningId, 2, 1500000.00);
+        $rowAfterRelease = AnggaranKasBulanan::where('anggaran_rekening_id', $rekening->id)
+            ->where('bulan', 2)
+            ->first();
+        $this->assertEquals(2500000.00, (float) $rowAfterRelease->terkunci_bulan);
+
+        // Settle 2.5 juta
+        $this->service->settleBudget($rekeningId, 2, 2500000.00);
+        $rowAfterSettle = AnggaranKasBulanan::where('anggaran_rekening_id', $rekening->id)
+            ->where('bulan', 2)
+            ->first();
+        $this->assertEquals(0.00, (float) $rowAfterSettle->terkunci_bulan);
+        $this->assertEquals(2500000.00, (float) $rowAfterSettle->realisasi_bulan);
     }
 }
