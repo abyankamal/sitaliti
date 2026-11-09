@@ -167,13 +167,33 @@ async function handleSubmitDraft() {
             }
         });
 
+        // Simpan draf kuitansi
         const saveRes = await receiptService.storeReceipt(formData);
-        alert(`Berhasil! ${saveRes.message || 'Kuitansi berhasil disimpan.'} (Nomor Bukti: ${saveRes.data?.receipt_id || form.value.nomor_bukti})`);
+        const receiptId = saveRes.data?.id || saveRes.data?.receipt_id;
+
+        // Otomatis ajukan ke PPTK jika berhasil dibuat
+        if (receiptId) {
+            try {
+                await receiptService.submitReceipt(receiptId);
+                alert(`Berhasil! Kuitansi ${saveRes.data?.receipt_id || form.value.nomor_bukti} telah disimpan dan diajukan ke PPTK untuk diteliti.`);
+            } catch (submitErr) {
+                console.warn('Gagal submit otomatis ke PPTK:', submitErr);
+                alert(`Kuitansi berhasil disimpan sebagai Draf (Nomor Bukti: ${saveRes.data?.receipt_id || form.value.nomor_bukti}).`);
+            }
+        } else {
+            alert(`Berhasil! ${saveRes.message || 'Kuitansi berhasil disimpan.'}`);
+        }
+
         router.visit(route('dashboard'));
     } catch (err) {
         console.error('Submit error:', err);
-        const errMsg = err.response?.data?.error?.message || err.response?.data?.message || err.message || 'Terjadi kesalahan saat menyimpan draft.';
-        alert(`Gagal menyimpan: ${errMsg}`);
+        const errData = err.response?.data?.error;
+        if (errData?.code === 'DUPLICATE_RECEIPT_ATTACHMENT') {
+            alert(`Peringatan Duplikasi Nota Kembar (SHA-256):\n${errData.message}\n\nBerkas lampiran yang sama persis telah terdaftar pada sistem.`);
+        } else {
+            const errMsg = errData?.message || err.response?.data?.message || err.message || 'Terjadi kesalahan saat menyimpan draft.';
+            alert(`Gagal menyimpan: ${errMsg}`);
+        }
     } finally {
         isSubmitting.value = false;
     }

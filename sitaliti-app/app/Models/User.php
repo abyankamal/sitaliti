@@ -59,6 +59,8 @@ class User extends Authenticatable
                 'kuitansi.view',
                 'kuitansi.pptk_approve',
                 'kuitansi.pptk_reject',
+                'verification.queue',
+                'verification.audit',
             ],
             'VERIFIKATOR' => [
                 'kuitansi.view',

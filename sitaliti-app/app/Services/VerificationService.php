@@ -37,8 +37,16 @@ class VerificationService implements VerificationServiceInterface
 
         if (! empty($filters['status'])) {
             $query->where('status', $filters['status']);
+        } elseif ($role === 'PPTK') {
+            // Khusus peran PPTK, default antrean adalah kuitansi yang menunggu approvalnya
+            $query->whereIn('status', [
+                'MENUNGGU_PPTK',
+                'MENUNGGU_VERIFIKASI',
+                'REVISI_MINOR',
+                'LOLOS_VERIFIKASI',
+            ]);
         } else {
-            // Default antrean verifikasi mengecualikan DRAFT dan MENUNGGU_PPTK
+            // Default antrean verifikator/lainnya mengecualikan DRAFT dan MENUNGGU_PPTK
             $query->whereIn('status', [
                 'MENUNGGU_VERIFIKASI',
                 'REVISI_MINOR',
@@ -58,9 +66,12 @@ class VerificationService implements VerificationServiceInterface
                 'id' => $k->nomor_kuitansi,
                 'kuitansi_id' => $k->id,
                 'unit' => $k->unitKerja?->nama_unit ?? 'Unit Kerja',
+                'sub_activity' => $k->rekening?->nama_sub_kegiatan ?? '',
                 'sub_kegiatan' => $k->rekening?->nama_sub_kegiatan ?? '',
                 'rekening' => $k->rekening?->nama_rekening ?? '',
                 'uraian' => $k->uraian,
+                'vendor' => $k->nama_penerima ?? '-',
+                'category' => $k->rekening?->kategori_belanja ?? 'B.1',
                 'kategori' => $k->rekening?->kategori_belanja ?? 'B.1',
                 'nominal' => (float) $k->nominal_bruto,
                 'nominal_neto' => (float) $k->nominal_neto,
@@ -68,6 +79,8 @@ class VerificationService implements VerificationServiceInterface
                 'tanggal' => $k->tanggal_transaksi?->format('Y-m-d'),
                 'status' => $k->status,
                 'sla_deadline' => $k->tenggat_sla?->toIso8601String(),
+                'is_sla_breached' => $k->is_sla_breached,
+                'sla_remaining_hours' => $k->sla_remaining_hours,
                 'qr_token' => $k->qr_token,
                 'catatan' => $k->catatan_verifikasi,
                 'attachments_count' => $k->lampiran->count(),
@@ -142,6 +155,8 @@ class VerificationService implements VerificationServiceInterface
             'qr_token' => $kuitansi->qr_token,
             'catatan_verifikasi' => $kuitansi->catatan_verifikasi,
             'tenggat_sla' => $kuitansi->tenggat_sla?->toIso8601String(),
+            'is_sla_breached' => $kuitansi->is_sla_breached,
+            'sla_remaining_hours' => $kuitansi->sla_remaining_hours,
             'unit_kerja' => $kuitansi->unitKerja,
             'rekening' => $kuitansi->rekening,
             'items' => $kuitansi->items,

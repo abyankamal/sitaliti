@@ -139,7 +139,7 @@ function handleGatekeeperSelected(context) {
                     </p>
                 </div>
 
-                <!-- Card 4: Antrean Verifikasi -->
+                <!-- Card 4: Antrean Verifikasi & PPTK -->
                 <div class="bg-white rounded-xl border border-gov-surface-border p-4 shadow-sm">
                     <div class="flex items-center justify-between text-slate-500 mb-2">
                         <span class="text-xs font-semibold uppercase tracking-wider">Antrean Verifikasi</span>
@@ -154,9 +154,14 @@ function handleGatekeeperSelected(context) {
                         </span>
                         <span class="text-xs text-slate-500">berkas kuitansi</span>
                     </div>
-                    <p class="text-[11px] text-amber-700 font-medium mt-1">
-                        {{ dashboardData.summary.active_revisions_count }} berkas menunggu perbaikan revisi
-                    </p>
+                    <div class="flex items-center gap-2 mt-1.5 text-[11px] flex-wrap">
+                        <span v-if="dashboardData.queue_counts?.menunggu_pptk" class="text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded font-semibold border border-indigo-200">
+                            {{ dashboardData.queue_counts.menunggu_pptk }} antre PPTK
+                        </span>
+                        <span v-if="dashboardData.summary.active_revisions_count" class="text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded font-semibold border border-amber-200">
+                            {{ dashboardData.summary.active_revisions_count }} revisi
+                        </span>
+                    </div>
                 </div>
             </div>
 
@@ -269,7 +274,10 @@ function handleGatekeeperSelected(context) {
                 subtitle="Monitoring alur transaksi sebelum dibundel menjadi SPP"
                 :no-padding="true"
             >
-                <div class="overflow-x-auto">
+                <div v-if="dashboardData.recent_activities?.length === 0" class="p-8 text-center text-slate-400 text-xs">
+                    Belum ada aktivitas transaksi kuitansi yang tercatat.
+                </div>
+                <div v-else class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gov-surface-border text-left">
                         <thead class="bg-gov-surface-subtle text-[11px] uppercase tracking-wider font-semibold text-slate-600">
                             <tr>
@@ -289,14 +297,22 @@ function handleGatekeeperSelected(context) {
                             >
                                 <td class="py-3 px-4">
                                     <div class="font-semibold text-gov-navy-900">{{ act.id }}</div>
-                                    <div class="text-[11px] text-slate-400">{{ formatTanggalIndo(act.tanggal) }}</div>
+                                    <div class="text-[11px] text-slate-400">
+                                        {{ act.timestamp || formatTanggalIndo(act.tanggal) }}
+                                    </div>
+                                    <div v-if="act.actor_name" class="text-[10px] text-slate-400 mt-0.5">
+                                        Oleh: {{ act.actor_name }}
+                                    </div>
                                 </td>
                                 <td class="py-3 px-4">
                                     <div class="font-medium text-slate-800">{{ act.unit }}</div>
                                     <div class="text-[11px] text-slate-500 truncate max-w-xs">{{ act.kegiatan }}</div>
                                 </td>
-                                <td class="py-3 px-4 text-slate-700 max-w-sm truncate">
-                                    {{ act.uraian }}
+                                <td class="py-3 px-4 text-slate-700 max-w-sm">
+                                    <p class="truncate">{{ act.uraian }}</p>
+                                    <span v-if="act.action" class="inline-block text-[10px] text-slate-400 font-mono mt-0.5">
+                                        Aksi: {{ act.action }}
+                                    </span>
                                 </td>
                                 <td class="py-3 px-4 text-center">
                                     <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-gov-navy-900 border border-slate-200">
@@ -307,8 +323,8 @@ function handleGatekeeperSelected(context) {
                                     {{ formatRupiah(act.nominal) }}
                                 </td>
                                 <td class="py-3 px-4 text-center">
-                                    <GovBadge :variant="STATUS_VARIANTS[act.status]">
-                                        {{ STATUS_LABELS[act.status] }}
+                                    <GovBadge :variant="STATUS_VARIANTS[act.status] || 'neutral'">
+                                        {{ STATUS_LABELS[act.status] || act.status }}
                                     </GovBadge>
                                 </td>
                             </tr>

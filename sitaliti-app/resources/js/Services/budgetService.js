@@ -19,6 +19,13 @@ export const budgetService = {
                 return {
                     meta: data.meta || budgetRakData.meta,
                     summary: data.summary || data,
+                    queue_counts: data.queue_counts || data.summary?.queue_counts || {
+                        menunggu_pptk: data.pending_pptk_count || 0,
+                        menunggu_verifikasi: data.pending_verification_count || 0,
+                        revisi_minor: 0,
+                        revisi_mayor: 0,
+                        lolos_verifikasi: data.verified_count || 0,
+                    },
                     units: (data.units && data.units.length > 0) ? data.units : budgetRakData.units,
                     monthly_allocation: (data.monthly_allocation && data.monthly_allocation.length > 0) ? data.monthly_allocation : budgetRakData.monthly_allocation,
                     recent_activities: data.recent_activities || [],

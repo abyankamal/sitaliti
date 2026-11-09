@@ -32,9 +32,18 @@ class BudgetApiController extends Controller
         $sisaPagu = max(0.0, $totalPagu - $totalTerkunci - $totalRealisasi);
         $persentaseRealisasi = $totalPagu > 0 ? round(($totalRealisasi / $totalPagu) * 100, 2) : 0;
 
+        $pendingPptkCount = Kuitansi::where('status', 'MENUNGGU_PPTK')->count();
         $pendingVerificationCount = Kuitansi::where('status', 'MENUNGGU_VERIFIKASI')->count();
         $activeRevisionsCount = Kuitansi::whereIn('status', ['REVISI_MINOR', 'REVISI_MAYOR'])->count();
         $verifiedCount = Kuitansi::whereIn('status', ['LOLOS_VERIFIKASI', 'DIBUNDEL', 'SELESAI_SP2D'])->count();
+
+        $queueCounts = [
+            'menunggu_pptk' => $pendingPptkCount,
+            'menunggu_verifikasi' => $pendingVerificationCount,
+            'revisi_minor' => Kuitansi::where('status', 'REVISI_MINOR')->count(),
+            'revisi_mayor' => Kuitansi::where('status', 'REVISI_MAYOR')->count(),
+            'lolos_verifikasi' => $verifiedCount,
+        ];
 
         $summaryData = [
             'total_pagu' => $totalPagu,
@@ -44,9 +53,11 @@ class BudgetApiController extends Controller
             'total_sisa' => $sisaPagu,
             'sisa_pagu' => $sisaPagu,
             'persentase_realisasi' => $persentaseRealisasi,
+            'pending_pptk_count' => $pendingPptkCount,
             'pending_verification_count' => $pendingVerificationCount,
             'active_revisions_count' => $activeRevisionsCount,
             'verified_count' => $verifiedCount,
+            'queue_counts' => $queueCounts,
         ];
 
         // 1. Alokasi 12 Bulan RAK
@@ -130,13 +141,18 @@ class BudgetApiController extends Controller
 
                 return [
                     'id' => $kuitansi?->nomor_kuitansi ?? "LOG-{$riwayat->id}",
+                    'kuitansi_id' => $kuitansi?->id,
+                    'action' => $riwayat->action,
                     'unit' => $kuitansi?->unitKerja?->nama_unit ?? 'Unit Kerja',
                     'kegiatan' => $kuitansi?->rekening?->nama_sub_kegiatan ?? $riwayat->action,
                     'uraian' => $riwayat->catatan ?: ($kuitansi?->uraian ?? 'Aktivitas Verifikasi'),
                     'kategori' => $kuitansi?->rekening?->kategori_belanja ?? 'B.1',
                     'nominal' => (float) ($kuitansi?->nominal_bruto ?? 0),
                     'tanggal' => $riwayat->created_at?->format('Y-m-d') ?? date('Y-m-d'),
+                    'timestamp' => $riwayat->created_at?->format('d/m/Y H:i'),
                     'status' => $riwayat->status_baru ?: ($kuitansi?->status ?? 'DRAFT'),
+                    'actor_name' => $riwayat->user?->name ?? 'Sistem / Arsip Pegawai',
+                    'actor_role' => $riwayat->user?->role ?? null,
                     'verifikator' => $riwayat->user?->name ?? 'Sistem / Verifikator',
                 ];
             })->values()->all();
