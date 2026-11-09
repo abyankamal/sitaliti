@@ -45,4 +45,3 @@ class ReceiptWebController extends Controller
         ]);
     }
 }
-

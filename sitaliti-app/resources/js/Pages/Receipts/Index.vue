@@ -4,6 +4,7 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import GovAppLayout from '@/Layouts/GovAppLayout.vue';
 import GovBadge from '@/Components/UI/GovBadge.vue';
 import GovButton from '@/Components/UI/GovButton.vue';
+import ReceiptDetailDrawer from '@/Pages/Receipts/Partials/ReceiptDetailDrawer.vue';
 import { formatRupiah } from '@/Utils/currency';
 import { formatTanggalIndo, NAMA_BULAN } from '@/Utils/date';
 
@@ -439,5 +440,13 @@ function openReceiptDetail(receipt) {
                 </div>
             </div>
         </div>
+
+        <!-- Slide-Over Drawer Detail Kuitansi & Aksi Cepat -->
+        <ReceiptDetailDrawer
+            :show="isDrawerOpen"
+            :receipt-id="selectedReceiptId"
+            @close="isDrawerOpen = false"
+            @refresh="applyFilter"
+        />
     </GovAppLayout>
 </template>

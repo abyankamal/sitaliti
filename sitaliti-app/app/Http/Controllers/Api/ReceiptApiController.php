@@ -279,6 +279,38 @@ class ReceiptApiController extends Controller
     }
 
     /**
+     * Endpoint detail lengkap kuitansi (GET /api/v1/receipts/{id}).
+     */
+    public function show(Request $request, int|string $id): JsonResponse
+    {
+        $kuitansi = Kuitansi::where('id', $id)
+            ->orWhere('nomor_kuitansi', $id)
+            ->with(['rekening.unitKerja', 'items', 'pajak', 'lampiran', 'pptkUser', 'creator', 'riwayat.user'])
+            ->first();
+
+        if (! $kuitansi) {
+            return $this->errorResponse(
+                'RECEIPT_NOT_FOUND',
+                'Kuitansi tidak ditemukan.',
+                null,
+                404
+            );
+        }
+
+        $user = $request->user();
+        if ($user && ($user->hasRole('OPERATOR') || $user->role === 'OPERATOR')) {
+            if ($user->unit_kerja_id && $kuitansi->unit_kerja_id !== $user->unit_kerja_id) {
+                return $this->errorResponse('FORBIDDEN', 'Anda tidak memiliki hak akses untuk kuitansi dari unit kerja lain.', null, 403);
+            }
+            if ($kuitansi->status === 'DRAFT' && $kuitansi->user_id !== $user->id) {
+                return $this->errorResponse('FORBIDDEN', 'Draft kuitansi ini hanya dapat diakses oleh pembuatnya.', null, 403);
+            }
+        }
+
+        return $this->successResponse($kuitansi, 'Detail kuitansi berhasil diambil');
+    }
+
+    /**
      * Endpoint riwayat aktivitas / audit trail kuitansi (GET /api/v1/receipts/{id}/history).
      */
     public function history(int|string $id): JsonResponse
