@@ -28,6 +28,8 @@ Route::prefix('v1')->group(function () {
         Route::prefix('receipts')->group(function () {
             Route::get('/', [ReceiptApiController::class, 'index'])
                 ->middleware('permission:kuitansi.view');
+            Route::get('export', [ReceiptApiController::class, 'export'])
+                ->middleware('permission:kuitansi.view');
             Route::post('validate-draft', [ReceiptApiController::class, 'validateDraft']);
             Route::post('/', [ReceiptApiController::class, 'store'])
                 ->middleware('permission:kuitansi.create');

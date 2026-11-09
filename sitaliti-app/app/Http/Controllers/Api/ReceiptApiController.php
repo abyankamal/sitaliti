@@ -6,6 +6,7 @@ use App\Exceptions\PaguOverlimitException;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ApiResponseTrait;
 use App\Models\Kuitansi;
+use App\Services\ReceiptExportService;
 use App\Services\ReceiptQueryService;
 use App\Services\ReceiptService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -13,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
 class ReceiptApiController extends Controller
@@ -21,8 +23,26 @@ class ReceiptApiController extends Controller
 
     public function __construct(
         protected ReceiptService $receiptService,
-        protected ReceiptQueryService $receiptQueryService
+        protected ReceiptQueryService $receiptQueryService,
+        protected ReceiptExportService $receiptExportService
     ) {}
+
+    /**
+     * Endpoint ekspor rekapitulasi data kuitansi dan pajak streaming CSV (GET /api/v1/receipts/export).
+     */
+    public function export(Request $request): StreamedResponse
+    {
+        $user = $request->user();
+        $filters = $request->only([
+            'status',
+            'unit_kerja_id',
+            'bulan_anggaran',
+            'kategori_belanja',
+            'search',
+        ]);
+
+        return $this->receiptExportService->streamExport($user, $filters);
+    }
 
     /**
      * Endpoint daftar kuitansi terpaginasi dengan scoping wewenang dan filter (GET /api/v1/receipts).

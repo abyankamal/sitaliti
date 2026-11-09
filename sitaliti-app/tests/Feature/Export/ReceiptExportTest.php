@@ -111,7 +111,7 @@ class ReceiptExportTest extends TestCase
 
     public function test_unauthenticated_export_is_rejected_with_401(): void
     {
-        $response = $this->get('/api/v1/receipts/export');
+        $response = $this->getJson('/api/v1/receipts/export');
         $response->assertStatus(401);
     }
 
