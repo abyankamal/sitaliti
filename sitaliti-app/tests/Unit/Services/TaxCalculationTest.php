@@ -184,7 +184,7 @@ class TaxCalculationTest extends TestCase
 
         // Transaksi 6 juta -> wajib meterai Rp 10.000
         $res6Juta = $this->service->calculateTax('B1_ATK', 6000000.0, ['has_npwp' => true]);
-        $this->assertEquals(10000.0, $res66Juta['bea_meterai'] ?? $res6Juta['bea_meterai']);
+        $this->assertEquals(10000.0, $res6Juta['bea_meterai']);
 
         // Memastikan bea meterai tidak memotong neto pembayaran
         $dpp = round(6000000.0 / 1.11);
@@ -195,10 +195,55 @@ class TaxCalculationTest extends TestCase
 
         $this->assertEquals($expectedTotalPajak, $res6Juta['total_pajak']);
         $this->assertEquals($expectedNeto, $res6Juta['nilai_neto'], 'Neto tidak boleh dipotong bea meterai');
+
+        // Memverifikasi Bea Meterai tercatat pada rincian_pajak sebagai dokumen fiskal
+        $meteraiItems = array_values(array_filter(
+            $res6Juta['rincian_pajak'],
+            fn ($p) => $p['kode_pajak'] === 'BEA_METERAI'
+        ));
+        $this->assertCount(1, $meteraiItems, 'Bea Meterai wajib tercatat pada rincian_pajak untuk transaksi > 5 juta');
+        $this->assertEquals('Bea Meterai Lunas', $meteraiItems[0]['nama_pajak']);
+        $this->assertEquals(0.0, $meteraiItems[0]['tarif']);
+        $this->assertEquals('FIXED', $meteraiItems[0]['tipe_tarif']);
+        $this->assertEquals(10000.0, $meteraiItems[0]['nominal']);
+        $this->assertEquals(0.0, $meteraiItems[0]['dpp']);
     }
 
     /**
-     * Test 9: Validasi Kepatuhan Pajak (validateTaxCompliance)
+     * Test 9: Normalisasi kode kategori rekening belanja format RAK (B.1 s.d. B.6)
+     */
+    public function test_kategori_rak_format_titik_dinormalisasi_dengan_benar(): void
+    {
+        // B.1 -> ATK
+        $resB1 = $this->service->calculateTax('B.1', 2220000.0, ['has_npwp' => true]);
+        $this->assertEquals(220000.0, $resB1['ppn']);
+        $this->assertEquals(30000.0, $resB1['pph22']);
+
+        // B.2 -> Mamin
+        $resB2 = $this->service->calculateTax('B.2', 1100000.0);
+        $this->assertEquals(100000.0, $resB2['pbjt_mamin']);
+        $this->assertEquals(0.0, $resB2['ppn']);
+
+        // B.3 -> Honorarium
+        $resB3 = $this->service->calculateTax('B.3', 2000000.0, ['golongan_asn' => 'GOLONGAN_III']);
+        $this->assertEquals(100000.0, $resB3['pph21']);
+
+        // B.4 -> Perjadin
+        $resB4 = $this->service->calculateTax('B.4', 1000000.0, ['has_npwp' => true]);
+        $this->assertEquals(20000.0, $resB4['pph23']);
+
+        // B.5 & B.6 -> Belanja Modal / Lainnya (tanpa potongan pajak default)
+        $resB5 = $this->service->calculateTax('B.5', 500000.0);
+        $this->assertEquals(0.0, $resB5['total_pajak']);
+        $this->assertEquals(500000.0, $resB5['nilai_neto']);
+
+        $resB6 = $this->service->calculateTax('B.6', 500000.0);
+        $this->assertEquals(0.0, $resB6['total_pajak']);
+        $this->assertEquals(500000.0, $resB6['nilai_neto']);
+    }
+
+    /**
+     * Test 10: Validasi Kepatuhan Pajak (validateTaxCompliance)
      * - Keseimbangan matematis Neto = Bruto - Total Pajak
      * - Tidak boleh ada PPN dan PBJT secara bersamaan
      */

@@ -39,9 +39,28 @@ class TaxCalculationService implements TaxCalculationServiceInterface
         // Bea meterai adalah pajak dokumen fisik, dicatat tetapi TIDAK mengurangi nilai neto ke rekanan.
         if ($nilaiBruto > 5000000.0) {
             $beaMeterai = 10000.0;
+            $rincianPajak[] = [
+                'kode_pajak' => 'BEA_METERAI',
+                'nama_pajak' => 'Bea Meterai Lunas',
+                'tarif' => 0.0,
+                'tipe_tarif' => 'FIXED',
+                'nominal' => $beaMeterai,
+                'dpp' => 0.0,
+            ];
         }
 
-        switch ($kategoriChecklist) {
+        // Normalisasi kode kategori belanja format RAK (B.1 s.d. B.6) ke kode perhitungan internal
+        $normalizedCategory = match ($kategoriChecklist) {
+            'B.1', 'B1_ATK' => 'B1_ATK',
+            'B.2', 'B2_MAMIN' => 'B2_MAMIN',
+            'B.3', 'B3_HONOR' => 'B3_HONOR',
+            'B.4', 'B4_PERJADIN' => 'B4_PERJADIN',
+            'B.5', 'B5_MODAL' => 'B5_MODAL',
+            'B.6', 'B6_LAINNYA' => 'B6_LAINNYA',
+            default => $kategoriChecklist,
+        };
+
+        switch ($normalizedCategory) {
             case 'B1_ATK':
                 // Belanja kena PPN. Ekstraksi DPP bebas rounding drift:
                 $dpp = round($nilaiBruto / 1.11);
