@@ -6,6 +6,7 @@ use App\Exceptions\PaguOverlimitException;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ApiResponseTrait;
 use App\Models\Kuitansi;
+use App\Services\ReceiptQueryService;
 use App\Services\ReceiptService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
@@ -19,8 +20,35 @@ class ReceiptApiController extends Controller
     use ApiResponseTrait;
 
     public function __construct(
-        protected ReceiptService $receiptService
+        protected ReceiptService $receiptService,
+        protected ReceiptQueryService $receiptQueryService
     ) {}
+
+    /**
+     * Endpoint daftar kuitansi terpaginasi dengan scoping wewenang dan filter (GET /api/v1/receipts).
+     */
+    public function index(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $filters = $request->only([
+            'status',
+            'unit_kerja_id',
+            'bulan_anggaran',
+            'kategori_belanja',
+            'search',
+        ]);
+        $perPage = (int) $request->input('per_page', 15);
+
+        $paginated = $this->receiptQueryService->getPaginatedReceipts($user, $filters, $perPage);
+        $tabCounts = $this->receiptQueryService->getStatusCounts($user, $filters);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Daftar kuitansi berhasil diambil',
+            'data' => $paginated,
+            'tab_counts' => $tabCounts,
+        ]);
+    }
 
     /**
      * Endpoint simulasi validasi draft kuitansi & perhitungan pajak (POST /api/v1/receipts/validate-draft).
