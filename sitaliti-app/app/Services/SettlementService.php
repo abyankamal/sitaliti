@@ -76,9 +76,12 @@ class SettlementService implements SettlementServiceInterface
             $data
         ) {
             // 1. Validasi seluruh kuitansi: harus LOLOS_VERIFIKASI dan belum aktif di bundel lain
-            $receipts = Kuitansi::whereIn('id', $kuitansiIds)->get();
+            $receipts = Kuitansi::where(function ($q) use ($kuitansiIds) {
+                $q->whereIn('id', $kuitansiIds)
+                    ->orWhereIn('nomor_kuitansi', $kuitansiIds);
+            })->get();
 
-            if ($receipts->count() !== count($kuitansiIds)) {
+            if ($receipts->count() !== count(array_unique($kuitansiIds))) {
                 throw new InvalidArgumentException('Beberapa kuitansi yang dipilih tidak ditemukan dalam sistem.');
             }
 
@@ -197,12 +200,19 @@ class SettlementService implements SettlementServiceInterface
      */
     public function recordSipdSp2d(int|string $bundleId, string $nomorSp2d, ?string $nomorSpp = null, ?string $tanggalSp2d = null): PengajuanSpj
     {
-        $bundle = PengajuanSpj::with(['activeItems.kuitansi'])
-            ->where('id', $bundleId)
-            ->orWhere('nomor_bundel', $bundleId)
-            ->firstOrFail();
+        return DB::transaction(function () use ($bundleId, $nomorSp2d, $nomorSpp, $tanggalSp2d) {
+            $bundle = PengajuanSpj::with(['activeItems.kuitansi'])
+                ->where(function ($q) use ($bundleId) {
+                    $q->where('id', $bundleId)
+                        ->orWhere('nomor_bundel', $bundleId);
+                })
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        return DB::transaction(function () use ($bundle, $nomorSp2d, $nomorSpp, $tanggalSp2d) {
+            if ($bundle->status_bundel === 'SYNCED_SIPD') {
+                throw new InvalidArgumentException("Bundel {$bundle->nomor_bundel} sudah berstatus SYNCED_SIPD dan tidak dapat dicatat ulang (Proteksi Anti-Double Settlement).");
+            }
+
             foreach ($bundle->activeItems as $item) {
                 $kuitansi = $item->kuitansi;
                 if ($kuitansi) {

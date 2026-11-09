@@ -256,40 +256,42 @@ class ReceiptService
      */
     public function submitToPptk(int|string $kuitansiId, ?User $actor = null): Kuitansi
     {
-        $kuitansi = Kuitansi::findOrFail($kuitansiId);
+        return DB::transaction(function () use ($kuitansiId, $actor) {
+            $kuitansi = Kuitansi::where('id', $kuitansiId)->lockForUpdate()->firstOrFail();
 
-        if (! in_array($kuitansi->status, ['DRAFT', 'REVISI_MAYOR'])) {
-            throw new InvalidArgumentException('Hanya kuitansi berstatus DRAFT atau REVISI_MAYOR yang dapat diajukan ke PPTK.');
-        }
+            if (! in_array($kuitansi->status, ['DRAFT', 'REVISI_MAYOR'])) {
+                throw new InvalidArgumentException('Hanya kuitansi berstatus DRAFT atau REVISI_MAYOR yang dapat diajukan ke PPTK.');
+            }
 
-        $statusLama = $kuitansi->status;
+            $statusLama = $kuitansi->status;
 
-        // Kunci pagu anggaran via BudgetReservationService
-        $this->budgetService->reserveBudget(
-            (string) $kuitansi->anggaran_rekening_id,
-            $kuitansi->bulan_anggaran,
-            (float) $kuitansi->nominal_bruto
-        );
+            // Kunci pagu anggaran via BudgetReservationService
+            $this->budgetService->reserveBudget(
+                (string) $kuitansi->anggaran_rekening_id,
+                $kuitansi->bulan_anggaran,
+                (float) $kuitansi->nominal_bruto
+            );
 
-        $kuitansi->update([
-            'status' => 'MENUNGGU_PPTK',
-            'tanggal_submit' => now(),
-        ]);
+            $kuitansi->update([
+                'status' => 'MENUNGGU_PPTK',
+                'tanggal_submit' => now(),
+            ]);
 
-        $this->auditTrailService->log(
-            $kuitansi,
-            'SUBMITTED_TO_PPTK',
-            $statusLama,
-            'MENUNGGU_PPTK',
-            'Pengajuan kuitansi ke PPTK dan penguncian pagu kas',
-            $actor,
-            [
-                'pagu_dikunci' => (float) $kuitansi->nominal_bruto,
-                'bulan_anggaran' => $kuitansi->bulan_anggaran,
-            ]
-        );
+            $this->auditTrailService->log(
+                $kuitansi,
+                'SUBMITTED_TO_PPTK',
+                $statusLama,
+                'MENUNGGU_PPTK',
+                'Pengajuan kuitansi ke PPTK dan penguncian pagu kas',
+                $actor,
+                [
+                    'pagu_dikunci' => (float) $kuitansi->nominal_bruto,
+                    'bulan_anggaran' => $kuitansi->bulan_anggaran,
+                ]
+            );
 
-        return $kuitansi;
+            return $kuitansi;
+        });
     }
 
     /**
