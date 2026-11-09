@@ -16,20 +16,20 @@
         { "id": "DOC_B2_06", "name": "Bukti Setor Pajak Restoran / PPh 23", "required": false, "description": "Sesuai tarif pajak daerah / PPh jasa boga" }
     ],
     "B.3": [
-        { "id": "DOC_B3_01", "name": "Surat Tugas (ST) Resmi", "required": true, "description": "Ditandatangani oleh Camat / Pejabat Berwenang" },
-        { "id": "DOC_B3_02", "name": "Surat Perintah Perjalanan Dinas (SPPD) Lembar 1 & 2", "required": true, "description": "Wajib distempel dan ditandatangani pejabat tujuan" },
-        { "id": "DOC_B3_03", "name": "Laporan Pelaksanaan Perjalanan Dinas", "required": true, "description": "Laporan hasil kunjungan / koordinasi" },
-        { "id": "DOC_B3_04", "name": "Rincian Biaya Perjalanan Dinas (Kuitansi Rampung)", "required": true, "description": "Uang harian, transport, dan penginapan riil" },
-        { "id": "DOC_B3_05", "name": "Tiket / Bukti Transport / Toll / Bahan Bakar", "required": true, "description": "Bukti pembayaran transport riil" },
-        { "id": "DOC_B3_06", "name": "Foto Dokumentasi di Lokasi Tujuan", "required": true, "description": "Foto koordinasi / kegiatan di tempat tujuan" }
+        { "id": "DOC_B3_01", "name": "Surat Keputusan (SK) Tim / Narasumber", "required": true, "description": "SK Camat tentang penetapan narasumber atau tim" },
+        { "id": "DOC_B3_02", "name": "Daftar Penerimaan Honorarium", "required": true, "description": "Mencantumkan nama, golongan, NPWP, jumlah jam/OB, dan TTD" },
+        { "id": "DOC_B3_03", "name": "Materi / Bahan Tayang Paparan", "required": true, "description": "Salinan slide materi narasumber" },
+        { "id": "DOC_B3_04", "name": "Daftar Hadir Peserta Sosialisasi / Bimtek", "required": true, "description": "Tanda tangan peserta acara" },
+        { "id": "DOC_B3_05", "name": "Bukti Potong PPh Pasal 21", "required": true, "description": "Bukti potongan pajak honorarium sesuai golongan/NPWP" },
+        { "id": "DOC_B3_06", "name": "Foto Dokumentasi Pemaparan Materi", "required": true, "description": "Foto narasumber saat membawakan materi" }
     ],
     "B.4": [
-        { "id": "DOC_B4_01", "name": "Surat Keputusan (SK) Tim / Narasumber", "required": true, "description": "SK Camat tentang penetapan narasumber atau tim" },
-        { "id": "DOC_B4_02", "name": "Daftar Penerimaan Honorarium", "required": true, "description": "Mencantumkan nama, golongan, NPWP, jumlah jam/OB, dan TTD" },
-        { "id": "DOC_B4_03", "name": "Materi / Bahan Tayang Paparan", "required": true, "description": "Salinan slide materi narasumber" },
-        { "id": "DOC_B4_04", "name": "Daftar Hadir Peserta Sosialisasi / Bimtek", "required": true, "description": "Tanda tangan peserta acara" },
-        { "id": "DOC_B4_05", "name": "Bukti Potong PPh Pasal 21", "required": true, "description": "Bukti potongan pajak honorarium sesuai golongan/NPWP" },
-        { "id": "DOC_B4_06", "name": "Foto Dokumentasi Pemaparan Materi", "required": true, "description": "Foto narasumber saat membawakan materi" }
+        { "id": "DOC_B4_01", "name": "Surat Tugas (ST) Resmi", "required": true, "description": "Ditandatangani oleh Camat / Pejabat Berwenang" },
+        { "id": "DOC_B4_02", "name": "Surat Perintah Perjalanan Dinas (SPPD) Lembar 1 & 2", "required": true, "description": "Wajib distempel dan ditandatangani pejabat tujuan" },
+        { "id": "DOC_B4_03", "name": "Laporan Pelaksanaan Perjalanan Dinas", "required": true, "description": "Laporan hasil kunjungan / koordinasi" },
+        { "id": "DOC_B4_04", "name": "Rincian Biaya Perjalanan Dinas (Kuitansi Rampung)", "required": true, "description": "Uang harian, transport, dan penginapan riil" },
+        { "id": "DOC_B4_05", "name": "Tiket / Bukti Transport / Toll / Bahan Bakar", "required": true, "description": "Bukti pembayaran transport riil" },
+        { "id": "DOC_B4_06", "name": "Foto Dokumentasi di Lokasi Tujuan", "required": true, "description": "Foto koordinasi / kegiatan di tempat tujuan" }
     ],
     "B.5": [
         { "id": "DOC_B5_01", "name": "Surat Perintah Kerja (SPK) / Nota Pesanan Servis", "required": true, "description": "Perintah kerja pemeliharaan kendaraan atau peralatan" },

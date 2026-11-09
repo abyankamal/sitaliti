@@ -63,6 +63,35 @@ class ChecklistSeederTest extends TestCase
             'nama_item' => 'Kuitansi dan Nota Pembelian Konsumsi',
             'is_required' => true,
         ]);
+
+        // Verifikasi keselarasan B.3 (Honorarium) dan B.4 (Perjalanan Dinas)
+        $this->assertDatabaseHas('master_checklist_item', [
+            'kategori_belanja' => 'B.3',
+            'kode_item' => 'DOC_B3_01',
+            'nama_item' => 'Surat Keputusan (SK) Tim / Narasumber',
+            'is_required' => true,
+        ]);
+
+        $this->assertDatabaseHas('master_checklist_item', [
+            'kategori_belanja' => 'B.3',
+            'kode_item' => 'DOC_B3_05',
+            'nama_item' => 'Bukti Potong PPh Pasal 21',
+            'is_required' => true,
+        ]);
+
+        $this->assertDatabaseHas('master_checklist_item', [
+            'kategori_belanja' => 'B.4',
+            'kode_item' => 'DOC_B4_01',
+            'nama_item' => 'Surat Tugas (ST) Resmi',
+            'is_required' => true,
+        ]);
+
+        $this->assertDatabaseHas('master_checklist_item', [
+            'kategori_belanja' => 'B.4',
+            'kode_item' => 'DOC_B4_02',
+            'nama_item' => 'Surat Perintah Perjalanan Dinas (SPPD) Lembar 1 & 2',
+            'is_required' => true,
+        ]);
     }
 
     /**
