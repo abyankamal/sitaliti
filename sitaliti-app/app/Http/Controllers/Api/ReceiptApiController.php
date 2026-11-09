@@ -218,7 +218,7 @@ class ReceiptApiController extends Controller
     public function pptkReject(Request $request, int|string $id): JsonResponse
     {
         $validated = $request->validate([
-            'alasan' => ['required', 'string', 'min:3', 'max:1000'],
+            'alasan' => ['required', 'string', 'min:5', 'max:1000'],
         ]);
 
         try {

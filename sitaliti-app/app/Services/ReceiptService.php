@@ -294,76 +294,90 @@ class ReceiptService
 
     /**
      * Persetujuan PPTK: Memvalidasi kuitansi berstatus MENUNGGU_PPTK dan memindahkan ke MENUNGGU_VERIFIKASI.
+     * Menggunakan pessimistic lock dan mencegah mutasi pada kuitansi yang telah masuk bundel SPJ.
      * Tidak mengunci ulang pagu karena pagu telah dikunci saat submit oleh operator (Zero-Double-Lock).
      */
     public function approveByPptk(int|string $kuitansiId, ?string $catatan = null, ?User $actor = null): Kuitansi
     {
-        $kuitansi = Kuitansi::findOrFail($kuitansiId);
+        return DB::transaction(function () use ($kuitansiId, $catatan, $actor) {
+            $kuitansi = Kuitansi::where('id', $kuitansiId)->lockForUpdate()->firstOrFail();
 
-        if ($kuitansi->status !== 'MENUNGGU_PPTK') {
-            throw new InvalidArgumentException('Hanya kuitansi berstatus MENUNGGU_PPTK yang dapat disetujui oleh PPTK.');
-        }
+            if ($kuitansi->status !== 'MENUNGGU_PPTK') {
+                throw new InvalidArgumentException('Hanya kuitansi berstatus MENUNGGU_PPTK yang dapat disetujui oleh PPTK.');
+            }
 
-        $statusLama = $kuitansi->status;
+            if ($kuitansi->activeSpjItem()->exists()) {
+                throw new InvalidArgumentException('Kuitansi yang telah masuk ke dalam bundel pengajuan SPJ aktif tidak dapat disetujui ulang.');
+            }
 
-        $kuitansi->update([
-            'status' => 'MENUNGGU_VERIFIKASI',
-            'pptk_user_id' => $actor?->id,
-            'tanggal_pptk_approve' => now(),
-            'catatan_pptk' => $catatan,
-        ]);
+            $statusLama = $kuitansi->status;
 
-        $this->auditTrailService->log(
-            $kuitansi,
-            'PPTK_APPROVED',
-            $statusLama,
-            'MENUNGGU_VERIFIKASI',
-            $catatan ?? 'Disetujui oleh PPTK',
-            $actor
-        );
+            $kuitansi->update([
+                'status' => 'MENUNGGU_VERIFIKASI',
+                'pptk_user_id' => $actor?->id,
+                'tanggal_pptk_approve' => now(),
+                'catatan_pptk' => $catatan,
+            ]);
 
-        return $kuitansi;
+            $this->auditTrailService->log(
+                $kuitansi,
+                'PPTK_APPROVED',
+                $statusLama,
+                'MENUNGGU_VERIFIKASI',
+                $catatan ?? 'Disetujui oleh PPTK',
+                $actor
+            );
+
+            return $kuitansi;
+        });
     }
 
     /**
      * Penolakan PPTK: Mengembalikan kuitansi ke DRAFT dan memulihkan pagu kas via releaseBudget.
+     * Menggunakan pessimistic lock dan menolak penolakan jika kuitansi sudah masuk bundel SPJ.
      */
     public function rejectByPptk(int|string $kuitansiId, string $alasan, ?User $actor = null): Kuitansi
     {
-        $kuitansi = Kuitansi::findOrFail($kuitansiId);
+        return DB::transaction(function () use ($kuitansiId, $alasan, $actor) {
+            $kuitansi = Kuitansi::where('id', $kuitansiId)->lockForUpdate()->firstOrFail();
 
-        if ($kuitansi->status !== 'MENUNGGU_PPTK') {
-            throw new InvalidArgumentException('Hanya kuitansi berstatus MENUNGGU_PPTK yang dapat ditolak oleh PPTK.');
-        }
+            if ($kuitansi->status !== 'MENUNGGU_PPTK') {
+                throw new InvalidArgumentException('Hanya kuitansi berstatus MENUNGGU_PPTK yang dapat ditolak oleh PPTK.');
+            }
 
-        $statusLama = $kuitansi->status;
+            if ($kuitansi->activeSpjItem()->exists()) {
+                throw new InvalidArgumentException('Kuitansi yang telah masuk ke dalam bundel pengajuan SPJ aktif tidak dapat ditolak.');
+            }
 
-        // Pulihkan pagu anggaran yang terkunci
-        $this->budgetService->releaseBudget(
-            (string) $kuitansi->anggaran_rekening_id,
-            $kuitansi->bulan_anggaran,
-            (float) $kuitansi->nominal_bruto
-        );
+            $statusLama = $kuitansi->status;
 
-        $kuitansi->update([
-            'status' => 'DRAFT',
-            'pptk_user_id' => $actor?->id,
-            'catatan_pptk' => $alasan,
-        ]);
+            // Pulihkan pagu anggaran yang terkunci
+            $this->budgetService->releaseBudget(
+                (string) $kuitansi->anggaran_rekening_id,
+                $kuitansi->bulan_anggaran,
+                (float) $kuitansi->nominal_bruto
+            );
 
-        $this->auditTrailService->log(
-            $kuitansi,
-            'PPTK_REJECTED',
-            $statusLama,
-            'DRAFT',
-            $alasan,
-            $actor,
-            [
-                'pagu_dipulihkan' => (float) $kuitansi->nominal_bruto,
-                'bulan_anggaran' => $kuitansi->bulan_anggaran,
-            ]
-        );
+            $kuitansi->update([
+                'status' => 'DRAFT',
+                'pptk_user_id' => $actor?->id,
+                'catatan_pptk' => $alasan,
+            ]);
 
-        return $kuitansi;
+            $this->auditTrailService->log(
+                $kuitansi,
+                'PPTK_REJECTED',
+                $statusLama,
+                'DRAFT',
+                $alasan,
+                $actor,
+                [
+                    'pagu_dipulihkan' => (float) $kuitansi->nominal_bruto,
+                    'bulan_anggaran' => $kuitansi->bulan_anggaran,
+                ]
+            );
+
+            return $kuitansi;
+        });
     }
 }

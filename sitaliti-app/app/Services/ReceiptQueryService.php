@@ -117,4 +117,3 @@ class ReceiptQueryService
         // Verifikator, BPP, PPTK, dan KPA memiliki visibilitas lintas unit
     }
 }
-

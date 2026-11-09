@@ -5,6 +5,8 @@ namespace Tests\Feature\Workflow;
 use App\Models\AnggaranKasBulanan;
 use App\Models\AnggaranRekening;
 use App\Models\Kuitansi;
+use App\Models\PengajuanSpj;
+use App\Models\PengajuanSpjItem;
 use App\Models\UnitKerja;
 use App\Models\User;
 use Database\Seeders\MasterChecklistSeeder;
@@ -257,6 +259,97 @@ class PptkApprovalWorkflowTest extends TestCase
                 'alasan' => 'Reject langsung',
             ]);
         $resReject->assertStatus(422)
+            ->assertJson([
+                'success' => false,
+                'error' => [
+                    'code' => 'INVALID_STATE',
+                ],
+            ]);
+    }
+
+    public function test_pptk_rejection_requires_minimum_5_characters_reason(): void
+    {
+        $kuitansi = Kuitansi::create([
+            'unit_kerja_id' => $this->unit->id,
+            'anggaran_rekening_id' => $this->rekening->id,
+            'user_id' => $this->operator->id,
+            'nomor_kuitansi' => 'KW-REASON-LEN-01',
+            'bulan_anggaran' => 2,
+            'tanggal_transaksi' => '2026-02-14',
+            'uraian' => 'Sample kuitansi pending',
+            'nama_penerima' => 'CV Rekanan',
+            'nominal_bruto' => 500000.00,
+            'total_pajak' => 0.00,
+            'nominal_neto' => 500000.00,
+            'status' => 'MENUNGGU_PPTK',
+        ]);
+
+        // Alasan hanya 4 karakter -> 422 Unprocessable Entity
+        $response = $this->actingAs($this->pptk)
+            ->postJson("/api/v1/receipts/{$kuitansi->id}/pptk-reject", [
+                'alasan' => 'Tdk!',
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['alasan']);
+    }
+
+    public function test_cannot_reject_or_approve_receipt_that_is_bundled_into_active_spj(): void
+    {
+        $kuitansi = Kuitansi::create([
+            'unit_kerja_id' => $this->unit->id,
+            'anggaran_rekening_id' => $this->rekening->id,
+            'user_id' => $this->operator->id,
+            'nomor_kuitansi' => 'KW-BUNDLED-01',
+            'bulan_anggaran' => 2,
+            'tanggal_transaksi' => '2026-02-15',
+            'uraian' => 'Sample kuitansi bundled',
+            'nama_penerima' => 'CV Rekanan',
+            'nominal_bruto' => 500000.00,
+            'total_pajak' => 0.00,
+            'nominal_neto' => 500000.00,
+            'status' => 'MENUNGGU_PPTK',
+        ]);
+
+        $bundle = PengajuanSpj::create([
+            'unit_kerja_id' => $this->unit->id,
+            'user_id' => $this->pptk->id,
+            'nomor_bundel' => 'SPP-GU-TEST-001',
+            'jenis_bundel' => 'SPP_GU',
+            'tahun_anggaran' => 2026,
+            'bulan_periode' => 2,
+            'status_bundel' => 'DRAFT',
+            'total_bruto' => 500000.00,
+            'total_pajak' => 0.00,
+            'total_neto' => 500000.00,
+        ]);
+
+        PengajuanSpjItem::create([
+            'pengajuan_spj_id' => $bundle->id,
+            'kuitansi_id' => $kuitansi->id,
+            'no_urut_ordner' => 1,
+            'status_item' => 'AKTIF',
+        ]);
+
+        // Coba reject kuitansi terbundel -> 422 INVALID_STATE
+        $resReject = $this->actingAs($this->pptk)
+            ->postJson("/api/v1/receipts/{$kuitansi->id}/pptk-reject", [
+                'alasan' => 'Ditolak karena berkas kurang lengkap',
+            ]);
+        $resReject->assertStatus(422)
+            ->assertJson([
+                'success' => false,
+                'error' => [
+                    'code' => 'INVALID_STATE',
+                ],
+            ]);
+
+        // Coba approve kuitansi terbundel -> 422 INVALID_STATE
+        $resApprove = $this->actingAs($this->pptk)
+            ->postJson("/api/v1/receipts/{$kuitansi->id}/pptk-approve", [
+                'catatan' => 'Disetujui kembali',
+            ]);
+        $resApprove->assertStatus(422)
             ->assertJson([
                 'success' => false,
                 'error' => [
