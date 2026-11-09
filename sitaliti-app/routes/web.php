@@ -15,6 +15,10 @@ Route::get('/dashboard', function () {
 })->name('dashboard');
 
 // Routes Kuitansi, Workspace Verifikasi & Lembar Kendali SI-TALITI
+Route::get('/receipts', function () {
+    return redirect()->route('dashboard');
+})->name('receipts.index');
+
 Route::get('/receipts/create', function () {
     return Inertia::render('Receipts/Create');
 })->name('receipts.create');
