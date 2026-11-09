@@ -298,6 +298,33 @@ class ReceiptExportTest extends TestCase
             'nominal' => 100000.00,
         ]);
 
+        // 5. Mamin dengan kode pajak PBJT_MAMIN_10 (UU HKPD & TaxCalculationService)
+        $kuitansiMaminResmi = Kuitansi::create([
+            'unit_kerja_id' => $this->unitB->id,
+            'anggaran_rekening_id' => $this->rekeningMamin->id,
+            'user_id' => $this->operatorB->id,
+            'nomor_kuitansi' => 'KW-EXP-PBJT-MAMIN-RESMI',
+            'bulan_anggaran' => 2,
+            'tanggal_transaksi' => '2026-02-16',
+            'uraian' => 'Snack Rapat Koordinasi',
+            'nama_penerima' => 'Katering Garut Rasa',
+            'npwp_penerima' => null,
+            'nominal_bruto' => 550000.00,
+            'total_pajak' => 50000.00,
+            'nominal_neto' => 500000.00,
+            'status' => 'TERVERIFIKASI',
+        ]);
+
+        KuitansiPajak::create([
+            'kuitansi_id' => $kuitansiMaminResmi->id,
+            'kode_pajak' => 'PBJT_MAMIN_10',
+            'nama_pajak' => 'PBJT Makanan dan/atau Minuman 10%',
+            'tarif' => 0.1000,
+            'tipe_tarif' => 'PERSENTASE_DPP',
+            'dpp' => 500000.00,
+            'nominal' => 50000.00,
+        ]);
+
         $response = $this->actingAs($this->verifikator)->get('/api/v1/receipts/export');
         $content = $response->streamedContent();
 
@@ -313,6 +340,30 @@ class ReceiptExportTest extends TestCase
         // Verifikasi baris kuitansi mamin (PBJT 100000, PPN 0)
         $this->assertStringContainsString('KW-EXP-PBJT-RESTO', $content);
         $this->assertStringContainsString('100000', $content);
+
+        // Verifikasi baris kuitansi mamin resmi PBJT_MAMIN_10 di kolom CSV
+        $lines = explode("\n", trim($content));
+        $maminResmiRow = null;
+        $meteraiRow = null;
+
+        foreach ($lines as $line) {
+            $cols = str_getcsv($line);
+            if (($cols[0] ?? '') === 'KW-EXP-PBJT-MAMIN-RESMI') {
+                $maminResmiRow = $cols;
+            }
+            if (($cols[0] ?? '') === 'KW-EXP-METERAI') {
+                $meteraiRow = $cols;
+            }
+        }
+
+        $this->assertNotNull($maminResmiRow, 'Baris kuitansi PBJT_MAMIN_10 wajib ditemukan pada CSV');
+        $this->assertEquals('50000.00', $maminResmiRow[12], 'Kolom PBJT wajib terisi 50000.00 untuk PBJT_MAMIN_10');
+        $this->assertEquals('0.00', $maminResmiRow[8], 'Kolom PPN wajib 0.00 untuk belanja mamin');
+        $this->assertEquals('500000.00', $maminResmiRow[14], 'Kolom Nominal Neto wajib 500000.00');
+
+        $this->assertNotNull($meteraiRow, 'Baris kuitansi Bea Meterai wajib ditemukan pada CSV');
+        $this->assertEquals('10000.00', $meteraiRow[13], 'Kolom Bea Meterai wajib terisi 10000.00');
+        $this->assertEquals('9850000.00', $meteraiRow[14], 'Kolom Neto tidak boleh berkurang oleh Bea Meterai');
     }
 
     public function test_export_respects_role_scoping(): void

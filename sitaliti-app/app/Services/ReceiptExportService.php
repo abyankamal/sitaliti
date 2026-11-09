@@ -83,7 +83,7 @@ class ReceiptExportService
                         'PPH_21' => $pajakMap['pph21'] += (float) $pajak->nominal,
                         'PPH_22' => $pajakMap['pph22'] += (float) $pajak->nominal,
                         'PPH_23' => $pajakMap['pph23'] += (float) $pajak->nominal,
-                        'PBJT_10' => $pajakMap['pbjt'] += (float) $pajak->nominal,
+                        'PBJT_10', 'PBJT_MAMIN_10' => $pajakMap['pbjt'] += (float) $pajak->nominal,
                         'BEA_METERAI' => $pajakMap['meterai'] += (float) $pajak->nominal,
                         default => null,
                     };
