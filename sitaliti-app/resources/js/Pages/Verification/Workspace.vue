@@ -5,7 +5,9 @@ import GovButton from '@/Components/UI/GovButton.vue';
 import GovBadge from '@/Components/UI/GovBadge.vue';
 import PdfViewer from '@/Modules/Verification/PdfViewer.vue';
 import RevisionDrawer from '@/Modules/Verification/RevisionDrawer.vue';
+import AuditTimeline from '@/Components/UI/AuditTimeline.vue';
 import { verificationService } from '@/Services/verificationService';
+import { receiptService } from '@/Services/receiptService';
 import { formatRupiah } from '@/Utils/currency';
 import { formatTanggalIndo } from '@/Utils/date';
 import { STATUS_LABELS, STATUS_VARIANTS } from '@/Constants/workflowStatus';
@@ -20,6 +22,9 @@ const props = defineProps({
 const detail = ref(null);
 const loading = ref(true);
 const activeAttachmentIndex = ref(0);
+const activeTab = ref('checklist'); // 'checklist' | 'timeline'
+const auditHistory = ref([]);
+const loadingHistory = ref(false);
 
 // Modal Revision State
 const showRevisionModal = ref(false);
@@ -28,10 +33,25 @@ const revisionActionType = ref('REVISION_MINOR');
 onMounted(async () => {
     try {
         detail.value = await verificationService.getDetail(props.id);
+        // Fetch audit trail history in parallel
+        fetchHistory();
     } finally {
         loading.value = false;
     }
 });
+
+async function fetchHistory() {
+    if (!detail.value) return;
+    loadingHistory.value = true;
+    try {
+        auditHistory.value = await receiptService.getHistory(detail.value.id || props.id);
+    } catch (error) {
+        console.warn('Could not load audit history:', error);
+        auditHistory.value = [];
+    } finally {
+        loadingHistory.value = false;
+    }
+}
 
 const activeAttachment = computed(() => {
     if (!detail.value || !detail.value.attachments) return null;
@@ -170,10 +190,47 @@ async function handleApprove() {
                         <span class="text-base font-bold text-gov-navy-950 tabular-nums">{{ formatRupiah(detail.nominal) }}</span>
                     </div>
                     <p class="text-xs text-slate-700 mt-1 line-clamp-2 leading-relaxed">{{ detail.uraian }}</p>
+
+                    <!-- Tab Navigation: Checklist | Riwayat Audit -->
+                    <div class="flex items-center gap-1 mt-3 border-t border-gov-surface-border pt-3">
+                        <button
+                            type="button"
+                            @click="activeTab = 'checklist'"
+                            class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                            :class="activeTab === 'checklist'
+                                ? 'bg-gov-navy-900 text-white shadow-sm'
+                                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'"
+                        >
+                            <span class="flex items-center gap-1.5">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                                </svg>
+                                Checklist Dokumen
+                            </span>
+                        </button>
+                        <button
+                            type="button"
+                            @click="activeTab = 'timeline'"
+                            class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                            :class="activeTab === 'timeline'
+                                ? 'bg-gov-navy-900 text-white shadow-sm'
+                                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'"
+                        >
+                            <span class="flex items-center gap-1.5">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Riwayat Audit
+                                <span v-if="auditHistory.length > 0" class="ml-0.5 px-1.5 py-0.5 rounded-full bg-gov-navy-100 text-gov-navy-800 text-[10px] font-bold">
+                                    {{ auditHistory.length }}
+                                </span>
+                            </span>
+                        </button>
+                    </div>
                 </div>
 
-                <!-- Checklist Items List (Scrollable) -->
-                <div class="flex-1 overflow-y-auto p-4 space-y-3">
+                <!-- Tab Content: Checklist Items List (Scrollable) -->
+                <div v-show="activeTab === 'checklist'" class="flex-1 overflow-y-auto p-4 space-y-3">
                     <div class="flex items-center justify-between text-xs font-bold text-gov-navy-900 border-b pb-2">
                         <span>Checklist Hasil Pemeriksaan Fisik Dokumen</span>
                         <span class="text-[11px] font-normal text-slate-500">Pilih dokumen untuk diuji</span>
@@ -255,6 +312,14 @@ async function handleApprove() {
                             </div>
                         </div>
                     </div>
+                </div>
+
+                <!-- Tab Content: Riwayat Audit Timeline -->
+                <div v-show="activeTab === 'timeline'" class="flex-1 overflow-y-auto p-4">
+                    <div v-if="loadingHistory" class="flex items-center justify-center py-10">
+                        <div class="text-sm text-slate-400 animate-pulse">Memuat riwayat audit...</div>
+                    </div>
+                    <AuditTimeline v-else :events="auditHistory" />
                 </div>
 
                 <!-- Footer Rangkuman Kas -->
