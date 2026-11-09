@@ -3,6 +3,7 @@
 use App\Http\Controllers\ControlSheetPdfController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Public\QrVerificationPublicController;
+use App\Http\Controllers\Web\ReceiptWebController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -15,9 +16,9 @@ Route::get('/dashboard', function () {
 })->name('dashboard');
 
 // Routes Kuitansi, Workspace Verifikasi & Lembar Kendali SI-TALITI
-Route::get('/receipts', function () {
-    return redirect()->route('dashboard');
-})->name('receipts.index');
+Route::get('/receipts', [ReceiptWebController::class, 'index'])
+    ->middleware('auth')
+    ->name('receipts.index');
 
 Route::get('/receipts/create', function () {
     return Inertia::render('Receipts/Create');
