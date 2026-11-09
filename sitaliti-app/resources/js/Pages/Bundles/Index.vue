@@ -17,6 +17,19 @@ const verifiedReceipts = ref([]);
 const loadingReceipts = ref(false);
 const isSubmitting = ref(false);
 
+// State Modal Pencatatan SP2D
+const showSp2dModal = ref(false);
+const selectedBundleForSp2d = ref(null);
+const sp2dForm = ref({
+    nomor_sp2d: '',
+    nomor_spp: '',
+    tanggal_sp2d: new Date().toISOString().split('T')[0]
+});
+const isSubmittingSp2d = ref(false);
+
+// State Unbundle
+const isUnbundling = ref(false);
+
 const newBundleForm = ref({
     jenis_bundel: 'SPP_GU',
     tahun_anggaran: 2026,
@@ -73,6 +86,58 @@ async function handleCreateBundle() {
         alert(err.response?.data?.error?.message || err.message || 'Gagal membuat bundel SPP.');
     } finally {
         isSubmitting.value = false;
+    }
+}
+
+function openSp2dModal(bundle) {
+    selectedBundleForSp2d.value = bundle;
+    sp2dForm.value = {
+        nomor_sp2d: '',
+        nomor_spp: bundle.nomor_spp || bundle.nomor_spp_sipd || '',
+        tanggal_sp2d: new Date().toISOString().split('T')[0]
+    };
+    showSp2dModal.value = true;
+}
+
+async function handleRecordSp2d() {
+    if (!sp2dForm.value.nomor_sp2d) {
+        alert('Nomor SP2D SIPD-RI wajib diisi.');
+        return;
+    }
+
+    if (!confirm(`Konfirmasi: Catat SP2D ${sp2dForm.value.nomor_sp2d}? Tindakan ini akan memindahkan anggaran terkunci menjadi realisasi belanja definitif di sistem.`)) {
+        return;
+    }
+
+    isSubmittingSp2d.value = true;
+    try {
+        const res = await settlementService.recordSp2d(selectedBundleForSp2d.value.id, sp2dForm.value);
+        alert(res.message || 'Nomor SP2D SIPD-RI berhasil dicatat dan realisasi definitif telah dibukukan.');
+        showSp2dModal.value = false;
+        await loadBundles();
+    } catch (err) {
+        alert(err.response?.data?.error?.message || err.message || 'Gagal mencatat SP2D.');
+    } finally {
+        isSubmittingSp2d.value = false;
+    }
+}
+
+async function handleUnbundle(bundle, kw) {
+    const kuitansiId = kw.kuitansi_id || kw.id;
+    const nomor = kw.id || kw.nomor_kuitansi || kuitansiId;
+
+    const reason = prompt(`Masukkan alasan mengeluarkan kuitansi ${nomor} dari bundel ini:`, 'Penyesuaian berkas SPP');
+    if (reason === null) return; // User batalkan
+
+    isUnbundling.value = true;
+    try {
+        const res = await settlementService.unbundleReceipt(bundle.id, kuitansiId, reason);
+        alert(res.message || `Kuitansi ${nomor} berhasil dikeluarkan dari bundel dan statusnya kembali menjadi Lolos Verifikasi.`);
+        await loadBundles();
+    } catch (err) {
+        alert(err.response?.data?.error?.message || err.message || 'Gagal mengeluarkan kuitansi dari bundel.');
+    } finally {
+        isUnbundling.value = false;
     }
 }
 
@@ -196,10 +261,10 @@ const BUNDLE_STATUS_LABELS = {
                             <div
                                 v-for="kw in (bundle.kuitansi_list || bundle.items || [])"
                                 :key="kw.id"
-                                class="p-2.5 rounded-lg border border-slate-200 flex items-center justify-between text-xs"
+                                class="p-2.5 rounded-lg border border-slate-200 flex items-center justify-between text-xs hover:border-slate-300 transition-colors"
                             >
-                                <div>
-                                    <div class="font-bold text-gov-navy-950 flex items-center gap-1.5">
+                                <div class="flex-1 min-w-0 pr-2">
+                                    <div class="font-bold text-gov-navy-950 flex items-center gap-1.5 flex-wrap">
                                         <span>{{ kw.id || kw.nomor_kuitansi }}</span>
                                         <span class="text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded font-mono">
                                             {{ kw.kategori || 'B.1' }}
@@ -207,22 +272,59 @@ const BUNDLE_STATUS_LABELS = {
                                     </div>
                                     <p class="text-[11px] text-slate-500 truncate max-w-xs">{{ kw.uraian || kw.uraian_belanja }}</p>
                                 </div>
-                                <div class="text-right">
-                                    <div class="font-bold text-slate-800 tabular-nums">{{ formatRupiah(kw.nominal || kw.nominal_bruto) }}</div>
-                                    <span class="text-[10px] text-emerald-700 font-medium">Lolos Verifikasi</span>
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <div class="text-right">
+                                        <div class="font-bold text-slate-800 tabular-nums">{{ formatRupiah(kw.nominal || kw.nominal_bruto) }}</div>
+                                        <span class="text-[10px] text-emerald-700 font-medium">Lolos Verifikasi</span>
+                                    </div>
+                                    <button
+                                        v-if="bundle.status !== 'SYNCED_SIPD'"
+                                        type="button"
+                                        @click="handleUnbundle(bundle, kw)"
+                                        :disabled="isUnbundling"
+                                        title="Keluarkan dari bundel ini"
+                                        class="p-1 rounded text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="px-5 py-3 bg-slate-50 border-t border-gov-surface-border flex items-center justify-between text-xs">
-                    <span class="text-slate-500 text-[11px]">
-                        Status Pengesahan: Siap Diajukan ke Bendahara Umum Daerah / SIPD-RI
-                    </span>
+                <div class="px-5 py-3 bg-slate-50 border-t border-gov-surface-border flex items-center justify-between text-xs flex-wrap gap-2">
                     <div class="flex items-center gap-2">
-                        <GovButton variant="secondary" size="sm">Detail Berkas</GovButton>
-                        <GovButton variant="primary" size="sm">Kirim ke PPK</GovButton>
+                        <span class="text-slate-500 text-[11px]">
+                            Status:
+                            <strong v-if="bundle.status === 'SYNCED_SIPD'" class="text-emerald-700">
+                                Anggaran Telah Cair Definitif (SP2D: {{ bundle.nomor_sipd || bundle.nomor_sp2d_sipd }})
+                            </strong>
+                            <strong v-else class="text-slate-700">
+                                Siap Pengesahan & Pencatatan SP2D SIPD-RI
+                            </strong>
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <GovButton
+                            v-if="bundle.status !== 'SYNCED_SIPD'"
+                            variant="success"
+                            size="sm"
+                            @click="openSp2dModal(bundle)"
+                        >
+                            <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Catat SP2D SIPD-RI
+                        </GovButton>
+                        <span
+                            v-else
+                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200"
+                        >
+                            ✓ Realisasi Definitif Selesai
+                        </span>
                     </div>
                 </div>
             </div>
@@ -298,6 +400,90 @@ const BUNDLE_STATUS_LABELS = {
                         <GovButton variant="secondary" size="sm" @click="showCreateModal = false">Batal</GovButton>
                         <GovButton variant="gold" size="sm" :loading="isSubmitting" @click="handleCreateBundle">
                             Sahkan & Simpan Bundel
+                        </GovButton>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Pencatatan Nomor SP2D SIPD-RI (Camat / KPA) -->
+        <div v-if="showSp2dModal" class="fixed inset-0 z-50 overflow-y-auto">
+            <div class="fixed inset-0 bg-gov-navy-950/70 backdrop-blur-sm" @click="showSp2dModal = false"></div>
+            <div class="flex min-h-full items-center justify-center p-4">
+                <div class="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-gov-surface-border overflow-hidden">
+                    <div class="bg-gov-navy-950 text-white px-6 py-4 flex items-center justify-between">
+                        <div>
+                            <h3 class="text-base font-bold text-white flex items-center gap-2">
+                                <span>Pencatatan Realisasi SP2D SIPD-RI</span>
+                            </h3>
+                            <p class="text-[11px] text-gov-gold-400 mt-0.5 font-mono">
+                                Bundel: {{ selectedBundleForSp2d?.nomor_bundel || selectedBundleForSp2d?.nomor_spp }}
+                            </p>
+                        </div>
+                        <button type="button" @click="showSp2dModal = false" class="text-slate-400 hover:text-white">✕</button>
+                    </div>
+
+                    <div class="p-6 space-y-4 text-xs">
+                        <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 leading-relaxed text-[11px]">
+                            <strong>Perhatian (Statutory Rule):</strong> Pencatatan SP2D ini bersifat definitif. Sistem akan mengeksekusi <em>settleBudget()</em> dan memindahkan seluruh saldo kuncian pagu kuitansi pada bundel ini menjadi realisasi riil pembukuan kas daerah.
+                        </div>
+
+                        <div>
+                            <label class="block font-bold text-gov-navy-900 mb-1">
+                                Nomor SP2D Resmi SIPD-RI <span class="text-rose-500">*</span>
+                            </label>
+                            <input
+                                v-model="sp2dForm.nomor_sp2d"
+                                type="text"
+                                required
+                                placeholder="Contoh: 0042/SP2D-GU/TARKID/2026"
+                                class="w-full text-xs rounded-lg border-gov-surface-border py-2 px-3 font-mono focus:border-gov-navy-900 focus:ring-gov-navy-900"
+                            />
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block font-bold text-gov-navy-900 mb-1">Nomor Pengantar SPP</label>
+                                <input
+                                    v-model="sp2dForm.nomor_spp"
+                                    type="text"
+                                    placeholder="Nomor SPP"
+                                    class="w-full text-xs rounded-lg border-gov-surface-border py-2 px-3 font-mono"
+                                />
+                            </div>
+                            <div>
+                                <label class="block font-bold text-gov-navy-900 mb-1">Tanggal Terbit SP2D</label>
+                                <input
+                                    v-model="sp2dForm.tanggal_sp2d"
+                                    type="date"
+                                    class="w-full text-xs rounded-lg border-gov-surface-border py-2 px-3"
+                                />
+                            </div>
+                        </div>
+
+                        <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-1 text-[11px]">
+                            <div class="flex justify-between text-slate-500">
+                                <span>Jumlah Kuitansi:</span>
+                                <span class="font-bold text-slate-800">{{ (selectedBundleForSp2d?.kuitansi_list || selectedBundleForSp2d?.items || []).length }} berkas</span>
+                            </div>
+                            <div class="flex justify-between text-slate-500">
+                                <span>Total Belanja Definitif:</span>
+                                <span class="font-bold text-emerald-700 text-xs tabular-nums">
+                                    {{ formatRupiah(selectedBundleForSp2d?.total_nominal || selectedBundleForSp2d?.total_bruto) }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 px-6 py-4 border-t border-slate-200 flex justify-end gap-3">
+                        <GovButton variant="secondary" size="sm" @click="showSp2dModal = false">Batal</GovButton>
+                        <GovButton
+                            variant="success"
+                            size="sm"
+                            :loading="isSubmittingSp2d"
+                            @click="handleRecordSp2d"
+                        >
+                            Konfirmasi Pembukuan SP2D
                         </GovButton>
                     </div>
                 </div>
