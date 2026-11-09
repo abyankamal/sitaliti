@@ -114,6 +114,18 @@ async function handleApprove() {
 
             <!-- Action Buttons Verifikator -->
             <div class="flex items-center gap-2.5">
+                <a
+                    v-if="detail && (detail.status === 'LOLOS_VERIFIKASI' || detail.qr_token)"
+                    :href="route('control-sheet.download-pdf', { id: detail.id || props.id })"
+                    target="_blank"
+                    class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-gov-gold-500 text-gov-navy-950 hover:bg-gov-gold-400 shadow-sm transition"
+                >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Unduh PDF Lembar Kendali
+                </a>
+
                 <GovButton variant="secondary" size="sm" @click="openRevisionModal('REVISION_MINOR')">
                     <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
