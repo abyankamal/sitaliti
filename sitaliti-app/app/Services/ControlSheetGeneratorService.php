@@ -11,6 +11,7 @@ use BaconQrCode\Writer;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Barryvdh\DomPDF\PDF as DomPdfInstance;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use InvalidArgumentException;
 
 class ControlSheetGeneratorService implements ControlSheetGeneratorServiceInterface
 {
@@ -33,6 +34,13 @@ class ControlSheetGeneratorService implements ControlSheetGeneratorServiceInterf
             ->where('id', $kuitansiIdOrNumber)
             ->orWhere('nomor_kuitansi', $kuitansiIdOrNumber)
             ->firstOrFail();
+
+        $validStatuses = ['LOLOS_VERIFIKASI', 'TERVERIFIKASI', 'DIBUNDEL', 'SELESAI_SP2D', 'SYNCED_SIPD'];
+        if (! in_array($kuitansi->status, $validStatuses, true)) {
+            throw new InvalidArgumentException(
+                "Lembar Kendali hanya dapat diterbitkan untuk kuitansi yang telah lolos verifikasi akuntabilitas. Status kuitansi saat ini: {$kuitansi->status}"
+            );
+        }
 
         $tahun = $kuitansi->tanggal_transaksi ? $kuitansi->tanggal_transaksi->format('Y') : date('Y');
         $registerNumber = "LK-V2/{$kuitansi->nomor_kuitansi}/{$tahun}";

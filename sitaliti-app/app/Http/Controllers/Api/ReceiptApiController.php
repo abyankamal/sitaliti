@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Exceptions\PaguOverlimitException;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ApiResponseTrait;
+use App\Models\AnggaranRekening;
 use App\Models\Kuitansi;
 use App\Services\ReceiptExportService;
 use App\Services\ReceiptQueryService;
@@ -114,9 +115,17 @@ class ReceiptApiController extends Controller
             'items.*.volume' => ['required', 'numeric', 'min:0.01'],
             'items.*.satuan' => ['nullable', 'string', 'max:50'],
             'items.*.harga_satuan' => ['required', 'numeric', 'min:0'],
-            'files.*' => ['nullable', 'file', 'max:10240'], // Max 10MB
-            'lampiran.*' => ['nullable', 'file', 'max:10240'],
+            'files.*' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'], // Max 10MB
+            'lampiran.*' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
         ]);
+
+        $user = $request->user();
+        if ($user && ($user->hasRole('OPERATOR') || $user->role === 'OPERATOR')) {
+            $rekening = AnggaranRekening::find($validated['anggaran_rekening_id']);
+            if ($user->unit_kerja_id && $rekening && $rekening->unit_kerja_id !== $user->unit_kerja_id) {
+                return $this->errorResponse('FORBIDDEN', 'Anda tidak berwenang membuat kuitansi dengan kode rekening dari unit kerja lain.', null, 403);
+            }
+        }
 
         // Kumpulkan berkas lampiran yang diunggah
         $files = $request->file('files') ?? $request->file('lampiran') ?? [];

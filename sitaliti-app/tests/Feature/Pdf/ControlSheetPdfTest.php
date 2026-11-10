@@ -154,4 +154,49 @@ class ControlSheetPdfTest extends TestCase
         $response = $this->actingAs($this->user)->get('/api/v1/control-sheet/999999/pdf');
         $response->assertStatus(404);
     }
+
+    public function test_cannot_generate_control_sheet_for_unverified_receipt(): void
+    {
+        $draftKuitansi = Kuitansi::create([
+            'nomor_kuitansi' => 'KW-DRAFT-PDF-001',
+            'unit_kerja_id' => $this->unit->id,
+            'anggaran_rekening_id' => $this->rekening->id,
+            'user_id' => $this->user->id,
+            'bulan_anggaran' => 2,
+            'tanggal_transaksi' => '2026-02-15',
+            'uraian' => 'Kuitansi Draft Belum Lolos',
+            'nama_penerima' => 'CV Garut Jaya Mandiri',
+            'nominal_bruto' => 1000000.00,
+            'total_pajak' => 0.00,
+            'nominal_neto' => 1000000.00,
+            'status' => 'DRAFT',
+        ]);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Lembar Kendali hanya dapat diterbitkan untuk kuitansi yang telah lolos verifikasi');
+
+        /** @var ControlSheetGeneratorServiceInterface $service */
+        $service = app(ControlSheetGeneratorServiceInterface::class);
+        $service->generatePdf($draftKuitansi->id);
+    }
+
+    public function test_operator_cannot_download_control_sheet_from_other_unit(): void
+    {
+        $otherUnit = UnitKerja::create([
+            'kode_unit' => '7.01.0.00.0.00.42.0000',
+            'nama_unit' => 'Kecamatan Tarogong Kaler',
+            'singkatan' => 'TARKAL',
+            'is_active' => true,
+        ]);
+
+        $operatorOtherUnit = User::factory()->create([
+            'unit_kerja_id' => $otherUnit->id,
+            'role' => 'OPERATOR',
+        ]);
+
+        $response = $this->actingAs($operatorOtherUnit)
+            ->get("/control-sheet/{$this->kuitansi->id}/download-pdf");
+
+        $response->assertStatus(403);
+    }
 }

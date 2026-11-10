@@ -238,4 +238,74 @@ class ReceiptApiTest extends TestCase
         $this->assertEquals('MENUNGGU_PPTK', $kuitansi->fresh()->status);
         $this->assertNotNull($kuitansi->fresh()->tanggal_submit);
     }
+
+    /**
+     * Test upload file dengan ekstensi terlarang (misal .exe / .sh) ditolak 422
+     */
+    public function test_upload_file_non_whitelisted_mime_ditolak_422(): void
+    {
+        $dangerousFile = UploadedFile::fake()->create('script.sh', 50, 'application/x-sh');
+
+        $payload = [
+            'anggaran_rekening_id' => $this->rekening->id,
+            'bulan_anggaran' => 2,
+            'nomor_kuitansi' => 'KW-2026-02-0999',
+            'tanggal_transaksi' => '2026-02-14',
+            'uraian' => 'Uji Upload File Berbahaya',
+            'nama_penerima' => 'CV Hacking',
+            'items' => [
+                ['nama_barang' => 'Barang', 'volume' => 1, 'satuan' => 'Unit', 'harga_satuan' => 100000],
+            ],
+            'files' => [$dangerousFile],
+        ];
+
+        $response = $this->actingAs($this->user)->postJson('/api/v1/receipts', $payload);
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['files.0']);
+    }
+
+    /**
+     * Test operator ditolak 403 saat membuat kuitansi dengan rekening unit kerja lain
+     */
+    public function test_operator_ditolak_403_membuat_kuitansi_pada_rekening_unit_lain(): void
+    {
+        $otherUnit = UnitKerja::create([
+            'kode_unit' => '7.01.0.00.0.00.42.0000',
+            'nama_unit' => 'Kecamatan Lain',
+            'singkatan' => 'LAIN',
+            'is_active' => true,
+        ]);
+
+        $otherRekening = AnggaranRekening::create([
+            'unit_kerja_id' => $otherUnit->id,
+            'kode_sub_kegiatan' => '7.01.01.2.01.0002',
+            'nama_sub_kegiatan' => 'Sub Kegiatan Unit Lain',
+            'kode_rekening' => '5.1.02.01.001.00099',
+            'nama_rekening' => 'Belanja Unit Lain',
+            'pagu_murni' => 10000000.00,
+            'pagu_perubahan' => 10000000.00,
+            'kategori_belanja' => 'B1_ATK',
+            'is_leaf' => true,
+        ]);
+
+        $operator = User::factory()->create([
+            'unit_kerja_id' => $this->unit->id,
+            'role' => 'OPERATOR',
+        ]);
+
+        $payload = [
+            'anggaran_rekening_id' => $otherRekening->id,
+            'bulan_anggaran' => 2,
+            'nomor_kuitansi' => 'KW-2026-02-0777',
+            'tanggal_transaksi' => '2026-02-14',
+            'uraian' => 'Mencoba Akses Unit Lain',
+            'nama_penerima' => 'CV Rekanan',
+            'items' => [
+                ['nama_barang' => 'Barang', 'volume' => 1, 'satuan' => 'Unit', 'harga_satuan' => 100000],
+            ],
+        ];
+
+        $response = $this->actingAs($operator)->postJson('/api/v1/receipts', $payload);
+        $response->assertStatus(403);
+    }
 }
