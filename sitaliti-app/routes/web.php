@@ -3,6 +3,7 @@
 use App\Http\Controllers\ControlSheetPdfController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Public\QrVerificationPublicController;
+use App\Http\Controllers\ReceiptAttachmentController;
 use App\Http\Controllers\Web\ReceiptWebController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -39,6 +40,10 @@ Route::get('/control-sheet/{id}', function ($id) {
 Route::get('/control-sheet/{id}/download-pdf', [ControlSheetPdfController::class, 'download'])
     ->middleware('auth')
     ->name('control-sheet.download-pdf');
+
+Route::get('/receipts/{kuitansiId}/attachments/{attachmentId}/preview', [ReceiptAttachmentController::class, 'preview'])
+    ->middleware('auth')
+    ->name('receipts.attachments.preview');
 
 Route::get('/bundles', function () {
     return Inertia::render('Bundles/Index');

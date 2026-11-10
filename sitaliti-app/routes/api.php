@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\ReceiptApiController;
 use App\Http\Controllers\Api\SettlementApiController;
 use App\Http\Controllers\Api\VerificationApiController;
 use App\Http\Controllers\ControlSheetPdfController;
+use App\Http\Controllers\ReceiptAttachmentController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -40,6 +41,8 @@ Route::prefix('v1')->group(function () {
             Route::post('{id}/pptk-reject', [ReceiptApiController::class, 'pptkReject'])
                 ->middleware('permission:kuitansi.pptk_reject');
             Route::get('{id}', [ReceiptApiController::class, 'show'])
+                ->middleware('permission:kuitansi.view');
+            Route::get('{kuitansiId}/attachments/{attachmentId}/preview', [ReceiptAttachmentController::class, 'preview'])
                 ->middleware('permission:kuitansi.view');
             Route::get('{id}/history', [ReceiptApiController::class, 'history'])
                 ->middleware('permission:kuitansi.view');
