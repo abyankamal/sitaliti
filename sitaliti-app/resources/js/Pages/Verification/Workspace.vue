@@ -32,7 +32,23 @@ const revisionActionType = ref('REVISION_MINOR');
 
 onMounted(async () => {
     try {
-        detail.value = await verificationService.getDetail(props.id);
+        const res = await verificationService.getDetail(props.id);
+        if (res) {
+            // Normalisasi lampiran dari backend (detail.lampiran -> detail.attachments)
+            if (!res.attachments && Array.isArray(res.lampiran)) {
+                res.attachments = res.lampiran.map(lamp => ({
+                    id: lamp.id,
+                    doc_name: lamp.nama_dokumen || lamp.file_name,
+                    required: true,
+                    file_name: lamp.file_name,
+                    file_url: lamp.file_url,
+                    mime_type: lamp.mime_type,
+                    status: 'PENDING',
+                    notes: '',
+                }));
+            }
+            detail.value = res;
+        }
         // Fetch audit trail history in parallel
         fetchHistory();
     } finally {
@@ -91,9 +107,19 @@ async function handleApprove() {
     }
 
     if (confirm('Konfirmasi: Berkas kuitansi ini memenuhi seluruh syarat akuntabilitas. Terbitkan Lembar Kendali Verifikasi?')) {
+        // Susun payload checklist_results dari detail.checklist (master checklist resmi)
+        const checklistResults = Array.isArray(detail.value.checklist)
+            ? detail.value.checklist.map(item => ({
+                item_id: item.item_id,
+                status: 'SESUAI',
+                notes: item.catatan || 'Sesuai dengan ketentuan regulasi dan bukti fisik.',
+            }))
+            : [];
+
         const res = await verificationService.submitAction(detail.value.id, {
             action: 'VERIFIED',
             notes: 'Semua kelengkapan dokumen telah diteliti dan valid.',
+            checklist_results: checklistResults,
         });
         alert(res.message);
         router.visit(route('control-sheet.show', { id: detail.value.id }));
