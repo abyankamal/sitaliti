@@ -30,6 +30,10 @@ const isLoading = ref(false);
 const isActionLoading = ref(false);
 const errorMessage = ref('');
 
+// Computed untuk memisahkan potongan pajak rekanan dan Bea Meterai dokumen
+const taxDeductions = computed(() => (receipt.value?.pajak || []).filter(p => p.kode_pajak !== 'BEA_METERAI'));
+const meteraiTax = computed(() => (receipt.value?.pajak || []).find(p => p.kode_pajak === 'BEA_METERAI'));
+
 // State Modal Penolakan PPTK
 const isRejectModalOpen = ref(false);
 const rejectReason = ref('');
@@ -180,7 +184,11 @@ function getStatusBadge(status) {
         case 'REVISI_MAYOR':
             return { variant: 'danger', label: 'Revisi Mayor' };
         case 'TERVERIFIKASI':
+        case 'LOLOS_VERIFIKASI':
             return { variant: 'success', label: 'Lolos Verifikasi' };
+        case 'DIBUNDEL':
+            return { variant: 'info', label: 'Dibundel (SPP)' };
+        case 'SELESAI_SP2D':
         case 'SYNCED_SIPD':
             return { variant: 'success', label: 'Cair (SIPD-RI)' };
         default:
@@ -372,19 +380,32 @@ function getStatusBadge(status) {
                                     <span class="font-bold text-slate-900 tabular-nums">{{ formatRupiah(receipt.nominal_bruto) }}</span>
                                 </div>
 
-                                <!-- Rincian Komponen Pajak -->
-                                <div v-for="pjk in receipt.pajak" :key="pjk.id" class="flex justify-between text-slate-600 pl-3">
+                                <!-- Rincian Komponen Pajak Rekanan -->
+                                <div v-for="pjk in taxDeductions" :key="pjk.id" class="flex justify-between text-slate-600 pl-3">
                                     <span>• {{ pjk.nama_pajak }} (DPP: {{ formatRupiah(pjk.dpp) }}):</span>
                                     <span class="font-medium text-rose-600 tabular-nums">- {{ formatRupiah(pjk.nominal) }}</span>
                                 </div>
 
-                                <div v-if="!receipt.pajak || receipt.pajak.length === 0" class="text-slate-400 italic text-[11px] pl-3">
-                                    Bebas pemotongan pajak (PMK 59/2022).
+                                <div v-if="taxDeductions.length === 0" class="text-slate-400 italic text-[11px] pl-3">
+                                    Bebas pemotongan pajak rekanan (PMK 59/2022).
                                 </div>
 
                                 <div class="flex justify-between py-1 border-b border-slate-200">
-                                    <span class="text-slate-600 font-medium">Total Potongan Pajak:</span>
+                                    <span class="text-slate-600 font-medium">Total Potongan Pajak Rekanan:</span>
                                     <span class="font-bold text-rose-600 tabular-nums">- {{ formatRupiah(receipt.total_pajak) }}</span>
+                                </div>
+
+                                <!-- Badge Informasi Bea Meterai (Dokumen Fiskal) -->
+                                <div v-if="meteraiTax || (Number(receipt.nominal_bruto) > 5000000)" class="mt-2 p-2.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-900 flex items-center justify-between text-xs">
+                                    <div class="flex items-center gap-1.5 font-medium">
+                                        <svg class="w-4 h-4 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <span>Bea Meterai Lunas (Dokumen Fisik)</span>
+                                    </div>
+                                    <span class="font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded text-[11px]">
+                                        Rp 10.000 (Tidak Memotong Hak Rekanan)
+                                    </span>
                                 </div>
 
                                 <div class="flex justify-between py-2 text-sm bg-gov-navy-900 text-white px-3 rounded-lg font-bold">
@@ -489,9 +510,9 @@ function getStatusBadge(status) {
                             </GovButton>
                         </Link>
 
-                        <!-- Unduh PDF Lembar Kendali jika Lolos Verifikasi -->
+                        <!-- Unduh PDF Lembar Kendali jika Lolos Verifikasi, Dibundel, atau Selesai SP2D -->
                         <a
-                            v-if="['TERVERIFIKASI', 'SYNCED_SIPD'].includes(receipt.status)"
+                            v-if="['LOLOS_VERIFIKASI', 'TERVERIFIKASI', 'DIBUNDEL', 'SELESAI_SP2D', 'SYNCED_SIPD'].includes(receipt.status)"
                             :href="route('control-sheet.download-pdf', receipt.id)"
                             target="_blank"
                         >
