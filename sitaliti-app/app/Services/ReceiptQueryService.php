@@ -43,7 +43,7 @@ class ReceiptQueryService
             'menunggu_pptk' => (clone $baseQuery)->where('status', 'MENUNGGU_PPTK')->count(),
             'menunggu_verifikasi' => (clone $baseQuery)->where('status', 'MENUNGGU_VERIFIKASI')->count(),
             'revisi_minor' => (clone $baseQuery)->where('status', 'REVISI_MINOR')->count(),
-            'siap_bundel' => (clone $baseQuery)->where('status', 'TERVERIFIKASI')->count(),
+            'siap_bundel' => (clone $baseQuery)->whereIn('status', ['LOLOS_VERIFIKASI', 'TERVERIFIKASI'])->count(),
         ];
     }
 
@@ -60,10 +60,11 @@ class ReceiptQueryService
         // 2. Filter Status
         if (! empty($filters['status'])) {
             $status = strtoupper($filters['status']);
-            if ($status === 'SIAP_BUNDEL') {
-                $status = 'TERVERIFIKASI';
+            if (in_array($status, ['SIAP_BUNDEL', 'LOLOS_VERIFIKASI', 'TERVERIFIKASI'])) {
+                $query->whereIn('status', ['LOLOS_VERIFIKASI', 'TERVERIFIKASI']);
+            } else {
+                $query->where('status', $status);
             }
-            $query->where('status', $status);
         }
 
         // 3. Filter Unit Kerja

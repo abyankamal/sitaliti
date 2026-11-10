@@ -35,7 +35,8 @@ const props = defineProps({
 });
 
 // State Filter
-const activeTab = ref(props.filters.status || '');
+const initialStatus = props.filters.status || '';
+const activeTab = ref(initialStatus === 'TERVERIFIKASI' ? 'LOLOS_VERIFIKASI' : initialStatus);
 const searchQuery = ref(props.filters.search || '');
 const selectedUnit = ref(props.filters.unit_kerja_id || '');
 const selectedKategori = ref(props.filters.kategori_belanja || '');
@@ -48,7 +49,7 @@ const tabs = computed(() => [
     { key: 'MENUNGGU_PPTK', label: 'Menunggu PPTK', count: props.tabCounts.menunggu_pptk || 0 },
     { key: 'MENUNGGU_VERIFIKASI', label: 'Menunggu Verifikasi', count: props.tabCounts.menunggu_verifikasi || 0 },
     { key: 'REVISI_MINOR', label: 'Perlu Revisi (SLA)', count: props.tabCounts.revisi_minor || 0, isAlert: (props.tabCounts.revisi_minor || 0) > 0 },
-    { key: 'TERVERIFIKASI', label: 'Lolos / Siap Bundel', count: props.tabCounts.siap_bundel || 0 },
+    { key: 'LOLOS_VERIFIKASI', label: 'Lolos / Siap Bundel', count: props.tabCounts.siap_bundel || 0 },
 ]);
 
 // Opsi Kategori Belanja B.1 s.d. B.6
@@ -131,7 +132,11 @@ function getStatusBadge(status) {
         case 'REVISI_MAYOR':
             return { variant: 'danger', label: 'Revisi Mayor' };
         case 'TERVERIFIKASI':
+        case 'LOLOS_VERIFIKASI':
             return { variant: 'success', label: 'Lolos Verifikasi' };
+        case 'DIBUNDEL':
+            return { variant: 'info', label: 'Dibundel (SPP)' };
+        case 'SELESAI_SP2D':
         case 'SYNCED_SIPD':
             return { variant: 'success', label: 'Cair (SIPD-RI)' };
         default:

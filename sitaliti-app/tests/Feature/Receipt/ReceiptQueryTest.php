@@ -495,7 +495,7 @@ class ReceiptQueryTest extends TestCase
             'status' => 'REVISI_MINOR',
         ]);
 
-        // 1 Lolos / Siap Bundel (TERVERIFIKASI)
+        // 1 Lolos / Siap Bundel (LOLOS_VERIFIKASI kanonikal)
         Kuitansi::create([
             'unit_kerja_id' => $this->unitA->id,
             'anggaran_rekening_id' => $this->rekeningA->id,
@@ -508,7 +508,7 @@ class ReceiptQueryTest extends TestCase
             'nominal_bruto' => 500000.00,
             'total_pajak' => 0.00,
             'nominal_neto' => 500000.00,
-            'status' => 'TERVERIFIKASI',
+            'status' => 'LOLOS_VERIFIKASI',
         ]);
 
         $res = $this->actingAs($this->operatorA1)->getJson('/api/v1/receipts');
@@ -521,5 +521,17 @@ class ReceiptQueryTest extends TestCase
         $this->assertEquals(1, $tabCounts['menunggu_verifikasi']);
         $this->assertEquals(1, $tabCounts['revisi_minor']);
         $this->assertEquals(1, $tabCounts['siap_bundel']);
+
+        // Filter status=LOLOS_VERIFIKASI (Kanonikal)
+        $resFilter = $this->actingAs($this->operatorA1)->getJson('/api/v1/receipts?status=LOLOS_VERIFIKASI');
+        $resFilter->assertStatus(200);
+        $this->assertCount(1, $resFilter->json('data.data'));
+        $this->assertEquals('KW-CNT-06', $resFilter->json('data.data.0.nomor_kuitansi'));
+
+        // Filter status=SIAP_BUNDEL (Alias tab)
+        $resAlias = $this->actingAs($this->operatorA1)->getJson('/api/v1/receipts?status=SIAP_BUNDEL');
+        $resAlias->assertStatus(200);
+        $this->assertCount(1, $resAlias->json('data.data'));
+        $this->assertEquals('KW-CNT-06', $resAlias->json('data.data.0.nomor_kuitansi'));
     }
 }

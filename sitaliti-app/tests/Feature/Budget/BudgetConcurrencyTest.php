@@ -253,4 +253,3 @@ class BudgetConcurrencyTest extends TestCase
         $this->budgetService->reserveBudget((string) $this->rekening->id, 2, 5000000.00, 2);
     }
 }
-
