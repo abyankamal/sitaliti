@@ -356,7 +356,7 @@ async function handleApprove() {
                             {{ allMandatoryVerified ? 'Siap Lolos Verifikasi' : 'Belum Semua Dokumen Lolos' }}
                         </strong>
                     </span>
-                    <span class="text-[11px] text-slate-400">Verifikator: PPK Kecamatan</span>
+                    <span class="text-[11px] text-slate-400">Verifikator: Kasubag Keuangan (PPK Kecamatan)</span>
                 </div>
             </div>
         </div>

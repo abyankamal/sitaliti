@@ -98,14 +98,21 @@ class DatabaseSeeder extends Seeder
         }
 
         // Akun Resmi Percontohan Sesuai Struktur Brief SI-TALITI v2.0
+        // Kecamatan: BP (Bendahara Pengeluaran), Kasubag Keuangan (PPK), Camat (KPA), PPTK, Operator
+        // Kelurahan: BPP (Bendahara Pengeluaran Pembantu)
         $officialUsers = [
             [
-                'name' => 'Operator BPP Kecamatan',
+                'name' => 'Operator SPJ Kecamatan',
                 'email' => 'operator@tarkid.garutkab.go.id',
                 'role' => 'OPERATOR',
             ],
             [
-                'name' => 'Bendahara Pengeluaran Pembantu (BPP)',
+                'name' => 'Bendahara Pengeluaran (BP) Kecamatan',
+                'email' => 'bp@tarkid.garutkab.go.id',
+                'role' => 'BPP',
+            ],
+            [
+                'name' => 'Bendahara Pengeluaran Pembantu (BPP) Kelurahan',
                 'email' => 'bpp@tarkid.garutkab.go.id',
                 'role' => 'BPP',
             ],
@@ -115,7 +122,12 @@ class DatabaseSeeder extends Seeder
                 'role' => 'PPTK',
             ],
             [
-                'name' => 'Tim Verifikator Akuntabilitas',
+                'name' => 'Kasubag Keuangan (PPK Kecamatan)',
+                'email' => 'kasubag.keuangan@tarkid.garutkab.go.id',
+                'role' => 'VERIFIKATOR',
+            ],
+            [
+                'name' => 'Kasubag Keuangan (PPK Kecamatan) - Alias Verifikator',
                 'email' => 'verifikator@tarkid.garutkab.go.id',
                 'role' => 'VERIFIKATOR',
             ],

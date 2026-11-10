@@ -19,10 +19,10 @@ const user = computed(() => page.props.auth?.user || {
 const isSidebarOpen = ref(true);
 
 const ROLE_DISPLAY_NAMES = {
-    OPERATOR: 'Operator SPJ / Seksi',
+    OPERATOR: 'Operator SPJ',
     PPTK: 'Pejabat Pelaksana Teknis (PPTK)',
-    VERIFIKATOR: 'Verifikator Kecamatan (PPK)',
-    BPP: 'Bendahara Pengeluaran (BPP)',
+    VERIFIKATOR: 'Kasubag Keuangan (PPK)',
+    BPP: 'Bendahara Pengeluaran (BP / BPP)',
     KPA: 'Camat / KPA',
 };
 

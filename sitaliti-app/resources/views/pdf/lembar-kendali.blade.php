@@ -376,13 +376,13 @@
                     @endif
 
                     <div style="font-size: 8.5pt; font-weight: bold; color: #0f172a; margin-top: 4px;">
-                        {{ $verifikator['name'] ?? 'Tim Verifikasi SKPD' }}
+                        {{ $verifikator['name'] ?? 'Kasubag Keuangan (PPK Kecamatan)' }}
                     </div>
                     <div style="font-size: 7.5pt; color: #64748b;">
                         NIP: {{ $verifikator['nip'] ?? '-' }}
                     </div>
                     <div style="font-size: 7pt; color: #94a3b8; margin-top: 2px;">
-                        {{ $verifikator['jabatan'] ?? 'Verifikator Keuangan Kecamatan' }}
+                        {{ $verifikator['jabatan'] ?? 'Kasubag Perencanaan & Keuangan / PPK SKPD' }}
                     </div>
                 </div>
             </td>

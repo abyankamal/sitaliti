@@ -233,7 +233,7 @@ function handlePrint() {
 
                 <div>
                     <p class="text-slate-600">Tarogong Kidul, {{ formatTanggalIndo(new Date()) }}</p>
-                    <p class="font-bold text-gov-navy-950">Tim Verifikator Akuntabilitas SPJ</p>
+                    <p class="font-bold text-gov-navy-950">Kasubag Perencanaan & Keuangan (PPK)</p>
                     <div class="h-20"></div>
                     <p class="font-bold text-slate-900 underline">IRA MARLINA, S.IP</p>
                     <p class="text-[11px] text-slate-500">NIP. 19850924 201001 2 015</p>
