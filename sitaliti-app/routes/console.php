@@ -11,4 +11,3 @@ Artisan::command('inspire', function () {
 Schedule::command('sitaliti:check-sla')
     ->hourly()
     ->withoutOverlapping();
-
