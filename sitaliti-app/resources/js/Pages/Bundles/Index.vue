@@ -373,13 +373,13 @@ const BUNDLE_STATUS_LABELS = {
                             <div v-else class="max-h-60 overflow-y-auto space-y-2 border border-slate-200 rounded-lg p-2">
                                 <label
                                     v-for="rec in verifiedReceipts"
-                                    :key="rec.id"
+                                    :key="rec.kuitansi_id || rec.id"
                                     class="flex items-center justify-between p-2.5 rounded bg-slate-50 hover:bg-slate-100 cursor-pointer border border-slate-200"
                                 >
                                     <div class="flex items-center gap-3">
                                         <input
                                             type="checkbox"
-                                            :value="rec.id"
+                                            :value="rec.kuitansi_id || rec.id"
                                             v-model="newBundleForm.selected_kuitansi_ids"
                                             class="rounded text-gov-navy-900 focus:ring-gov-navy-800"
                                         />
