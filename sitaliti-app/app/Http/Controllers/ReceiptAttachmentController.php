@@ -34,4 +34,3 @@ class ReceiptAttachmentController extends Controller
         return Storage::disk('local')->response($lampiran->file_path, $lampiran->file_name, $headers);
     }
 }
-

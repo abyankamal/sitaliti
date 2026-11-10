@@ -149,4 +149,3 @@ class ReceiptAttachmentTest extends TestCase
         $this->assertArrayHasKey('file_url', $array);
     }
 }
-
