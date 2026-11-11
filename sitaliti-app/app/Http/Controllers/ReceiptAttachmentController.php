@@ -19,6 +19,11 @@ class ReceiptAttachmentController extends Controller
             ->orWhere('nomor_kuitansi', (string) $kuitansiId)
             ->firstOrFail();
 
+        $user = $request->user();
+        if ($user && ! $user->canAccessReceipt($kuitansi)) {
+            abort(403, 'Anda tidak memiliki hak akses untuk lampiran kuitansi ini.');
+        }
+
         $lampiran = KuitansiLampiran::where('kuitansi_id', $kuitansi->id)
             ->where('id', $attachmentId)
             ->firstOrFail();

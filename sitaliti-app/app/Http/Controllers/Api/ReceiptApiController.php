@@ -167,14 +167,46 @@ class ReceiptApiController extends Controller
      */
     public function submit(Request $request, int|string $id): JsonResponse
     {
+        $kuitansi = Kuitansi::where('id', $id)
+            ->orWhere('nomor_kuitansi', $id)
+            ->first();
+
+        if (! $kuitansi) {
+            return $this->errorResponse(
+                'RECEIPT_NOT_FOUND',
+                'Kuitansi tidak ditemukan.',
+                null,
+                404
+            );
+        }
+
+        $user = $request->user();
+        if ($user && ! $user->canAccessReceipt($kuitansi)) {
+            return $this->errorResponse(
+                'FORBIDDEN',
+                'Anda tidak memiliki hak akses untuk mengajukan kuitansi ini.',
+                null,
+                403
+            );
+        }
+
+        if ($user && ($user->hasRole('OPERATOR') || $user->role === 'OPERATOR') && $kuitansi->user_id !== $user->id) {
+            return $this->errorResponse(
+                'FORBIDDEN',
+                'Draft kuitansi ini hanya dapat diajukan oleh pembuatnya.',
+                null,
+                403
+            );
+        }
+
         try {
-            $kuitansi = $this->receiptService->submitToPptk($id, $request->user());
+            $updated = $this->receiptService->submitToPptk($kuitansi->id, $user);
 
             return $this->successResponse([
-                'id' => $kuitansi->id,
-                'nomor_kuitansi' => $kuitansi->nomor_kuitansi,
-                'status' => $kuitansi->status,
-                'tanggal_submit' => $kuitansi->tanggal_submit,
+                'id' => $updated->id,
+                'nomor_kuitansi' => $updated->nomor_kuitansi,
+                'status' => $updated->status,
+                'tanggal_submit' => $updated->tanggal_submit,
             ], 'Kuitansi berhasil diajukan ke PPTK dan pagu anggaran telah dikunci');
         } catch (PaguOverlimitException $e) {
             return $this->errorResponse(
@@ -485,11 +517,11 @@ class ReceiptApiController extends Controller
         }
 
         $user = $request->user();
-        if ($user && ($user->hasRole('OPERATOR') || $user->role === 'OPERATOR')) {
-            if ($user->unit_kerja_id && $kuitansi->unit_kerja_id !== $user->unit_kerja_id) {
-                return $this->errorResponse('FORBIDDEN', 'Anda tidak memiliki hak akses untuk kuitansi dari unit kerja lain.', null, 403);
+        if ($user) {
+            if (! $user->canAccessReceipt($kuitansi)) {
+                return $this->errorResponse('FORBIDDEN', 'Anda tidak memiliki hak akses untuk kuitansi ini.', null, 403);
             }
-            if ($kuitansi->status === 'DRAFT' && $kuitansi->user_id !== $user->id) {
+            if (($user->hasRole('OPERATOR') || $user->role === 'OPERATOR') && $kuitansi->status === 'DRAFT' && $kuitansi->user_id !== $user->id) {
                 return $this->errorResponse('FORBIDDEN', 'Draft kuitansi ini hanya dapat diakses oleh pembuatnya.', null, 403);
             }
         }
@@ -500,7 +532,7 @@ class ReceiptApiController extends Controller
     /**
      * Endpoint riwayat aktivitas / audit trail kuitansi (GET /api/v1/receipts/{id}/history).
      */
-    public function history(int|string $id): JsonResponse
+    public function history(Request $request, int|string $id): JsonResponse
     {
         $kuitansi = Kuitansi::where('id', $id)
             ->orWhere('nomor_kuitansi', $id)
@@ -513,6 +545,11 @@ class ReceiptApiController extends Controller
                 null,
                 404
             );
+        }
+
+        $user = $request->user();
+        if ($user && ! $user->canAccessReceipt($kuitansi)) {
+            return $this->errorResponse('FORBIDDEN', 'Anda tidak memiliki hak akses untuk riwayat kuitansi ini.', null, 403);
         }
 
         $riwayat = $kuitansi->riwayat()

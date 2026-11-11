@@ -103,8 +103,12 @@ class ReceiptQueryService
      */
     protected function applyRoleScoping(Builder $query, User $user): void
     {
-        // Operator hanya melihat kuitansi dari unit kerjanya sendiri
-        // dan kuitansi berstatus DRAFT hanya dapat dilihat oleh pembuatnya (user_id)
+        // 1. Verifikator, KPA Camat, dan BP Kecamatan memiliki visibilitas lintas unit SKPD
+        if ($user->isSkpdWide()) {
+            return;
+        }
+
+        // 2. Operator: hanya unit kerja sendiri dan hanya DRAFT miliknya sendiri
         if ($user->hasRole('OPERATOR') || $user->role === 'OPERATOR') {
             if ($user->unit_kerja_id) {
                 $query->where('unit_kerja_id', $user->unit_kerja_id);
@@ -114,7 +118,29 @@ class ReceiptQueryService
                 $q->where('status', '!=', 'DRAFT')
                     ->orWhere('user_id', $user->id);
             });
+
+            return;
         }
-        // Verifikator, BPP, PPTK, dan KPA memiliki visibilitas lintas unit
+
+        // 3. PPTK: unit kerja sendiri + filter subkegiatan jika memiliki penugasan spesifik
+        if ($user->hasRole('PPTK') || $user->role === 'PPTK') {
+            if ($user->unit_kerja_id) {
+                $query->where('unit_kerja_id', $user->unit_kerja_id);
+            }
+
+            $assignedCodes = $user->assignedSubkegiatanCodes();
+            if (! empty($assignedCodes)) {
+                $query->whereHas('rekening', function (Builder $q) use ($assignedCodes) {
+                    $q->whereIn('kode_sub_kegiatan', $assignedCodes);
+                });
+            }
+
+            return;
+        }
+
+        // 4. Lurah dan BPP Kelurahan: terisolasi pada unit kerjanya sendiri
+        if ($user->unit_kerja_id) {
+            $query->where('unit_kerja_id', $user->unit_kerja_id);
+        }
     }
 }

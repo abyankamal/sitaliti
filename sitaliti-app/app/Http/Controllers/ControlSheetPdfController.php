@@ -23,10 +23,8 @@ class ControlSheetPdfController extends Controller
             ->firstOrFail();
 
         $user = $request->user();
-        if ($user && ($user->hasRole('OPERATOR') || $user->role === 'OPERATOR')) {
-            if ($user->unit_kerja_id && $kuitansi->unit_kerja_id !== $user->unit_kerja_id) {
-                abort(403, 'Anda tidak berwenang mengunduh Lembar Kendali dari unit kerja lain.');
-            }
+        if ($user && ! $user->canAccessReceipt($kuitansi)) {
+            abort(403, 'Anda tidak berwenang mengunduh Lembar Kendali ini.');
         }
 
         $pdf = $this->controlSheetService->generatePdf($id);
