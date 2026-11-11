@@ -42,6 +42,10 @@ class ReceiptApiController extends Controller
             'search',
         ]);
 
+        if ($user && $user->isKelurahanScoped()) {
+            $filters['unit_kerja_id'] = $user->unit_kerja_id;
+        }
+
         return $this->receiptExportService->streamExport($user, $filters);
     }
 

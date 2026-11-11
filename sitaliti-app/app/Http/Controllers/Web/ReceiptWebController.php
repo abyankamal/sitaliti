@@ -30,12 +30,22 @@ class ReceiptWebController extends Controller
         ]);
         $perPage = (int) $request->input('per_page', 15);
 
+        if ($user && $user->isKelurahanScoped()) {
+            $filters['unit_kerja_id'] = $user->unit_kerja_id;
+        }
+
         $receipts = $this->receiptQueryService->getPaginatedReceipts($user, $filters, $perPage);
         $tabCounts = $this->receiptQueryService->getStatusCounts($user, $filters);
-        $unitKerjaList = UnitKerja::where('is_active', true)
+
+        $unitKerjaQuery = UnitKerja::where('is_active', true)
             ->select('id', 'kode_unit', 'nama_unit', 'tipe')
-            ->orderBy('id', 'asc')
-            ->get();
+            ->orderBy('id', 'asc');
+
+        if ($user && $user->isKelurahanScoped()) {
+            $unitKerjaQuery->where('id', $user->unit_kerja_id);
+        }
+
+        $unitKerjaList = $unitKerjaQuery->get();
 
         return Inertia::render('Receipts/Index', [
             'receipts' => $receipts,

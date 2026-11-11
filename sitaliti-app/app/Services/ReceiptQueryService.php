@@ -41,6 +41,7 @@ class ReceiptQueryService
             'semua' => (clone $baseQuery)->count(),
             'draft' => (clone $baseQuery)->where('status', 'DRAFT')->count(),
             'menunggu_pptk' => (clone $baseQuery)->where('status', 'MENUNGGU_PPTK')->count(),
+            'menunggu_lurah' => (clone $baseQuery)->where('status', 'MENUNGGU_LURAH')->count(),
             'menunggu_verifikasi' => (clone $baseQuery)->where('status', 'MENUNGGU_VERIFIKASI')->count(),
             'revisi_minor' => (clone $baseQuery)->where('status', 'REVISI_MINOR')->count(),
             'siap_bundel' => (clone $baseQuery)->whereIn('status', ['LOLOS_VERIFIKASI', 'TERVERIFIKASI'])->count(),

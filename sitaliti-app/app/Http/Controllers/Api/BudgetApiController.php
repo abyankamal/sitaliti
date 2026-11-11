@@ -24,24 +24,47 @@ class BudgetApiController extends Controller
     /**
      * Endpoint ringkasan anggaran untuk Dashboard.vue (budgetService.getDashboardSummary)
      */
-    public function summary(): JsonResponse
+    public function summary(Request $request): JsonResponse
     {
-        $totalPagu = (float) AnggaranRekening::sum('pagu_perubahan');
-        $totalTerkunci = (float) AnggaranKasBulanan::sum('terkunci_bulan');
-        $totalRealisasi = (float) AnggaranKasBulanan::sum('realisasi_bulan');
+        $user = $request->user();
+        $isKelurahan = $user && $user->isKelurahanScoped();
+        $targetUnitId = $isKelurahan ? $user->unit_kerja_id : null;
+
+        // 0. Base Queries scoped by Unit jika Kelurahan
+        $rekeningQuery = AnggaranRekening::query();
+        if ($isKelurahan) {
+            $rekeningQuery->where('unit_kerja_id', $targetUnitId);
+        }
+        $rekeningIds = $rekeningQuery->pluck('id');
+
+        $totalPagu = (float) (clone $rekeningQuery)->sum('pagu_perubahan');
+
+        $kasQuery = AnggaranKasBulanan::query();
+        if ($isKelurahan) {
+            $kasQuery->whereIn('anggaran_rekening_id', $rekeningIds);
+        }
+        $totalTerkunci = (float) (clone $kasQuery)->sum('terkunci_bulan');
+        $totalRealisasi = (float) (clone $kasQuery)->sum('realisasi_bulan');
         $sisaPagu = max(0.0, $totalPagu - $totalTerkunci - $totalRealisasi);
         $persentaseRealisasi = $totalPagu > 0 ? round(($totalRealisasi / $totalPagu) * 100, 2) : 0;
 
-        $pendingPptkCount = Kuitansi::where('status', 'MENUNGGU_PPTK')->count();
-        $pendingVerificationCount = Kuitansi::where('status', 'MENUNGGU_VERIFIKASI')->count();
-        $activeRevisionsCount = Kuitansi::whereIn('status', ['REVISI_MINOR', 'REVISI_MAYOR'])->count();
-        $verifiedCount = Kuitansi::whereIn('status', ['LOLOS_VERIFIKASI', 'DIBUNDEL', 'SELESAI_SP2D'])->count();
+        $kuitansiQuery = Kuitansi::query();
+        if ($isKelurahan) {
+            $kuitansiQuery->where('unit_kerja_id', $targetUnitId);
+        }
+
+        $pendingPptkCount = (clone $kuitansiQuery)->where('status', 'MENUNGGU_PPTK')->count();
+        $pendingLurahCount = (clone $kuitansiQuery)->where('status', 'MENUNGGU_LURAH')->count();
+        $pendingVerificationCount = (clone $kuitansiQuery)->where('status', 'MENUNGGU_VERIFIKASI')->count();
+        $activeRevisionsCount = (clone $kuitansiQuery)->whereIn('status', ['REVISI_MINOR', 'REVISI_MAYOR'])->count();
+        $verifiedCount = (clone $kuitansiQuery)->whereIn('status', ['LOLOS_VERIFIKASI', 'DIBUNDEL', 'SELESAI_SP2D'])->count();
 
         $queueCounts = [
             'menunggu_pptk' => $pendingPptkCount,
+            'menunggu_lurah' => $pendingLurahCount,
             'menunggu_verifikasi' => $pendingVerificationCount,
-            'revisi_minor' => Kuitansi::where('status', 'REVISI_MINOR')->count(),
-            'revisi_mayor' => Kuitansi::where('status', 'REVISI_MAYOR')->count(),
+            'revisi_minor' => (clone $kuitansiQuery)->where('status', 'REVISI_MINOR')->count(),
+            'revisi_mayor' => (clone $kuitansiQuery)->where('status', 'REVISI_MAYOR')->count(),
             'lolos_verifikasi' => $verifiedCount,
         ];
 
@@ -54,6 +77,7 @@ class BudgetApiController extends Controller
             'sisa_pagu' => $sisaPagu,
             'persentase_realisasi' => $persentaseRealisasi,
             'pending_pptk_count' => $pendingPptkCount,
+            'pending_lurah_count' => $pendingLurahCount,
             'pending_verification_count' => $pendingVerificationCount,
             'active_revisions_count' => $activeRevisionsCount,
             'verified_count' => $verifiedCount,
@@ -67,15 +91,18 @@ class BudgetApiController extends Controller
             9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
         ];
 
-        $monthlySums = AnggaranKasBulanan::selectRaw('
+        $monthlySumsQuery = AnggaranKasBulanan::selectRaw('
             bulan,
             SUM(alokasi_pagu) as target,
             SUM(realisasi_bulan) as realisasi,
             SUM(terkunci_bulan) as terkunci
-        ')
-            ->groupBy('bulan')
-            ->get()
-            ->keyBy('bulan');
+        ')->groupBy('bulan');
+
+        if ($isKelurahan) {
+            $monthlySumsQuery->whereIn('anggaran_rekening_id', $rekeningIds);
+        }
+
+        $monthlySums = $monthlySumsQuery->get()->keyBy('bulan');
 
         $currentMonth = (int) date('n');
 
@@ -106,8 +133,13 @@ class BudgetApiController extends Controller
             ];
         }
 
-        // 2. Agregasi Realisasi 6 Unit Kerja
-        $units = UnitKerja::where('is_active', true)->orderBy('id')->get()->map(function (UnitKerja $unit) {
+        // 2. Agregasi Realisasi Unit Kerja (1 unit jika kelurahan, seluruh unit jika kecamatan)
+        $unitsQuery = UnitKerja::where('is_active', true);
+        if ($isKelurahan) {
+            $unitsQuery->where('id', $targetUnitId);
+        }
+
+        $units = $unitsQuery->orderBy('id')->get()->map(function (UnitKerja $unit) {
             $rekeningIds = AnggaranRekening::where('unit_kerja_id', $unit->id)->pluck('id');
             $pagu = (float) AnggaranRekening::where('unit_kerja_id', $unit->id)->sum('pagu_perubahan');
 
@@ -131,9 +163,43 @@ class BudgetApiController extends Controller
             ];
         })->values()->all();
 
-        // 3. Aktivitas Terkini dari KuitansiRiwayat
-        $recentActivities = KuitansiRiwayat::with(['kuitansi.unitKerja', 'kuitansi.rekening', 'user'])
-            ->latest('id')
+        // 3. Breakdown Subkegiatan (Dinamis: Sarpras & Pemberdayaan untuk Kelurahan, atau seluruh subkegiatan)
+        $subKegiatanQuery = AnggaranRekening::query();
+        if ($isKelurahan) {
+            $subKegiatanQuery->where('unit_kerja_id', $targetUnitId);
+        }
+        $subKegiatanRecords = $subKegiatanQuery->orderBy('kode_sub_kegiatan')->get();
+
+        $subActivities = $subKegiatanRecords->groupBy('kode_sub_kegiatan')->map(function ($items, $code) {
+            $first = $items->first();
+            $subRekeningIds = $items->pluck('id');
+            $pagu = (float) $items->sum('pagu_perubahan');
+            $terserap = (float) AnggaranKasBulanan::whereIn('anggaran_rekening_id', $subRekeningIds)->sum('realisasi_bulan');
+            $terkunci = (float) AnggaranKasBulanan::whereIn('anggaran_rekening_id', $subRekeningIds)->sum('terkunci_bulan');
+            $sisa = max(0.0, $pagu - $terserap - $terkunci);
+
+            return [
+                'code' => (string) $code,
+                'name' => $first->nama_sub_kegiatan,
+                'pagu' => $pagu,
+                'terserap' => $terserap,
+                'terkunci' => $terkunci,
+                'sisa' => $sisa,
+                'rekening_count' => $items->count(),
+            ];
+        })->values()->all();
+
+        // 4. Aktivitas Terkini dari KuitansiRiwayat
+        $recentQuery = KuitansiRiwayat::with(['kuitansi.unitKerja', 'kuitansi.rekening', 'user'])
+            ->latest('id');
+
+        if ($isKelurahan) {
+            $recentQuery->whereHas('kuitansi', function ($q) use ($targetUnitId) {
+                $q->where('unit_kerja_id', $targetUnitId);
+            });
+        }
+
+        $recentActivities = $recentQuery
             ->take(10)
             ->get()
             ->map(function (KuitansiRiwayat $riwayat) {
@@ -157,22 +223,30 @@ class BudgetApiController extends Controller
                 ];
             })->values()->all();
 
-        // 4. Meta Dataset
+        // 5. Meta Dataset
+        $unitCount = $isKelurahan ? 1 : UnitKerja::where('is_active', true)->count();
+        $subActivityCount = count($subActivities);
+        $rekeningCount = $rekeningIds->count();
+
         $meta = [
             'fiscal_year' => (int) date('Y'),
             'district' => 'Kecamatan Tarogong Kidul',
             'district_code' => '32.05.01',
             'dataset_name' => 'RAK Perubahan '.date('Y'),
             'total_budget' => $totalPagu,
-            'total_units' => UnitKerja::where('is_active', true)->count(),
-            'total_sub_activities' => AnggaranRekening::distinct('kode_sub_kegiatan')->count('kode_sub_kegiatan'),
-            'total_accounts' => AnggaranRekening::count(),
+            'total_units' => $unitCount,
+            'unit_count' => $unitCount,
+            'total_sub_activities' => $subActivityCount,
+            'sub_activity_count' => $subActivityCount,
+            'total_accounts' => $rekeningCount,
+            'rekening_count' => $rekeningCount,
         ];
 
         $payload = array_merge($summaryData, [
             'summary' => $summaryData,
             'meta' => $meta,
             'units' => $units,
+            'sub_activities' => $subActivities,
             'monthly_allocation' => $monthlyAllocation,
             'recent_activities' => $recentActivities,
         ]);
@@ -181,11 +255,18 @@ class BudgetApiController extends Controller
     }
 
     /**
-     * Endpoint daftar 6 unit kerja (budgetService.getUnits)
+     * Endpoint daftar unit kerja (budgetService.getUnits)
      */
-    public function units(): JsonResponse
+    public function units(Request $request): JsonResponse
     {
-        $units = UnitKerja::where('is_active', true)->get()->map(function ($u) {
+        $user = $request->user();
+        $query = UnitKerja::where('is_active', true);
+
+        if ($user && $user->isKelurahanScoped()) {
+            $query->where('id', $user->unit_kerja_id);
+        }
+
+        $units = $query->get()->map(function ($u) {
             return [
                 'id' => $u->id,
                 'code' => $u->kode_unit,
@@ -202,11 +283,20 @@ class BudgetApiController extends Controller
      */
     public function subActivities(Request $request): JsonResponse
     {
-        $unitId = $request->input('unit_id');
+        $user = $request->user();
         $query = AnggaranRekening::query();
 
-        if ($unitId) {
-            $query->where('unit_kerja_id', $unitId);
+        if ($user && $user->isKelurahanScoped()) {
+            $query->where('unit_kerja_id', $user->unit_kerja_id);
+        } elseif ($request->filled('unit_id')) {
+            $query->where('unit_kerja_id', $request->input('unit_id'));
+        }
+
+        if ($user && $user->hasRole('PPTK')) {
+            $assignedCodes = $user->pptkSubkegiatanAssignments()->pluck('kode_sub_kegiatan');
+            if ($assignedCodes->isNotEmpty()) {
+                $query->whereIn('kode_sub_kegiatan', $assignedCodes);
+            }
         }
 
         $records = $query->orderBy('kode_sub_kegiatan')
@@ -244,6 +334,22 @@ class BudgetApiController extends Controller
      */
     public function rakContext(Request $request, int|string $rekeningId): JsonResponse
     {
+        $user = $request->user();
+        $rekening = AnggaranRekening::find($rekeningId);
+        if (! $rekening) {
+            return $this->errorResponse('REKENING_NOT_FOUND', 'Rekening anggaran tidak ditemukan.', null, 404);
+        }
+
+        if ($user && $user->isKelurahanScoped() && $rekening->unit_kerja_id !== $user->unit_kerja_id) {
+            return $this->errorResponse('FORBIDDEN', 'Anda tidak memiliki hak akses untuk melihat RAK rekening unit kerja lain.', null, 403);
+        }
+
+        if ($user && $user->hasRole('PPTK')) {
+            if (! $user->canAccessPptkSubkegiatan($rekening->kode_sub_kegiatan, $rekening->unit_kerja_id)) {
+                return $this->errorResponse('FORBIDDEN', 'Anda tidak memiliki akses ke subkegiatan rekening ini.', null, 403);
+            }
+        }
+
         $month = (int) ($request->input('month', date('n')));
         $data = $this->budgetService->getPopupAllocationData((string) $rekeningId, $month);
 

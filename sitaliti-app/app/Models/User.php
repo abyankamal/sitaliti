@@ -163,6 +163,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Alias untuk pptkSubkegiatanAssignments.
+     */
+    public function pptkAssignments(): HasMany
+    {
+        return $this->pptkSubkegiatanAssignments();
+    }
+
+    /**
      * Daftar kode subkegiatan yang ditugaskan ke pengguna ini.
      *
      * @return list<string>

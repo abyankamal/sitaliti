@@ -312,4 +312,3 @@ class KelurahanLpjBppTest extends TestCase
             ->assertStatus(403);
     }
 }
-
