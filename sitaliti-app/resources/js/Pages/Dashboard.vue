@@ -6,10 +6,15 @@ import GovButton from '@/Components/UI/GovButton.vue';
 import { formatRupiah } from '@/Utils/currency';
 import { formatTanggalIndo } from '@/Utils/date';
 import { STATUS_LABELS, STATUS_VARIANTS } from '@/Constants/workflowStatus';
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { budgetService } from '@/Services/budgetService';
-import { Head, router } from '@inertiajs/vue3';
+import { Head, router, usePage } from '@inertiajs/vue3';
 import RAKSelectorModal from '@/Modules/Gatekeeper/RAKSelectorModal.vue';
+
+const page = usePage();
+const currentUser = computed(() => page.props.auth?.user);
+const isKelurahan = computed(() => currentUser.value?.is_kelurahan_scoped);
+const canCreateReceipt = computed(() => currentUser.value?.role === 'OPERATOR');
 
 const loading = ref(true);
 const dashboardData = ref(null);
@@ -47,7 +52,7 @@ function handleGatekeeperSelected(context) {
                         </span>
                     </h1>
                     <p class="text-xs text-slate-500 mt-1">
-                        Sistem Informasi Tata Kelola, Asistensi, dan Verifikasi Akuntabilitas SPJ Kecamatan Tarogong Kidul
+                        {{ isKelurahan && currentUser?.unit_kerja ? `Sistem Informasi Tata Kelola dan Asistensi SPJ • ${currentUser.unit_kerja.nama_unit}` : 'Sistem Informasi Tata Kelola, Asistensi, dan Verifikasi Akuntabilitas SPJ Kecamatan Tarogong Kidul' }}
                     </p>
                 </div>
                 <div class="flex items-center gap-2.5">
@@ -57,7 +62,7 @@ function handleGatekeeperSelected(context) {
                         </svg>
                         Ekspor Laporan
                     </GovButton>
-                    <GovButton variant="gold" size="sm" @click="showGatekeeperModal = true">
+                    <GovButton v-if="canCreateReceipt" variant="gold" size="sm" @click="showGatekeeperModal = true">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                         </svg>
@@ -103,7 +108,9 @@ function handleGatekeeperSelected(context) {
                     <div class="text-lg font-bold text-gov-navy-950 tabular-nums">
                         {{ formatRupiah(dashboardData.summary.total_pagu) }}
                     </div>
-                    <p class="text-[11px] text-slate-500 mt-1">6 Unit • 39 Subkegiatan • 132 Rekening</p>
+                    <p class="text-[11px] text-slate-500 mt-1">
+                        {{ dashboardData.meta?.unit_count || 1 }} Unit • {{ dashboardData.meta?.sub_activity_count || dashboardData.meta?.total_sub_activities || 0 }} Subkegiatan • {{ dashboardData.meta?.rekening_count || dashboardData.meta?.total_accounts || 0 }} Rekening
+                    </p>
                 </div>
 
                 <!-- Card 2: Realisasi Pagu -->
@@ -157,6 +164,9 @@ function handleGatekeeperSelected(context) {
                     <div class="flex items-center gap-2 mt-1.5 text-[11px] flex-wrap">
                         <span v-if="dashboardData.queue_counts?.menunggu_pptk" class="text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded font-semibold border border-indigo-200">
                             {{ dashboardData.queue_counts.menunggu_pptk }} antre PPTK
+                        </span>
+                        <span v-if="dashboardData.queue_counts?.menunggu_lurah" class="text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded font-semibold border border-amber-300">
+                            {{ dashboardData.queue_counts.menunggu_lurah }} antre Lurah
                         </span>
                         <span v-if="dashboardData.summary.active_revisions_count" class="text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded font-semibold border border-amber-200">
                             {{ dashboardData.summary.active_revisions_count }} revisi
@@ -232,9 +242,52 @@ function handleGatekeeperSelected(context) {
                     </GovCard>
                 </div>
 
-                <!-- Kolom 3: Pagu Per Unit Organisasi -->
+                <!-- Kolom 3: Pagu Per Unit Organisasi ATAU Breakdown Subkegiatan Kelurahan -->
                 <div>
                     <GovCard
+                        v-if="isKelurahan && dashboardData.sub_activities?.length"
+                        :title="`Pagu Subkegiatan ${currentUser?.unit_kerja?.nama_unit || 'Kelurahan'}`"
+                        subtitle="Realisasi Sarpras & Pemberdayaan Masyarakat"
+                    >
+                        <div class="space-y-4">
+                            <div
+                                v-for="sub in dashboardData.sub_activities"
+                                :key="sub.code"
+                                class="p-3 rounded-lg border border-gov-surface-border bg-gov-surface-subtle hover:bg-slate-50 transition-colors"
+                            >
+                                <div class="flex items-start justify-between gap-2">
+                                    <div>
+                                        <span class="text-[10px] font-mono text-gov-gold-700 bg-gov-gold-50 px-1 py-0.5 rounded border border-gov-gold-200 inline-block mb-1">
+                                            {{ sub.code }}
+                                        </span>
+                                        <h5 class="text-xs font-bold text-gov-navy-900 leading-tight">
+                                            {{ sub.name }}
+                                        </h5>
+                                    </div>
+                                    <span class="text-[10px] text-slate-500 font-mono shrink-0 font-bold">
+                                        {{ sub.pagu > 0 ? Math.round((sub.terserap / sub.pagu) * 100) : 0 }}%
+                                    </span>
+                                </div>
+                                <div class="mt-2 flex items-center justify-between text-[11px]">
+                                    <span class="text-slate-500">Terserap:</span>
+                                    <span class="font-semibold text-slate-800 tabular-nums">{{ formatRupiah(sub.terserap) }}</span>
+                                </div>
+                                <div class="w-full bg-slate-200 h-1.5 rounded-full mt-1.5 overflow-hidden">
+                                    <div
+                                        class="bg-gov-navy-800 h-full rounded-full transition-all duration-500"
+                                        :style="{ width: `${sub.pagu > 0 ? Math.min(100, Math.round((sub.terserap / sub.pagu) * 100)) : 0}%` }"
+                                    ></div>
+                                </div>
+                                <div class="mt-1.5 flex items-center justify-between text-[10px] text-slate-400">
+                                    <span>Pagu: {{ formatRupiah(sub.pagu) }}</span>
+                                    <span>Sisa: {{ formatRupiah(sub.sisa) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </GovCard>
+
+                    <GovCard
+                        v-else
                         title="Pagu Unit Organisasi (6 Unit)"
                         subtitle="Realisasi penyerapan per unit kerja"
                     >
@@ -249,7 +302,7 @@ function handleGatekeeperSelected(context) {
                                         {{ unit.name }}
                                     </h5>
                                     <span class="text-[10px] text-slate-400 font-mono shrink-0">
-                                        {{ Math.round((unit.terserap / unit.pagu) * 100) }}%
+                                        {{ unit.pagu > 0 ? Math.round((unit.terserap / unit.pagu) * 100) : 0 }}%
                                     </span>
                                 </div>
                                 <div class="mt-2 flex items-center justify-between text-[11px]">
@@ -259,7 +312,7 @@ function handleGatekeeperSelected(context) {
                                 <div class="w-full bg-slate-200 h-1.5 rounded-full mt-1.5 overflow-hidden">
                                     <div
                                         class="bg-gov-navy-800 h-full rounded-full"
-                                        :style="{ width: `${Math.round((unit.terserap / unit.pagu) * 100)}%` }"
+                                        :style="{ width: `${unit.pagu > 0 ? Math.round((unit.terserap / unit.pagu) * 100) : 0}%` }"
                                     ></div>
                                 </div>
                             </div>

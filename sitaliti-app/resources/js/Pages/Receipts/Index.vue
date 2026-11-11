@@ -1,12 +1,17 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import GovAppLayout from '@/Layouts/GovAppLayout.vue';
 import GovBadge from '@/Components/UI/GovBadge.vue';
 import GovButton from '@/Components/UI/GovButton.vue';
 import ReceiptDetailDrawer from '@/Pages/Receipts/Partials/ReceiptDetailDrawer.vue';
 import { formatRupiah } from '@/Utils/currency';
 import { formatTanggalIndo, NAMA_BULAN } from '@/Utils/date';
+
+const page = usePage();
+const currentUser = computed(() => page.props.auth?.user);
+const isKelurahan = computed(() => currentUser.value?.is_kelurahan_scoped);
+const canCreate = computed(() => currentUser.value?.role === 'OPERATOR');
 
 const props = defineProps({
     receipts: {
@@ -19,6 +24,7 @@ const props = defineProps({
             semua: 0,
             draft: 0,
             menunggu_pptk: 0,
+            menunggu_lurah: 0,
             menunggu_verifikasi: 0,
             revisi_minor: 0,
             siap_bundel: 0,
@@ -43,14 +49,25 @@ const selectedKategori = ref(props.filters.kategori_belanja || '');
 const selectedBulan = ref(props.filters.bulan_anggaran || '');
 
 // Konfigurasi Tab Status
-const tabs = computed(() => [
-    { key: '', label: 'Semua Kuitansi', count: props.tabCounts.semua || 0 },
-    { key: 'DRAFT', label: 'Draft', count: props.tabCounts.draft || 0 },
-    { key: 'MENUNGGU_PPTK', label: 'Menunggu PPTK', count: props.tabCounts.menunggu_pptk || 0 },
-    { key: 'MENUNGGU_VERIFIKASI', label: 'Menunggu Verifikasi', count: props.tabCounts.menunggu_verifikasi || 0 },
-    { key: 'REVISI_MINOR', label: 'Perlu Revisi (SLA)', count: props.tabCounts.revisi_minor || 0, isAlert: (props.tabCounts.revisi_minor || 0) > 0 },
-    { key: 'LOLOS_VERIFIKASI', label: 'Lolos / Siap Bundel', count: props.tabCounts.siap_bundel || 0 },
-]);
+const tabs = computed(() => {
+    const list = [
+        { key: '', label: 'Semua Kuitansi', count: props.tabCounts.semua || 0 },
+        { key: 'DRAFT', label: 'Draft', count: props.tabCounts.draft || 0 },
+        { key: 'MENUNGGU_PPTK', label: 'Menunggu PPTK', count: props.tabCounts.menunggu_pptk || 0 },
+    ];
+
+    if (props.tabCounts.menunggu_lurah !== undefined) {
+        list.push({ key: 'MENUNGGU_LURAH', label: 'Menunggu Lurah', count: props.tabCounts.menunggu_lurah || 0 });
+    }
+
+    list.push(
+        { key: 'MENUNGGU_VERIFIKASI', label: 'Menunggu Verifikasi', count: props.tabCounts.menunggu_verifikasi || 0 },
+        { key: 'REVISI_MINOR', label: 'Perlu Revisi (SLA)', count: props.tabCounts.revisi_minor || 0, isAlert: (props.tabCounts.revisi_minor || 0) > 0 },
+        { key: 'LOLOS_VERIFIKASI', label: 'Lolos / Siap Bundel', count: props.tabCounts.siap_bundel || 0 },
+    );
+
+    return list;
+});
 
 // Opsi Kategori Belanja B.1 s.d. B.6
 const kategoriOptions = [
@@ -95,7 +112,7 @@ function handleSearchInput() {
 function resetFilter() {
     activeTab.value = '';
     searchQuery.value = '';
-    selectedUnit.value = '';
+    selectedUnit.value = isKelurahan.value ? (currentUser.value?.unit_kerja_id || '') : '';
     selectedKategori.value = '';
     selectedBulan.value = '';
     applyFilter();
@@ -125,6 +142,8 @@ function getStatusBadge(status) {
             return { variant: 'neutral', label: 'Draft' };
         case 'MENUNGGU_PPTK':
             return { variant: 'info', label: 'Menunggu PPTK' };
+        case 'MENUNGGU_LURAH':
+            return { variant: 'warning', label: 'Menunggu Lurah' };
         case 'MENUNGGU_VERIFIKASI':
             return { variant: 'primary', label: 'Menunggu Verifikasi' };
         case 'REVISI_MINOR':
@@ -183,7 +202,7 @@ function openReceiptDetail(receipt) {
                         Ekspor Rekapitulasi (.csv)
                     </GovButton>
 
-                    <Link :href="route('receipts.create')">
+                    <Link v-if="canCreate" :href="route('receipts.create')">
                         <GovButton variant="primary" class="flex items-center gap-2 shadow-sm">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -247,9 +266,10 @@ function openReceiptDetail(receipt) {
                         <select
                             v-model="selectedUnit"
                             @change="applyFilter"
-                            class="w-full py-2 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gov-navy-600/20 focus:border-gov-navy-700 bg-white"
+                            :disabled="isKelurahan"
+                            class="w-full py-2 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gov-navy-600/20 focus:border-gov-navy-700 bg-white disabled:bg-slate-100 disabled:text-slate-500"
                         >
-                            <option value="">Semua Unit Kerja</option>
+                            <option v-if="!isKelurahan" value="">Semua Unit Kerja</option>
                             <option v-for="unit in unitKerjaList" :key="unit.id" :value="unit.id">
                                 {{ unit.nama_unit }}
                             </option>

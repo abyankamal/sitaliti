@@ -18,13 +18,17 @@ const user = computed(() => page.props.auth?.user || {
 
 const isSidebarOpen = ref(true);
 
-const ROLE_DISPLAY_NAMES = {
-    OPERATOR: 'Operator SPJ',
-    PPTK: 'Pejabat Pelaksana Teknis (PPTK)',
-    VERIFIKATOR: 'Kasubag Keuangan (PPK)',
-    BPP: 'Bendahara Pengeluaran (BP / BPP)',
-    KPA: 'Camat / KPA',
-};
+const roleDisplayName = computed(() => {
+    if (user.value?.role === 'LURAH') return 'Lurah (KPA Kelurahan)';
+    if (user.value?.role === 'BPP') {
+        return user.value?.is_kelurahan_bpp ? 'Bendahara Pengeluaran Pembantu (BPP)' : 'Bendahara Pengeluaran (BP)';
+    }
+    if (user.value?.role === 'PPTK') return 'Pejabat Pelaksana Teknis (PPTK)';
+    if (user.value?.role === 'VERIFIKATOR') return 'Kasubag Keuangan (PPK)';
+    if (user.value?.role === 'KPA') return 'Camat / KPA';
+    if (user.value?.role === 'OPERATOR') return 'Operator SPJ';
+    return user.value?.role || 'Pegawai';
+});
 
 // Definisi item navigasi beserta peran yang diizinkan melihatnya
 const allNavItems = [
@@ -32,31 +36,31 @@ const allNavItems = [
         name: 'Dashboard Anggaran',
         route: 'dashboard',
         icon: 'dashboard',
-        roles: ['OPERATOR', 'PPTK', 'VERIFIKATOR', 'BPP', 'KPA'],
+        roles: ['OPERATOR', 'PPTK', 'VERIFIKATOR', 'BPP', 'KPA', 'LURAH'],
     },
     {
         name: 'Daftar Kuitansi',
         route: 'receipts.index',
         icon: 'table',
-        roles: ['OPERATOR', 'PPTK', 'VERIFIKATOR', 'BPP', 'KPA'],
+        roles: ['OPERATOR', 'PPTK', 'VERIFIKATOR', 'BPP', 'KPA', 'LURAH'],
     },
     {
         name: 'Input Kuitansi',
         route: 'receipts.create',
         icon: 'receipt',
-        roles: ['OPERATOR', 'KPA'],
+        roles: ['OPERATOR'],
     },
     {
         name: 'Workspace Verifikasi',
         route: 'verification.index',
         icon: 'verification',
-        roles: ['PPTK', 'VERIFIKATOR', 'KPA'],
+        roles: ['PPTK', 'VERIFIKATOR', 'KPA', 'LURAH'],
     },
     {
         name: 'Bundel SPP (GU/TU/LS)',
         route: 'bundles.index',
         icon: 'bundle',
-        roles: ['BPP', 'KPA', 'VERIFIKATOR'],
+        roles: ['BPP', 'KPA', 'VERIFIKATOR', 'LURAH'],
     },
 ];
 
@@ -94,7 +98,9 @@ const navItems = computed(() => {
                                     <span class="font-bold tracking-tight text-white text-base">SI-TALITI</span>
                                     <span class="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-gov-gold-600/20 text-gov-gold-400 border border-gov-gold-500/30">v2.0 Pre-Audit</span>
                                 </div>
-                                <p class="text-[11px] text-slate-400 font-normal">Kecamatan Tarogong Kidul • Kab. Garut</p>
+                                <p class="text-[11px] text-slate-400 font-normal">
+                                    {{ user.is_kelurahan_scoped && user.unit_kerja ? `${user.unit_kerja.nama_unit} • Kec. Tarogong Kidul` : 'Kecamatan Tarogong Kidul • Kab. Garut' }}
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -119,7 +125,10 @@ const navItems = computed(() => {
                             <div class="hidden sm:block text-left leading-tight">
                                 <p class="text-xs font-medium text-white">{{ user.name }}</p>
                                 <p class="text-[10px] text-gov-gold-400 font-medium">
-                                    {{ ROLE_DISPLAY_NAMES[user.role] || user.role || 'Pegawai' }}
+                                    {{ roleDisplayName }}
+                                </p>
+                                <p v-if="user.unit_kerja?.nama_unit" class="text-[9px] text-slate-400 truncate">
+                                    {{ user.unit_kerja.nama_unit }}
                                 </p>
                             </div>
                         </div>

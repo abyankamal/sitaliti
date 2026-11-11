@@ -137,4 +137,3 @@ class InertiaUserContextTest extends TestCase
         );
     }
 }
-
