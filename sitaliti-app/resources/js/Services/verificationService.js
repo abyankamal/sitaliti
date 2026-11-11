@@ -13,8 +13,8 @@ export const verificationService = {
     async getQueue(filters = {}) {
         try {
             const response = await axios.get(`${API_BASE}/queue`, { params: filters });
-            if (response.data && response.data.success && response.data.data.length > 0) {
-                return response.data.data;
+            if (response.data && response.data.success) {
+                return Array.isArray(response.data.data) ? response.data.data : [];
             }
         } catch (error) {
             console.warn('Fallback to verification queue mock data:', error);

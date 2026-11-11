@@ -10,8 +10,8 @@ export const settlementService = {
     async getBundles(filters = {}) {
         try {
             const response = await axios.get(API_BASE, { params: filters });
-            if (response.data && response.data.success && response.data.data.length > 0) {
-                return response.data.data;
+            if (response.data && response.data.success) {
+                return Array.isArray(response.data.data) ? response.data.data : [];
             }
         } catch (error) {
             console.warn('Fallback to bundles mock data:', error);
@@ -58,4 +58,3 @@ export const settlementService = {
         return response.data;
     }
 };
-

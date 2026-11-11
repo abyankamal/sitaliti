@@ -21,14 +21,16 @@ export const budgetService = {
                     summary: data.summary || data,
                     queue_counts: data.queue_counts || data.summary?.queue_counts || {
                         menunggu_pptk: data.pending_pptk_count || 0,
+                        menunggu_lurah: data.pending_lurah_count || 0,
                         menunggu_verifikasi: data.pending_verification_count || 0,
                         revisi_minor: 0,
                         revisi_mayor: 0,
                         lolos_verifikasi: data.verified_count || 0,
                     },
-                    units: (data.units && data.units.length > 0) ? data.units : budgetRakData.units,
-                    monthly_allocation: (data.monthly_allocation && data.monthly_allocation.length > 0) ? data.monthly_allocation : budgetRakData.monthly_allocation,
-                    recent_activities: data.recent_activities || [],
+                    units: Array.isArray(data.units) ? data.units : (data.units ? [data.units] : []),
+                    sub_activities: Array.isArray(data.sub_activities) ? data.sub_activities : [],
+                    monthly_allocation: Array.isArray(data.monthly_allocation) ? data.monthly_allocation : [],
+                    recent_activities: Array.isArray(data.recent_activities) ? data.recent_activities : [],
                 };
             }
         } catch (error) {
@@ -39,19 +41,20 @@ export const budgetService = {
             meta: budgetRakData.meta,
             summary: budgetRakData.summary,
             units: budgetRakData.units,
+            sub_activities: [],
             monthly_allocation: budgetRakData.monthly_allocation,
             recent_activities: budgetRakData.recent_activities,
         };
     },
 
     /**
-     * Dapatkan daftar 6 unit organisasi
+     * Dapatkan daftar unit organisasi
      */
     async getUnits() {
         try {
             const response = await axios.get(`${API_BASE}/units`);
-            if (response.data && response.data.success && response.data.data.length > 0) {
-                return response.data.data;
+            if (response.data && response.data.success) {
+                return Array.isArray(response.data.data) ? response.data.data : [];
             }
         } catch (error) {
             console.warn('Fallback to unit mock data:', error);
@@ -68,8 +71,8 @@ export const budgetService = {
             const response = await axios.get(`${API_BASE}/sub-activities`, {
                 params: { unit_id: unitId }
             });
-            if (response.data && response.data.success && response.data.data.length > 0) {
-                return response.data.data;
+            if (response.data && response.data.success) {
+                return Array.isArray(response.data.data) ? response.data.data : [];
             }
         } catch (error) {
             console.warn('Fallback to subActivities mock data:', error);

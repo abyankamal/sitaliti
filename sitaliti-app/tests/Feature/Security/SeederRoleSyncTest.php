@@ -123,4 +123,3 @@ class SeederRoleSyncTest extends TestCase
         }
     }
 }
-

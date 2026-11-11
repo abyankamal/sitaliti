@@ -187,6 +187,16 @@ class User extends Authenticatable
     }
 
     /**
+     * Alias getter untuk assignedSubkegiatanCodes.
+     *
+     * @return list<string>
+     */
+    public function getAssignedSubkegiatanCodes(): array
+    {
+        return $this->assignedSubkegiatanCodes();
+    }
+
+    /**
      * Apakah pengguna dibatasi hanya pada scope satu kelurahan (Lurah atau staf kelurahan).
      */
     public function isKelurahanScoped(): bool
