@@ -40,6 +40,10 @@ Route::prefix('v1')->group(function () {
                 ->middleware('permission:kuitansi.pptk_approve');
             Route::post('{id}/pptk-reject', [ReceiptApiController::class, 'pptkReject'])
                 ->middleware('permission:kuitansi.pptk_reject');
+            Route::post('{id}/lurah-approve', [ReceiptApiController::class, 'lurahApprove'])
+                ->middleware('permission:kuitansi.lurah_approve');
+            Route::post('{id}/lurah-reject', [ReceiptApiController::class, 'lurahReject'])
+                ->middleware('permission:kuitansi.lurah_reject');
             Route::get('{id}', [ReceiptApiController::class, 'show'])
                 ->middleware('permission:kuitansi.view');
             Route::get('{kuitansiId}/attachments/{attachmentId}/preview', [ReceiptAttachmentController::class, 'preview'])

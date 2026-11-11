@@ -189,9 +189,13 @@ class VerificationService implements VerificationServiceInterface
             ->orWhere('nomor_kuitansi', $kuitansiId)
             ->firstOrFail();
 
-        // Anti-bypass guard: Kuitansi harus disetujui PPTK terlebih dahulu sebelum diverifikasi
-        if (in_array($kuitansi->status, ['DRAFT', 'MENUNGGU_PPTK'])) {
+        // Anti-bypass guard: Kuitansi harus disetujui PPTK (dan diotorisasi Lurah untuk Kelurahan) terlebih dahulu sebelum diverifikasi
+        if (in_array($kuitansi->status, ['DRAFT', 'MENUNGGU_PPTK'], true)) {
             throw new InvalidArgumentException('Kuitansi harus disetujui oleh PPTK terlebih dahulu sebelum dapat diverifikasi.');
+        }
+
+        if ($kuitansi->status === 'MENUNGGU_LURAH') {
+            throw new InvalidArgumentException('Kuitansi harus diotorisasi oleh Lurah terlebih dahulu sebelum dapat diverifikasi.');
         }
 
         $notes = $payload['notes'] ?? '';

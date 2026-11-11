@@ -6,6 +6,7 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Models\Permission;
@@ -68,6 +69,15 @@ class User extends Authenticatable
                 'verification.audit',
                 'verification.process_action',
                 'verification.generate_qr',
+            ],
+            'LURAH' => [
+                'kuitansi.view',
+                'kuitansi.lurah_approve',
+                'kuitansi.lurah_reject',
+                'bundle.view',
+                'budget.view',
+                'verification.queue',
+                'verification.audit',
             ],
             'KPA' => [
                 'kuitansi.view',
@@ -142,6 +152,101 @@ class User extends Authenticatable
     public function unitKerja(): BelongsTo
     {
         return $this->belongsTo(UnitKerja::class, 'unit_kerja_id');
+    }
+
+    /**
+     * Penugasan subkegiatan untuk PPTK.
+     */
+    public function pptkSubkegiatanAssignments(): HasMany
+    {
+        return $this->hasMany(PptkSubkegiatanAssignment::class, 'user_id');
+    }
+
+    /**
+     * Daftar kode subkegiatan yang ditugaskan ke pengguna ini.
+     *
+     * @return list<string>
+     */
+    public function assignedSubkegiatanCodes(): array
+    {
+        return $this->pptkSubkegiatanAssignments()->pluck('kode_sub_kegiatan')->all();
+    }
+
+    /**
+     * Apakah pengguna dibatasi hanya pada scope satu kelurahan (Lurah atau staf kelurahan).
+     */
+    public function isKelurahanScoped(): bool
+    {
+        if ($this->role === 'LURAH') {
+            return true;
+        }
+
+        return $this->unitKerja?->tipe === 'KELURAHAN';
+    }
+
+    /**
+     * Apakah pengguna memiliki akses lintas seluruh SKPD (Verifikator, KPA Camat, BP Kecamatan).
+     */
+    public function isSkpdWide(): bool
+    {
+        if (in_array($this->role, ['VERIFIKATOR', 'KPA'], true)) {
+            return true;
+        }
+
+        if ($this->role === 'BPP') {
+            return $this->unitKerja?->tipe !== 'KELURAHAN';
+        }
+
+        return false;
+    }
+
+    /**
+     * Apakah pengguna merupakan Bendahara Pengeluaran Pembantu di Kelurahan.
+     */
+    public function isKelurahanBpp(): bool
+    {
+        return $this->role === 'BPP' && $this->unitKerja?->tipe === 'KELURAHAN';
+    }
+
+    /**
+     * Pengecekan akses PPTK terhadap kombinasi unit dan kode subkegiatan.
+     */
+    public function canAccessPptkSubkegiatan(int $unitId, string $kodeSubKegiatan): bool
+    {
+        if ((int) $this->unit_kerja_id !== $unitId) {
+            return false;
+        }
+
+        $assignedCodes = $this->assignedSubkegiatanCodes();
+        if (empty($assignedCodes)) {
+            return true;
+        }
+
+        return in_array($kodeSubKegiatan, $assignedCodes, true);
+    }
+
+    /**
+     * Otorisasi domain sentral apakah pengguna berhak mengakses suatu kuitansi.
+     */
+    public function canAccessReceipt(Kuitansi $kuitansi): bool
+    {
+        if ($this->isSkpdWide()) {
+            return true;
+        }
+
+        $unitId = (int) $kuitansi->unit_kerja_id;
+
+        if ($this->role === 'PPTK') {
+            $kodeSubKegiatan = $kuitansi->rekening?->kode_sub_kegiatan;
+            if ($kodeSubKegiatan === null) {
+                $kuitansi->loadMissing('rekening');
+                $kodeSubKegiatan = $kuitansi->rekening?->kode_sub_kegiatan ?? '';
+            }
+
+            return $this->canAccessPptkSubkegiatan($unitId, $kodeSubKegiatan);
+        }
+
+        return (int) $this->unit_kerja_id === $unitId;
     }
 
     /**

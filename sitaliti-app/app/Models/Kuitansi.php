@@ -24,6 +24,7 @@ class Kuitansi extends Model
         'anggaran_rekening_id',
         'user_id',
         'pptk_user_id',
+        'lurah_user_id',
         'verifikator_id',
         'bulan_anggaran',
         'nomor_bukti_toko',
@@ -38,10 +39,12 @@ class Kuitansi extends Model
         'status',
         'qr_token',
         'catatan_pptk',
+        'catatan_lurah',
         'catatan_verifikasi',
         'tenggat_sla',
         'tanggal_submit',
         'tanggal_pptk_approve',
+        'tanggal_lurah_approve',
         'tanggal_verifikasi',
     ];
 
@@ -59,6 +62,7 @@ class Kuitansi extends Model
             'tenggat_sla' => 'datetime',
             'tanggal_submit' => 'datetime',
             'tanggal_pptk_approve' => 'datetime',
+            'tanggal_lurah_approve' => 'datetime',
             'tanggal_verifikasi' => 'datetime',
         ];
     }
@@ -105,6 +109,11 @@ class Kuitansi extends Model
     public function pptkUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'pptk_user_id');
+    }
+
+    public function lurahUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'lurah_user_id');
     }
 
     public function verifikator(): BelongsTo

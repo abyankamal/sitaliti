@@ -202,21 +202,45 @@ class ReceiptApiController extends Controller
             'catatan' => ['nullable', 'string', 'max:1000'],
         ]);
 
+        $kuitansi = Kuitansi::where('id', $id)->orWhere('nomor_kuitansi', $id)->first();
+        if (! $kuitansi) {
+            return $this->errorResponse(
+                'RECEIPT_NOT_FOUND',
+                'Kuitansi tidak ditemukan.',
+                null,
+                404
+            );
+        }
+
+        $user = $request->user();
+        if ($user && ! $user->canAccessReceipt($kuitansi)) {
+            return $this->errorResponse(
+                'FORBIDDEN',
+                'Anda tidak memiliki hak akses untuk memproses kuitansi ini.',
+                null,
+                403
+            );
+        }
+
         try {
-            $kuitansi = $this->receiptService->approveByPptk(
-                $id,
+            $updated = $this->receiptService->approveByPptk(
+                $kuitansi->id,
                 $validated['catatan'] ?? null,
-                $request->user()
+                $user
             );
 
+            $pesan = $updated->status === 'MENUNGGU_LURAH'
+                ? 'Kuitansi disetujui oleh PPTK dan diteruskan ke Lurah untuk diotorisasi'
+                : 'Kuitansi berhasil disetujui oleh PPTK dan diteruskan ke Tim Verifikator';
+
             return $this->successResponse([
-                'id' => $kuitansi->id,
-                'nomor_kuitansi' => $kuitansi->nomor_kuitansi,
-                'status' => $kuitansi->status,
-                'pptk_user_id' => $kuitansi->pptk_user_id,
-                'tanggal_pptk_approve' => $kuitansi->tanggal_pptk_approve,
-                'catatan_pptk' => $kuitansi->catatan_pptk,
-            ], 'Kuitansi berhasil disetujui oleh PPTK dan diteruskan ke Tim Verifikator');
+                'id' => $updated->id,
+                'nomor_kuitansi' => $updated->nomor_kuitansi,
+                'status' => $updated->status,
+                'pptk_user_id' => $updated->pptk_user_id,
+                'tanggal_pptk_approve' => $updated->tanggal_pptk_approve,
+                'catatan_pptk' => $updated->catatan_pptk,
+            ], $pesan);
         } catch (ModelNotFoundException $e) {
             return $this->errorResponse(
                 'RECEIPT_NOT_FOUND',
@@ -250,18 +274,38 @@ class ReceiptApiController extends Controller
             'alasan' => ['required', 'string', 'min:5', 'max:1000'],
         ]);
 
+        $kuitansi = Kuitansi::where('id', $id)->orWhere('nomor_kuitansi', $id)->first();
+        if (! $kuitansi) {
+            return $this->errorResponse(
+                'RECEIPT_NOT_FOUND',
+                'Kuitansi tidak ditemukan.',
+                null,
+                404
+            );
+        }
+
+        $user = $request->user();
+        if ($user && ! $user->canAccessReceipt($kuitansi)) {
+            return $this->errorResponse(
+                'FORBIDDEN',
+                'Anda tidak memiliki hak akses untuk memproses kuitansi ini.',
+                null,
+                403
+            );
+        }
+
         try {
-            $kuitansi = $this->receiptService->rejectByPptk(
-                $id,
+            $updated = $this->receiptService->rejectByPptk(
+                $kuitansi->id,
                 $validated['alasan'],
-                $request->user()
+                $user
             );
 
             return $this->successResponse([
-                'id' => $kuitansi->id,
-                'nomor_kuitansi' => $kuitansi->nomor_kuitansi,
-                'status' => $kuitansi->status,
-                'catatan_pptk' => $kuitansi->catatan_pptk,
+                'id' => $updated->id,
+                'nomor_kuitansi' => $updated->nomor_kuitansi,
+                'status' => $updated->status,
+                'catatan_pptk' => $updated->catatan_pptk,
             ], 'Kuitansi ditolak oleh PPTK dan pagu anggaran telah dipulihkan');
         } catch (ModelNotFoundException $e) {
             return $this->errorResponse(
@@ -280,6 +324,140 @@ class ReceiptApiController extends Controller
         } catch (Throwable $e) {
             return $this->errorResponse(
                 'PPTK_REJECT_FAILED',
+                $e->getMessage(),
+                null,
+                400
+            );
+        }
+    }
+
+    /**
+     * Endpoint otorisasi/persetujuan kuitansi oleh Lurah (POST /api/v1/receipts/{id}/lurah-approve).
+     */
+    public function lurahApprove(Request $request, int|string $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'catatan' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $kuitansi = Kuitansi::where('id', $id)->orWhere('nomor_kuitansi', $id)->first();
+        if (! $kuitansi) {
+            return $this->errorResponse(
+                'RECEIPT_NOT_FOUND',
+                'Kuitansi tidak ditemukan.',
+                null,
+                404
+            );
+        }
+
+        $user = $request->user();
+        if (! $user || $user->role !== 'LURAH' || (int) $user->unit_kerja_id !== (int) $kuitansi->unit_kerja_id) {
+            return $this->errorResponse(
+                'FORBIDDEN',
+                'Hanya Lurah pada kelurahan bersangkutan yang berwenang mengotorisasi kuitansi ini.',
+                null,
+                403
+            );
+        }
+
+        try {
+            $updated = $this->receiptService->approveByLurah(
+                $kuitansi->id,
+                $validated['catatan'] ?? null,
+                $user
+            );
+
+            return $this->successResponse([
+                'id' => $updated->id,
+                'nomor_kuitansi' => $updated->nomor_kuitansi,
+                'status' => $updated->status,
+                'lurah_user_id' => $updated->lurah_user_id,
+                'tanggal_lurah_approve' => $updated->tanggal_lurah_approve,
+                'catatan_lurah' => $updated->catatan_lurah,
+            ], 'Kuitansi berhasil diotorisasi oleh Lurah dan diteruskan ke Tim Verifikator Kecamatan');
+        } catch (ModelNotFoundException $e) {
+            return $this->errorResponse(
+                'RECEIPT_NOT_FOUND',
+                'Kuitansi tidak ditemukan.',
+                null,
+                404
+            );
+        } catch (InvalidArgumentException $e) {
+            return $this->errorResponse(
+                'INVALID_STATE',
+                $e->getMessage(),
+                null,
+                422
+            );
+        } catch (Throwable $e) {
+            return $this->errorResponse(
+                'LURAH_APPROVE_FAILED',
+                $e->getMessage(),
+                null,
+                400
+            );
+        }
+    }
+
+    /**
+     * Endpoint penolakan kuitansi oleh Lurah (POST /api/v1/receipts/{id}/lurah-reject).
+     */
+    public function lurahReject(Request $request, int|string $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'alasan' => ['required', 'string', 'min:5', 'max:1000'],
+        ]);
+
+        $kuitansi = Kuitansi::where('id', $id)->orWhere('nomor_kuitansi', $id)->first();
+        if (! $kuitansi) {
+            return $this->errorResponse(
+                'RECEIPT_NOT_FOUND',
+                'Kuitansi tidak ditemukan.',
+                null,
+                404
+            );
+        }
+
+        $user = $request->user();
+        if (! $user || $user->role !== 'LURAH' || (int) $user->unit_kerja_id !== (int) $kuitansi->unit_kerja_id) {
+            return $this->errorResponse(
+                'FORBIDDEN',
+                'Hanya Lurah pada kelurahan bersangkutan yang berwenang menolak kuitansi ini.',
+                null,
+                403
+            );
+        }
+
+        try {
+            $updated = $this->receiptService->rejectByLurah(
+                $kuitansi->id,
+                $validated['alasan'],
+                $user
+            );
+
+            return $this->successResponse([
+                'id' => $updated->id,
+                'nomor_kuitansi' => $updated->nomor_kuitansi,
+                'status' => $updated->status,
+                'catatan_lurah' => $updated->catatan_lurah,
+            ], 'Kuitansi dikembalikan oleh Lurah dan pagu anggaran telah dipulihkan');
+        } catch (ModelNotFoundException $e) {
+            return $this->errorResponse(
+                'RECEIPT_NOT_FOUND',
+                'Kuitansi tidak ditemukan.',
+                null,
+                404
+            );
+        } catch (InvalidArgumentException $e) {
+            return $this->errorResponse(
+                'INVALID_STATE',
+                $e->getMessage(),
+                null,
+                422
+            );
+        } catch (Throwable $e) {
+            return $this->errorResponse(
+                'LURAH_REJECT_FAILED',
                 $e->getMessage(),
                 null,
                 400
