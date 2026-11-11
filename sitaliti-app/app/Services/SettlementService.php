@@ -52,10 +52,22 @@ class SettlementService implements SettlementServiceInterface
             throw new InvalidArgumentException('Bundel pengajuan SPJ wajib menyertakan minimal 1 kuitansi.');
         }
 
+        if ($user->role === 'LURAH') {
+            throw new InvalidArgumentException('Lurah hanya memiliki akses baca (read-only) terhadap bundel SPJ.');
+        }
+
         $tahun = (int) ($data['tahun_anggaran'] ?? date('Y'));
         $bulan = (int) ($data['bulan_periode'] ?? date('n'));
         $jenis = (string) ($data['jenis_bundel'] ?? 'SPP_GU');
-        $unitId = $data['unit_kerja_id'] ?? $user->unit_kerja_id;
+
+        if ($user->isKelurahanScoped()) {
+            if ($jenis !== 'LPJ_BPP') {
+                throw new InvalidArgumentException('Bendahara Pengeluaran Pembantu di Kelurahan hanya berwenang membuat bundel berjenis LPJ_BPP.');
+            }
+            $unitId = $user->unit_kerja_id;
+        } else {
+            $unitId = $data['unit_kerja_id'] ?? $user->unit_kerja_id;
+        }
 
         if (! $unitId) {
             throw new InvalidArgumentException('Unit kerja pengaju SPJ wajib ditentukan.');
@@ -89,6 +101,12 @@ class SettlementService implements SettlementServiceInterface
                 if ($r->status !== 'LOLOS_VERIFIKASI') {
                     throw new InvalidArgumentException(
                         "Kuitansi {$r->nomor_kuitansi} berstatus '{$r->status}', hanya kuitansi LOLOS_VERIFIKASI yang dapat dibundel."
+                    );
+                }
+
+                if ($user->isKelurahanScoped() && (int) $r->unit_kerja_id !== (int) $user->unit_kerja_id) {
+                    throw new InvalidArgumentException(
+                        "Kuitansi {$r->nomor_kuitansi} berasal dari unit kerja lain. BPP Kelurahan hanya dapat membundel kuitansi kelurahannya sendiri."
                     );
                 }
             }
@@ -152,8 +170,12 @@ class SettlementService implements SettlementServiceInterface
     /**
      * Mengeluarkan kuitansi bermasalah dari bundel aktif (Unbundle).
      */
-    public function unbundleReceipt(int|string $bundleId, int|string $kuitansiId, ?string $reason = null): bool
+    public function unbundleReceipt(int|string $bundleId, int|string $kuitansiId, ?string $reason = null, ?User $actor = null): bool
     {
+        if ($actor && $actor->role === 'LURAH') {
+            throw new InvalidArgumentException('Lurah hanya memiliki akses baca (read-only) dan tidak berwenang mengeluarkan kuitansi dari bundel.');
+        }
+
         $item = PengajuanSpjItem::where('pengajuan_spj_id', $bundleId)
             ->where(function ($q) use ($kuitansiId) {
                 $q->where('kuitansi_id', $kuitansiId)
@@ -166,6 +188,11 @@ class SettlementService implements SettlementServiceInterface
 
         if (! $item) {
             throw new InvalidArgumentException('Kuitansi tidak ditemukan dalam keadaan aktif pada bundel SPJ ini.');
+        }
+
+        $bundle = $item->pengajuanSpj;
+        if ($actor && $actor->isKelurahanScoped() && (int) $bundle->unit_kerja_id !== (int) $actor->unit_kerja_id) {
+            throw new InvalidArgumentException('BPP Kelurahan tidak berwenang mengeluarkan kuitansi dari bundel unit lain.');
         }
 
         return DB::transaction(function () use ($item) {
@@ -198,8 +225,12 @@ class SettlementService implements SettlementServiceInterface
     /**
      * Mencatat nomor SP2D SIPD-RI dan memindahkan seluruh kuncian pagu kuitansi menjadi realisasi definitif.
      */
-    public function recordSipdSp2d(int|string $bundleId, string $nomorSp2d, ?string $nomorSpp = null, ?string $tanggalSp2d = null): PengajuanSpj
+    public function recordSipdSp2d(int|string $bundleId, string $nomorSp2d, ?string $nomorSpp = null, ?string $tanggalSp2d = null, ?User $actor = null): PengajuanSpj
     {
+        if ($actor && $actor->isKelurahanScoped()) {
+            throw new InvalidArgumentException('Pengguna kelurahan tidak berwenang mencatat nomor SP2D SIPD-RI.');
+        }
+
         return DB::transaction(function () use ($bundleId, $nomorSp2d, $nomorSpp, $tanggalSp2d) {
             $bundle = PengajuanSpj::with(['activeItems.kuitansi'])
                 ->where(function ($q) use ($bundleId) {
@@ -259,12 +290,16 @@ class SettlementService implements SettlementServiceInterface
      * @param  array<string, mixed>  $filters
      * @return array<int, array<string, mixed>>
      */
-    public function getBundles(array $filters = []): array
+    public function getBundles(array $filters = [], ?User $actor = null): array
     {
         $query = PengajuanSpj::with(['unitKerja', 'activeItems.kuitansi.rekening'])
             ->orderBy('created_at', 'desc');
 
-        if (! empty($filters['unit_id'])) {
+        if ($actor && $actor->isKelurahanScoped()) {
+            if ($actor->unit_kerja_id) {
+                $query->where('unit_kerja_id', $actor->unit_kerja_id);
+            }
+        } elseif (! empty($filters['unit_id'])) {
             $query->where('unit_kerja_id', $filters['unit_id']);
         }
 
@@ -309,7 +344,7 @@ class SettlementService implements SettlementServiceInterface
      *
      * @return array<string, mixed>
      */
-    public function getBundleDetail(int|string $bundleId): array
+    public function getBundleDetail(int|string $bundleId, ?User $actor = null): array
     {
         $bundle = PengajuanSpj::with([
             'unitKerja',
@@ -323,6 +358,12 @@ class SettlementService implements SettlementServiceInterface
             ->where('id', $bundleId)
             ->orWhere('nomor_bundel', $bundleId)
             ->firstOrFail();
+
+        if ($actor && $actor->isKelurahanScoped()) {
+            if ((int) $bundle->unit_kerja_id !== (int) $actor->unit_kerja_id) {
+                throw new InvalidArgumentException('Anda tidak berwenang mengakses detail bundel SPJ dari unit kerja lain.');
+            }
+        }
 
         return [
             'id' => $bundle->id,
