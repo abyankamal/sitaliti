@@ -37,12 +37,13 @@ class User extends Authenticatable
 
     /**
      * Definisi default permissions per role.
+     * Jika parameter $role null, mengembalikan seluruh associative array role => permissions.
      *
-     * @return list<string>
+     * @return array<string, list<string>>|list<string>
      */
-    public static function defaultRolePermissions(string $role): array
+    public static function defaultRolePermissions(?string $role = null): array
     {
-        return match ($role) {
+        $all = [
             'OPERATOR' => [
                 'kuitansi.view',
                 'kuitansi.create',
@@ -87,8 +88,13 @@ class User extends Authenticatable
                 'bundle.record_sp2d',
                 'dashboard.view_all',
             ],
-            default => [],
-        };
+        ];
+
+        if ($role === null) {
+            return $all;
+        }
+
+        return $all[$role] ?? [];
     }
 
     /**
