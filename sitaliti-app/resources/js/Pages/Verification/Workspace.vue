@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import GovButton from '@/Components/UI/GovButton.vue';
 import GovBadge from '@/Components/UI/GovBadge.vue';
 import PdfViewer from '@/Modules/Verification/PdfViewer.vue';
@@ -19,6 +19,13 @@ const props = defineProps({
     },
 });
 
+const page = usePage();
+const currentUser = computed(() => page.props.auth?.user || {});
+const userRole = computed(() => currentUser.value.role || '');
+const isVerifikator = computed(() => userRole.value === 'VERIFIKATOR' || userRole.value === 'KPA');
+const isLurah = computed(() => userRole.value === 'LURAH' || userRole.value === 'KPA');
+const isPptk = computed(() => userRole.value === 'PPTK' || userRole.value === 'KPA');
+
 const detail = ref(null);
 const loading = ref(true);
 const activeAttachmentIndex = ref(0);
@@ -26,9 +33,23 @@ const activeTab = ref('checklist'); // 'checklist' | 'timeline'
 const auditHistory = ref([]);
 const loadingHistory = ref(false);
 
-// Modal Revision State
+// Notification State
+const notification = ref({ show: false, type: 'success', message: '' });
+
+function showNotification(message, type = 'success') {
+    notification.value = { show: true, type, message };
+    setTimeout(() => {
+        notification.value.show = false;
+    }, 6000);
+}
+
+// Modal Revision & Otorisasi State
 const showRevisionModal = ref(false);
 const revisionActionType = ref('REVISION_MINOR');
+const showQuickAuthModal = ref(false);
+const quickAuthType = ref('APPROVE'); // 'APPROVE' | 'REJECT'
+const quickAuthNotes = ref('');
+const isSubmittingQuickAuth = ref(false);
 
 onMounted(async () => {
     try {
@@ -49,7 +70,6 @@ onMounted(async () => {
             }
             detail.value = res;
         }
-        // Fetch audit trail history in parallel
         fetchHistory();
     } finally {
         loading.value = false;
@@ -83,6 +103,7 @@ const allMandatoryVerified = computed(() => {
 });
 
 function setDocStatus(index, newStatus) {
+    if (!isVerifikator.value) return;
     if (detail.value && detail.value.attachments[index]) {
         detail.value.attachments[index].status = newStatus;
     }
@@ -96,33 +117,87 @@ function openRevisionModal(type) {
 async function handleActionSubmit(payload) {
     showRevisionModal.value = false;
     const res = await verificationService.submitAction(detail.value.id, payload);
-    alert(res.message);
-    router.visit(route('verification.index'));
+    showNotification(res.message || 'Aksi verifikasi berhasil diproses.');
+    setTimeout(() => {
+        router.visit(route('verification.index'));
+    }, 1000);
 }
 
 async function handleApprove() {
     if (!allMandatoryVerified.value) {
-        alert('Seluruh dokumen bertanda Wajib harus diverifikasi Lolos (Valid) terlebih dahulu.');
+        showNotification('Seluruh dokumen bertanda Wajib harus diverifikasi Lolos (Valid) terlebih dahulu.', 'error');
         return;
     }
 
-    if (confirm('Konfirmasi: Berkas kuitansi ini memenuhi seluruh syarat akuntabilitas. Terbitkan Lembar Kendali Verifikasi?')) {
-        // Susun payload checklist_results dari detail.checklist (master checklist resmi)
-        const checklistResults = Array.isArray(detail.value.checklist)
-            ? detail.value.checklist.map(item => ({
-                item_id: item.item_id,
-                status: 'SESUAI',
-                notes: item.catatan || 'Sesuai dengan ketentuan regulasi dan bukti fisik.',
-            }))
-            : [];
+    const checklistResults = Array.isArray(detail.value.checklist)
+        ? detail.value.checklist.map(item => ({
+            item_id: item.item_id,
+            status: 'SESUAI',
+            notes: item.catatan || 'Sesuai dengan ketentuan regulasi dan bukti fisik.',
+        }))
+        : [];
 
+    try {
         const res = await verificationService.submitAction(detail.value.id, {
             action: 'VERIFIED',
             notes: 'Semua kelengkapan dokumen telah diteliti dan valid.',
             checklist_results: checklistResults,
         });
-        alert(res.message);
-        router.visit(route('control-sheet.show', { id: detail.value.id }));
+        showNotification(res.message || 'Kuitansi dinyatakan Lolos Verifikasi Akuntabel.');
+        setTimeout(() => {
+            router.visit(route('control-sheet.show', { id: detail.value.id }));
+        }, 1200);
+    } catch (err) {
+        showNotification(err.response?.data?.error?.message || err.message || 'Gagal memproses verifikasi.', 'error');
+    }
+}
+
+// Quick Auth (Lurah / PPTK) dari Workspace
+function openQuickAuth(type) {
+    quickAuthType.value = type;
+    quickAuthNotes.value = '';
+    showQuickAuthModal.value = true;
+}
+
+async function handleQuickAuthSubmit() {
+    if (!detail.value) return;
+    if (quickAuthType.value === 'REJECT' && (!quickAuthNotes.value || quickAuthNotes.value.trim().length < 3)) {
+        showNotification('Mohon cantumkan alasan penolakan secara jelas (minimal 3 karakter).', 'error');
+        return;
+    }
+
+    isSubmittingQuickAuth.value = true;
+    const targetId = detail.value.id;
+
+    try {
+        if (detail.value.status === 'MENUNGGU_LURAH' && isLurah.value) {
+            if (quickAuthType.value === 'APPROVE') {
+                await receiptService.approveByLurah(targetId, quickAuthNotes.value || 'Disetujui dan diotorisasi oleh Lurah.');
+                showNotification('Kuitansi berhasil diotorisasi Lurah dan diteruskan ke Tim Verifikator Kecamatan.');
+            } else {
+                await receiptService.rejectByLurah(targetId, quickAuthNotes.value);
+                showNotification('Kuitansi dikembalikan oleh Lurah ke draf Operator.');
+            }
+        } else if (detail.value.status === 'MENUNGGU_PPTK' && isPptk.value) {
+            if (quickAuthType.value === 'APPROVE') {
+                await receiptService.approveByPptk(targetId, quickAuthNotes.value);
+                showNotification('Kuitansi disetujui PPTK dan diteruskan ke tahapan selanjutnya.');
+            } else {
+                await receiptService.rejectByPptk(targetId, quickAuthNotes.value);
+                showNotification('Kuitansi ditolak oleh PPTK dan dikembalikan ke draf Operator.');
+            }
+        }
+        showQuickAuthModal.value = false;
+        setTimeout(() => {
+            router.visit(route('verification.index'));
+        }, 1200);
+    } catch (err) {
+        showNotification(
+            err.response?.data?.error?.message || err.response?.data?.message || err.message || 'Gagal memproses otorisasi.',
+            'error'
+        );
+    } finally {
+        isSubmittingQuickAuth.value = false;
     }
 }
 </script>
@@ -148,20 +223,19 @@ async function handleApprove() {
                 <div class="h-5 w-px bg-slate-700"></div>
 
                 <div v-if="detail" class="flex items-center gap-3">
-                    <span class="text-sm font-bold text-white">{{ detail.id }}</span>
-                    <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-gov-gold-600/20 text-gov-gold-400 border border-gov-gold-500/30">
-                        Kategori {{ detail.category }}
-                    </span>
+                    <span class="font-bold text-sm text-white tracking-wide font-mono">{{ detail.id }}</span>
                     <GovBadge :variant="STATUS_VARIANTS[detail.status]">
                         {{ STATUS_LABELS[detail.status] }}
                     </GovBadge>
+                    <span class="text-xs text-slate-400">{{ formatTanggalIndo(detail.tanggal) }}</span>
                 </div>
             </div>
 
-            <!-- Action Buttons Verifikator -->
-            <div class="flex items-center gap-2.5">
+            <!-- Action Buttons Berdasarkan Wewenang & Status Kuitansi -->
+            <div v-if="detail" class="flex items-center gap-2.5">
+                <!-- 1. Unduh PDF Lembar Kendali jika Lolos Verifikasi -->
                 <a
-                    v-if="detail && (detail.status === 'LOLOS_VERIFIKASI' || detail.qr_token)"
+                    v-if="detail.status === 'LOLOS_VERIFIKASI' || detail.qr_token"
                     :href="route('control-sheet.download-pdf', { id: detail.id || props.id })"
                     target="_blank"
                     class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-gov-gold-500 text-gov-navy-950 hover:bg-gov-gold-400 shadow-sm transition"
@@ -172,30 +246,69 @@ async function handleApprove() {
                     Unduh PDF Lembar Kendali
                 </a>
 
-                <GovButton variant="secondary" size="sm" @click="openRevisionModal('REVISION_MINOR')">
-                    <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Revisi Minor
-                </GovButton>
+                <!-- 2. Aksi Khusus LURAH jika status MENUNGGU_LURAH -->
+                <template v-if="detail.status === 'MENUNGGU_LURAH' && isLurah">
+                    <GovButton variant="danger" size="sm" @click="openQuickAuth('REJECT')">
+                        Tolak / Kembalikan
+                    </GovButton>
+                    <GovButton variant="primary" size="sm" class="bg-purple-700 hover:bg-purple-800 text-white" @click="openQuickAuth('APPROVE')">
+                        <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        Otorisasi Lurah
+                    </GovButton>
+                </template>
 
-                <GovButton variant="danger" size="sm" @click="openRevisionModal('REVISION_MAJOR')">
-                    Tolak (Revisi Mayor)
-                </GovButton>
+                <!-- 3. Aksi Khusus PPTK jika status MENUNGGU_PPTK -->
+                <template v-if="detail.status === 'MENUNGGU_PPTK' && isPptk">
+                    <GovButton variant="danger" size="sm" @click="openQuickAuth('REJECT')">
+                        Tolak Kuitansi
+                    </GovButton>
+                    <GovButton variant="primary" size="sm" class="bg-emerald-600 hover:bg-emerald-700 text-white" @click="openQuickAuth('APPROVE')">
+                        <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        Setujui PPTK
+                    </GovButton>
+                </template>
 
-                <GovButton
-                    variant="success"
-                    size="sm"
-                    :disabled="!allMandatoryVerified"
-                    @click="handleApprove"
-                >
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                    </svg>
-                    Lolos Verifikasi
-                </GovButton>
+                <!-- 4. Aksi Tim VERIFIKATOR Kecamatan jika status MENUNGGU_VERIFIKASI atau REVISI_MINOR -->
+                <template v-if="isVerifikator && ['MENUNGGU_VERIFIKASI', 'REVISI_MINOR'].includes(detail.status)">
+                    <GovButton variant="secondary" size="sm" @click="openRevisionModal('REVISION_MINOR')">
+                        <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Revisi Minor
+                    </GovButton>
+
+                    <GovButton variant="danger" size="sm" @click="openRevisionModal('REVISION_MAJOR')">
+                        Tolak (Revisi Mayor)
+                    </GovButton>
+
+                    <GovButton
+                        variant="success"
+                        size="sm"
+                        :disabled="!allMandatoryVerified"
+                        @click="handleApprove"
+                    >
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        Lolos Verifikasi
+                    </GovButton>
+                </template>
             </div>
         </header>
+
+        <!-- Notification Toast In-App -->
+        <div
+            v-if="notification.show"
+            class="mx-6 mt-3 p-3 rounded-lg text-xs font-semibold flex items-center justify-between border shadow-sm transition-all"
+            :class="notification.type === 'error' ? 'bg-rose-50 text-rose-800 border-rose-200' : 'bg-emerald-50 text-emerald-800 border-emerald-200'"
+        >
+            <span>{{ notification.message }}</span>
+            <button @click="notification.show = false" class="text-slate-400 hover:text-slate-600 ml-4">&times;</button>
+        </div>
 
         <!-- Main Split-Screen Workspace (55% Kiri / 45% Kanan) -->
         <div v-if="detail" class="flex-1 flex overflow-hidden p-3 gap-3">
@@ -255,7 +368,7 @@ async function handleApprove() {
                     </div>
                 </div>
 
-                <!-- Tab Content: Checklist Items List (Scrollable) -->
+                <!-- Tab Content: Checklist Dokumen Fisik -->
                 <div v-show="activeTab === 'checklist'" class="flex-1 overflow-y-auto p-4 space-y-3">
                     <div class="flex items-center justify-between text-xs font-bold text-gov-navy-900 border-b pb-2">
                         <span>Checklist Hasil Pemeriksaan Fisik Dokumen</span>
@@ -294,8 +407,8 @@ async function handleApprove() {
                                 </div>
                             </div>
 
-                            <!-- Document Status Buttons -->
-                            <div class="flex items-center gap-1 shrink-0">
+                            <!-- Document Status Buttons (Khusus Verifikator) atau Status Badge (Lurah/PPTK/Lainnya) -->
+                            <div v-if="isVerifikator" class="flex items-center gap-1 shrink-0">
                                 <button
                                     type="button"
                                     @click.stop="setDocStatus(idx, 'VALID')"
@@ -312,6 +425,14 @@ async function handleApprove() {
                                 >
                                     ✕ Ada Catatan
                                 </button>
+                            </div>
+                            <div v-else class="shrink-0">
+                                <span
+                                    class="px-2 py-0.5 rounded text-[10px] font-semibold"
+                                    :class="att.status === 'VALID' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'"
+                                >
+                                    {{ att.status === 'VALID' ? 'Lolos' : 'Pending' }}
+                                </span>
                             </div>
                         </div>
 
@@ -356,12 +477,12 @@ async function handleApprove() {
                             {{ allMandatoryVerified ? 'Siap Lolos Verifikasi' : 'Belum Semua Dokumen Lolos' }}
                         </strong>
                     </span>
-                    <span class="text-[11px] text-slate-400">Verifikator: Kasubag Keuangan (PPK Kecamatan)</span>
+                    <span class="text-[11px] text-slate-400">Pemeriksa: {{ currentUser?.name || 'Verifikator' }}</span>
                 </div>
             </div>
         </div>
 
-        <!-- Modal Revisi Drawer -->
+        <!-- Modal Revisi Drawer (Verifikator) -->
         <RevisionDrawer
             :show="showRevisionModal"
             :receipt-id="detail?.id || ''"
@@ -369,6 +490,68 @@ async function handleApprove() {
             @close="showRevisionModal = false"
             @submit="handleActionSubmit"
         />
+
+        <!-- Modal Otorisasi Cepat (Lurah & PPTK) -->
+        <div
+            v-if="showQuickAuthModal"
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+        >
+            <div class="bg-white rounded-xl shadow-2xl max-w-md w-full border border-slate-200 overflow-hidden">
+                <div
+                    :class="[
+                        'px-6 py-4 text-white font-bold flex items-center justify-between',
+                        quickAuthType === 'APPROVE' ? (detail?.status === 'MENUNGGU_LURAH' ? 'bg-purple-800' : 'bg-emerald-700') : 'bg-rose-700'
+                    ]"
+                >
+                    <span class="text-sm font-bold">
+                        {{ detail?.status === 'MENUNGGU_LURAH' ? (quickAuthType === 'APPROVE' ? 'Otorisasi Lurah (KPA Kelurahan)' : 'Penolakan oleh Lurah') : (quickAuthType === 'APPROVE' ? 'Persetujuan PPTK' : 'Penolakan PPTK') }}
+                    </span>
+                    <button @click="showQuickAuthModal = false" class="text-white/80 hover:text-white text-lg">&times;</button>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs space-y-1">
+                        <div class="flex justify-between">
+                            <span class="text-slate-500">No. Kuitansi:</span>
+                            <span class="font-bold text-slate-800">{{ detail?.id }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-500">Nominal:</span>
+                            <span class="font-bold text-gov-navy-950">{{ formatRupiah(detail?.nominal || 0) }}</span>
+                        </div>
+                    </div>
+
+                    <div v-if="quickAuthType === 'APPROVE'">
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Catatan Persetujuan (Opsional):</label>
+                        <textarea
+                            v-model="quickAuthNotes"
+                            rows="3"
+                            class="w-full text-xs rounded-lg border-slate-300 focus:border-gov-navy-800 focus:ring-gov-navy-800"
+                            placeholder="Catatan..."
+                        ></textarea>
+                    </div>
+                    <div v-else>
+                        <label class="block text-xs font-semibold text-rose-800 mb-1">Alasan Penolakan (Wajib):</label>
+                        <textarea
+                            v-model="quickAuthNotes"
+                            rows="3"
+                            class="w-full text-xs rounded-lg border-rose-300 focus:border-rose-500 focus:ring-rose-500"
+                            placeholder="Alasan penolakan..."
+                        ></textarea>
+                    </div>
+
+                    <div class="flex justify-end gap-2 pt-2">
+                        <GovButton variant="secondary" size="sm" @click="showQuickAuthModal = false">Batal</GovButton>
+                        <GovButton
+                            :variant="quickAuthType === 'APPROVE' ? 'primary' : 'danger'"
+                            size="sm"
+                            :disabled="isSubmittingQuickAuth"
+                            @click="handleQuickAuthSubmit"
+                        >
+                            {{ isSubmittingQuickAuth ? 'Memproses...' : (quickAuthType === 'APPROVE' ? 'Konfirmasi Setujui' : 'Konfirmasi Tolak') }}
+                        </GovButton>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
-

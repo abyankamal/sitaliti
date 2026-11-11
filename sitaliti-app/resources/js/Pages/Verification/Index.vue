@@ -14,17 +14,29 @@ import { STATUS_LABELS, STATUS_VARIANTS } from '@/Constants/workflowStatus';
 const page = usePage();
 const user = computed(() => page.props.auth?.user || {});
 const userRole = computed(() => user.value.role || 'VERIFIKATOR');
+const isKelurahan = computed(() => user.value.is_kelurahan_scoped);
 
 const queue = ref([]);
 const loading = ref(true);
-const activeTab = ref('ALL'); // ALL, MENUNGGU_PPTK, MENUNGGU_VERIFIKASI, REVISI_MINOR, LOLOS_VERIFIKASI
+const activeTab = ref('ALL'); // ALL, MENUNGGU_PPTK, MENUNGGU_LURAH, MENUNGGU_VERIFIKASI, REVISI_MINOR, LOLOS_VERIFIKASI
 
-// Modal PPTK State
-const showPptkModal = ref(false);
-const pptkActionType = ref('APPROVE'); // APPROVE | REJECT
+// Notification Banner (In-App)
+const notification = ref({ show: false, type: 'success', message: '' });
+
+function showNotification(message, type = 'success') {
+    notification.value = { show: true, type, message };
+    setTimeout(() => {
+        notification.value.show = false;
+    }, 6000);
+}
+
+// Modal Otorisasi (PPTK / Lurah)
+const showAuthModal = ref(false);
+const authActionRole = ref('PPTK'); // 'PPTK' | 'LURAH'
+const authActionType = ref('APPROVE'); // 'APPROVE' | 'REJECT'
 const selectedItem = ref(null);
-const pptkNotes = ref('');
-const isSubmittingPptk = ref(false);
+const authNotes = ref('');
+const isSubmittingAuth = ref(false);
 
 async function loadQueue() {
     loading.value = true;
@@ -36,9 +48,10 @@ async function loadQueue() {
 }
 
 onMounted(() => {
-    // Jika login sebagai PPTK, default tab langsung ke MENUNGGU_PPTK
     if (userRole.value === 'PPTK') {
         activeTab.value = 'MENUNGGU_PPTK';
+    } else if (userRole.value === 'LURAH') {
+        activeTab.value = 'MENUNGGU_LURAH';
     }
     loadQueue();
 });
@@ -49,40 +62,58 @@ const filteredQueue = computed(() => {
 });
 
 const countPptk = computed(() => queue.value.filter(item => item.status === 'MENUNGGU_PPTK').length);
+const countLurah = computed(() => queue.value.filter(item => item.status === 'MENUNGGU_LURAH').length);
 const countVerifikasi = computed(() => queue.value.filter(item => item.status === 'MENUNGGU_VERIFIKASI').length);
 const countRevisi = computed(() => queue.value.filter(item => item.status === 'REVISI_MINOR').length);
 const countLolos = computed(() => queue.value.filter(item => item.status === 'LOLOS_VERIFIKASI').length);
 
-function openPptkModal(item, action) {
+function openAuthModal(item, role, action) {
     selectedItem.value = item;
-    pptkActionType.value = action;
-    pptkNotes.value = '';
-    showPptkModal.value = true;
+    authActionRole.value = role;
+    authActionType.value = action;
+    authNotes.value = '';
+    showAuthModal.value = true;
 }
 
-async function handlePptkSubmit() {
+async function handleAuthSubmit() {
     if (!selectedItem.value) return;
-    
-    if (pptkActionType.value === 'REJECT' && (!pptkNotes.value || pptkNotes.value.trim().length < 3)) {
-        alert('Mohon cantumkan alasan penolakan secara jelas (minimal 3 karakter).');
+
+    if (authActionType.value === 'REJECT' && (!authNotes.value || authNotes.value.trim().length < 3)) {
+        showNotification('Mohon cantumkan alasan penolakan secara jelas (minimal 3 karakter).', 'error');
         return;
     }
 
-    isSubmittingPptk.value = true;
+    isSubmittingAuth.value = true;
+    const targetId = selectedItem.value.kuitansi_id || selectedItem.value.id;
+
     try {
-        if (pptkActionType.value === 'APPROVE') {
-            await receiptService.approveByPptk(selectedItem.value.kuitansi_id || selectedItem.value.id, pptkNotes.value);
-            alert('Kuitansi berhasil disetujui PPTK dan diteruskan ke Verifikator.');
+        if (authActionRole.value === 'LURAH') {
+            if (authActionType.value === 'APPROVE') {
+                await receiptService.approveByLurah(targetId, authNotes.value || 'Disetujui dan diotorisasi oleh Lurah.');
+                showNotification('Kuitansi berhasil diotorisasi Lurah dan diteruskan ke Tim Verifikator Kecamatan.');
+            } else {
+                await receiptService.rejectByLurah(targetId, authNotes.value);
+                showNotification('Kuitansi dikembalikan oleh Lurah ke draf Operator dan pagu kas dipulihkan.');
+            }
         } else {
-            await receiptService.rejectByPptk(selectedItem.value.kuitansi_id || selectedItem.value.id, pptkNotes.value);
-            alert('Kuitansi ditolak oleh PPTK dan dikembalikan ke draf Operator.');
+            // PPTK
+            if (authActionType.value === 'APPROVE') {
+                await receiptService.approveByPptk(targetId, authNotes.value);
+                showNotification('Kuitansi berhasil disetujui PPTK dan diteruskan ke tahapan selanjutnya.');
+            } else {
+                await receiptService.rejectByPptk(targetId, authNotes.value);
+                showNotification('Kuitansi ditolak oleh PPTK dan dikembalikan ke draf Operator.');
+            }
         }
-        showPptkModal.value = false;
+        showAuthModal.value = false;
         await loadQueue();
     } catch (err) {
-        alert(err.response?.data?.error?.message || err.message || 'Terjadi kesalahan saat memproses otorisasi PPTK.');
+        showNotification(
+            err.response?.data?.error?.message || err.response?.data?.message || err.message || 'Terjadi kesalahan saat memproses otorisasi.',
+            'error'
+        );
     } finally {
-        isSubmittingPptk.value = false;
+        isSubmittingAuth.value = false;
     }
 }
 </script>
@@ -95,19 +126,37 @@ async function handlePptkSubmit() {
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 class="text-lg font-bold text-gov-navy-950 flex items-center gap-2">
-                        <span>Antrean Verifikasi Dokumen Kuitansi</span>
+                        <span>Antrean Verifikasi & Otorisasi Kuitansi</span>
                         <span class="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-gov-navy-100 text-gov-navy-900 border border-gov-navy-200">
-                            Tim Verifikator & PPK
+                            {{ isKelurahan ? (user.unit_kerja?.nama_unit || 'Kelurahan') : 'Tim Verifikator & PPK' }}
                         </span>
                     </h1>
                     <p class="text-xs text-slate-500 mt-1">
-                        Pemeriksaan bukti kepatuhan akuntabilitas sebelum dibundel menjadi SPP (GU/TU/LS)
+                        Pemeriksaan bukti kepatuhan akuntabilitas dan alur pengesahan bertingkat sebelum dibundel menjadi SPJ
                     </p>
                 </div>
             </div>
         </template>
 
         <div class="space-y-4">
+            <!-- In-App Notification Banner -->
+            <div
+                v-if="notification.show"
+                class="p-3.5 rounded-xl text-xs font-semibold flex items-center justify-between shadow-sm transition-all border"
+                :class="notification.type === 'error' ? 'bg-rose-50 text-rose-800 border-rose-200' : 'bg-emerald-50 text-emerald-800 border-emerald-200'"
+            >
+                <div class="flex items-center gap-2">
+                    <svg v-if="notification.type === 'error'" class="w-4 h-4 text-rose-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <svg v-else class="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>{{ notification.message }}</span>
+                </div>
+                <button @click="notification.show = false" class="text-slate-400 hover:text-slate-600 ml-4">&times;</button>
+            </div>
+
             <!-- Filter Tabs -->
             <div class="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto text-xs font-medium">
                 <button
@@ -133,6 +182,21 @@ async function handlePptkSubmit() {
                     <span>Persetujuan PPTK</span>
                     <span v-if="countPptk > 0" class="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-200 text-amber-900 font-bold">
                         {{ countPptk }}
+                    </span>
+                </button>
+                <button
+                    v-if="isKelurahan || countLurah > 0 || userRole === 'LURAH'"
+                    @click="activeTab = 'MENUNGGU_LURAH'"
+                    :class="[
+                        'px-3 py-1.5 rounded-lg transition whitespace-nowrap flex items-center gap-1.5',
+                        activeTab === 'MENUNGGU_LURAH'
+                            ? 'bg-purple-700 text-white font-bold'
+                            : 'bg-white text-purple-800 hover:bg-purple-50 border border-purple-200'
+                    ]"
+                >
+                    <span>Otorisasi Lurah</span>
+                    <span v-if="countLurah > 0" class="px-1.5 py-0.2 rounded-full text-[10px] bg-purple-200 text-purple-900 font-bold">
+                        {{ countLurah }}
                     </span>
                 </button>
                 <button
@@ -259,9 +323,10 @@ async function handlePptkSubmit() {
                                     <!-- Aksi Spesifik PPTK jika status MENUNGGU_PPTK -->
                                     <div v-if="item.status === 'MENUNGGU_PPTK'" class="flex items-center justify-center gap-1.5">
                                         <button
-                                            @click="openPptkModal(item, 'APPROVE')"
+                                            v-if="userRole === 'PPTK' || userRole === 'KPA'"
+                                            @click="openAuthModal(item, 'PPTK', 'APPROVE')"
                                             class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
-                                            title="Setujui dan teruskan ke verifikator"
+                                            title="Setujui dan teruskan ke tahapan berikutnya"
                                         >
                                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -269,7 +334,8 @@ async function handlePptkSubmit() {
                                             Setujui
                                         </button>
                                         <button
-                                            @click="openPptkModal(item, 'REJECT')"
+                                            v-if="userRole === 'PPTK' || userRole === 'KPA'"
+                                            @click="openAuthModal(item, 'PPTK', 'REJECT')"
                                             class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-600 text-white hover:bg-rose-700 shadow-sm"
                                             title="Tolak dan pulihkan pagu kas"
                                         >
@@ -278,9 +344,49 @@ async function handlePptkSubmit() {
                                             </svg>
                                             Tolak
                                         </button>
+                                        <Link
+                                            :href="route('verification.workspace', { id: item.id })"
+                                            class="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200"
+                                            title="Periksa kelengkapan berkas"
+                                        >
+                                            Review
+                                        </Link>
                                     </div>
 
-                                    <!-- Aksi Verifikator jika status sudah lewat PPTK -->
+                                    <!-- Aksi Spesifik LURAH jika status MENUNGGU_LURAH -->
+                                    <div v-else-if="item.status === 'MENUNGGU_LURAH'" class="flex items-center justify-center gap-1.5">
+                                        <button
+                                            v-if="userRole === 'LURAH' || userRole === 'KPA'"
+                                            @click="openAuthModal(item, 'LURAH', 'APPROVE')"
+                                            class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
+                                            title="Otorisasi dan teruskan ke Verifikator Kecamatan"
+                                        >
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            Otorisasi
+                                        </button>
+                                        <button
+                                            v-if="userRole === 'LURAH' || userRole === 'KPA'"
+                                            @click="openAuthModal(item, 'LURAH', 'REJECT')"
+                                            class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-600 text-white hover:bg-rose-700 shadow-sm"
+                                            title="Tolak dan pulihkan pagu kas"
+                                        >
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                            Tolak
+                                        </button>
+                                        <Link
+                                            :href="route('verification.workspace', { id: item.id })"
+                                            class="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200"
+                                            title="Periksa kelengkapan berkas"
+                                        >
+                                            Review
+                                        </Link>
+                                    </div>
+
+                                    <!-- Aksi Verifikator jika status sudah lewat persetujuan -->
                                     <div v-else class="flex items-center justify-center gap-1.5">
                                         <Link
                                             :href="route('verification.workspace', { id: item.id })"
@@ -301,28 +407,28 @@ async function handlePptkSubmit() {
             </GovCard>
         </div>
 
-        <!-- Modal Otorisasi PPTK (Approval / Rejection) -->
+        <!-- Modal Otorisasi Bersama (PPTK & Lurah) -->
         <div
-            v-if="showPptkModal"
+            v-if="showAuthModal"
             class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
         >
             <div class="bg-white rounded-xl shadow-2xl max-w-md w-full border border-slate-200 overflow-hidden">
                 <div
                     :class="[
                         'px-6 py-4 text-white font-bold flex items-center justify-between',
-                        pptkActionType === 'APPROVE' ? 'bg-emerald-700' : 'bg-rose-700'
+                        authActionType === 'APPROVE' ? (authActionRole === 'LURAH' ? 'bg-purple-800' : 'bg-emerald-700') : 'bg-rose-700'
                     ]"
                 >
-                    <span class="flex items-center gap-2">
-                        <svg v-if="pptkActionType === 'APPROVE'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <span class="flex items-center gap-2 text-sm">
+                        <svg v-if="authActionType === 'APPROVE'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
-                        {{ pptkActionType === 'APPROVE' ? 'Persetujuan PPTK (Tier 1)' : 'Penolakan Pengajuan Kuitansi' }}
+                        {{ authActionRole === 'LURAH' ? (authActionType === 'APPROVE' ? 'Otorisasi KPA Kelurahan (Lurah)' : 'Penolakan / Pengembalian oleh Lurah') : (authActionType === 'APPROVE' ? 'Persetujuan PPTK' : 'Penolakan oleh PPTK') }}
                     </span>
-                    <button @click="showPptkModal = false" class="text-white/80 hover:text-white text-lg">&times;</button>
+                    <button @click="showAuthModal = false" class="text-white/80 hover:text-white text-lg">&times;</button>
                 </div>
 
                 <div class="p-6 space-y-4">
@@ -341,58 +447,49 @@ async function handlePptkSubmit() {
                         </div>
                     </div>
 
-                    <div v-if="pptkActionType === 'APPROVE'">
+                    <div v-if="authActionType === 'APPROVE'">
                         <label class="block text-xs font-semibold text-slate-700 mb-1">
-                            Catatan Persetujuan PPTK (Opsional):
+                            Catatan Persetujuan (Opsional):
                         </label>
                         <textarea
-                            v-model="pptkNotes"
+                            v-model="authNotes"
                             rows="3"
-                            class="w-full text-xs rounded-lg border-slate-300 focus:border-emerald-500 focus:ring-emerald-500"
-                            placeholder="Contoh: Sesuai rencana kegiatan seksi, diteruskan ke verifikator."
+                            class="w-full text-xs rounded-lg border-slate-300 focus:border-gov-navy-800 focus:ring-gov-navy-800"
+                            :placeholder="authActionRole === 'LURAH' ? 'Contoh: Disetujui dan diotorisasi untuk diproses verifikasi Kecamatan.' : 'Contoh: Sesuai rencana kegiatan seksi, diteruskan.'"
                         ></textarea>
                     </div>
 
                     <div v-else>
                         <label class="block text-xs font-semibold text-rose-800 mb-1">
-                            Alasan Penolakan (Wajib):
+                            Alasan Penolakan / Pengembalian (Wajib):
                         </label>
                         <textarea
-                            v-model="pptkNotes"
+                            v-model="authNotes"
                             rows="3"
-                            class="w-full text-xs rounded-lg border-rose-300 focus:border-rose-500 focus:ring-rose-500"
-                            placeholder="Sebutkan alasan penolakan, kuitansi akan dikembalikan ke draf dan pagu anggaran dipulihkan."
+                            class="w-full text-xs rounded-lg border-rose-300 focus:border-rose-500 focus:ring-rose-500 placeholder-rose-300"
+                            placeholder="Contoh: Bukti fisik belum lengkap, mohon perbaiki."
                         ></textarea>
-                        <p class="text-[11px] text-rose-600 mt-1">
-                            * Tindakan ini otomatis membatalkan kuncian pagu kas bulanan.
-                        </p>
                     </div>
 
-                    <div class="flex items-center justify-end gap-2.5 pt-2">
-                        <button
-                            type="button"
-                            @click="showPptkModal = false"
-                            class="px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100"
+                    <div class="flex justify-end gap-2 pt-2">
+                        <GovButton
+                            variant="secondary"
+                            size="sm"
+                            @click="showAuthModal = false"
                         >
                             Batal
-                        </button>
-                        <button
-                            type="button"
-                            @click="handlePptkSubmit"
-                            :disabled="isSubmittingPptk"
-                            :class="[
-                                'px-4 py-1.5 rounded-lg text-xs font-bold text-white shadow-sm transition',
-                                pptkActionType === 'APPROVE'
-                                    ? 'bg-emerald-600 hover:bg-emerald-700'
-                                    : 'bg-rose-600 hover:bg-rose-700'
-                            ]"
+                        </GovButton>
+                        <GovButton
+                            :variant="authActionType === 'APPROVE' ? 'primary' : 'danger'"
+                            size="sm"
+                            :disabled="isSubmittingAuth"
+                            @click="handleAuthSubmit"
                         >
-                            {{ isSubmittingPptk ? 'Memproses...' : (pptkActionType === 'APPROVE' ? 'Konfirmasi Setujui' : 'Konfirmasi Tolak') }}
-                        </button>
+                            {{ isSubmittingAuth ? 'Memproses...' : (authActionType === 'APPROVE' ? 'Konfirmasi Setujui' : 'Konfirmasi Tolak') }}
+                        </GovButton>
                     </div>
                 </div>
             </div>
         </div>
     </GovAppLayout>
 </template>
-

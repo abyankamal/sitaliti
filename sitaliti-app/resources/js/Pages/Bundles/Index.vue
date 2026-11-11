@@ -1,6 +1,6 @@
 <script setup>
-import { ref, onMounted } from 'vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { ref, computed, onMounted } from 'vue';
+import { Head, Link, usePage } from '@inertiajs/vue3';
 import GovAppLayout from '@/Layouts/GovAppLayout.vue';
 import GovCard from '@/Components/UI/GovCard.vue';
 import GovBadge from '@/Components/UI/GovBadge.vue';
@@ -9,6 +9,31 @@ import { settlementService } from '@/Services/settlementService';
 import { verificationService } from '@/Services/verificationService';
 import { formatRupiah } from '@/Utils/currency';
 import { formatTanggalIndo } from '@/Utils/date';
+
+const page = usePage();
+const currentUser = computed(() => page.props.auth?.user || {});
+const userRole = computed(() => currentUser.value?.role || '');
+const isKelurahanScoped = computed(() => !!currentUser.value?.is_kelurahan_scoped);
+const isKelurahanBpp = computed(() => !!currentUser.value?.is_kelurahan_bpp);
+const isLurah = computed(() => userRole.value === 'LURAH');
+const isKpa = computed(() => userRole.value === 'KPA');
+const isBp = computed(() => userRole.value === 'BENDAHARA_PENGELUARAN');
+const isBpp = computed(() => userRole.value === 'BPP');
+
+const canCreateBundle = computed(() => {
+    if (isLurah.value) return false;
+    return isBp.value || isBpp.value || isKpa.value;
+});
+
+const canRecordSp2d = computed(() => {
+    if (isKelurahanScoped.value) return false;
+    return isBp.value || isKpa.value || userRole.value === 'CAMAT';
+});
+
+const canUnbundle = computed(() => {
+    if (isLurah.value) return false;
+    return isBp.value || isBpp.value || isKpa.value;
+});
 
 const bundles = ref([]);
 const loading = ref(true);
@@ -52,6 +77,11 @@ async function loadBundles() {
 }
 
 async function openCreateModal() {
+    if (isKelurahanBpp.value) {
+        newBundleForm.value.jenis_bundel = 'LPJ_BPP';
+    } else {
+        newBundleForm.value.jenis_bundel = 'SPP_GU';
+    }
     showCreateModal.value = true;
     loadingReceipts.value = true;
     try {
@@ -157,38 +187,43 @@ const BUNDLE_STATUS_LABELS = {
 </script>
 
 <template>
-    <Head title="Bundel SPJ & Pengesahan SPP" />
+    <Head :title="isKelurahanScoped ? 'Bundel LPJ BPP Kelurahan' : 'Bundel SPJ & Pengesahan SPP'" />
 
     <GovAppLayout>
         <template #header>
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 class="text-lg font-bold text-gov-navy-950 flex items-center gap-2">
-                        <span>Pengelompokan Bundel SPJ (Two-Tier Settlement)</span>
+                        <span>{{ isKelurahanScoped ? 'Pengelompokan Bundel LPJ BPP' : 'Pengelompokan Bundel SPJ (Two-Tier Settlement)' }}</span>
                         <span class="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-gov-navy-100 text-gov-navy-900 border border-gov-navy-200">
-                            Tier 2 Pengesahan
+                            {{ isKelurahanScoped ? 'Tier 2 Pertanggungjawaban BPP' : 'Tier 2 Pengesahan' }}
                         </span>
                     </h1>
                     <p class="text-xs text-slate-500 mt-1">
-                        Penyatuan kuitansi-kuitansi yang telah Lolos Verifikasi menjadi berkas bundel pengesahan SPP-GU / TU / LS
+                        {{ isKelurahanScoped
+                            ? 'Penyatuan kuitansi-kuitansi yang telah Lolos Verifikasi menjadi berkas bundel Laporan Pertanggungjawaban (LPJ-BPP) Kelurahan'
+                            : 'Penyatuan kuitansi-kuitansi yang telah Lolos Verifikasi menjadi berkas bundel pengesahan SPP-GU / TU / LS' }}
                     </p>
                 </div>
-                <GovButton variant="gold" size="sm" @click="openCreateModal">
+                <GovButton v-if="canCreateBundle" variant="gold" size="sm" @click="openCreateModal">
                     <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
-                    Buat Bundel SPP Baru
+                    {{ isKelurahanBpp ? 'Buat Bundel LPJ-BPP Baru' : 'Buat Bundel SPP Baru' }}
                 </GovButton>
             </div>
         </template>
 
         <div class="space-y-6">
-            <!-- Informasi Two-Tier Model -->
+            <!-- Informasi Two-Tier Model / LPJ-BPP -->
             <div class="p-4 bg-sky-50 border border-sky-200 rounded-xl text-sky-900 text-xs flex items-start gap-3">
                 <svg class="w-5 h-5 text-sky-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <div>
+                <div v-if="isKelurahanScoped">
+                    <strong>Prinsip Pertanggungjawaban LPJ-BPP:</strong> Kuitansi transaksi atomik (Tier 1) yang telah terbit Lembar Kendali Verifikasinya dihimpun menjadi berkas LPJ-BPP Kelurahan untuk disampaikan dan disahkan oleh Bendahara Pengeluaran SKPD Kecamatan Tarogong Kidul.
+                </div>
+                <div v-else>
                     <strong>Prinsip Two-Tier Settlement Model:</strong> Kuitansi transaksi atomik (Tier 1) yang telah terbit Lembar Kendali Verifikasinya dihimpun bersama 9 Dokumen Wajib Bagian A (Tier 2: NPD, Pengantar SPJ, BAP Kas, Register Penutupan Kas, Lap. Pengeluaran, SPJ Fungsional, BKU, BP Pajak, Rekening Koran) sebelum diajukan sinkronisasi ke SIPD-RI.
                 </div>
             </div>
@@ -278,7 +313,7 @@ const BUNDLE_STATUS_LABELS = {
                                         <span class="text-[10px] text-emerald-700 font-medium">Lolos Verifikasi</span>
                                     </div>
                                     <button
-                                        v-if="bundle.status !== 'SYNCED_SIPD'"
+                                        v-if="canUnbundle && bundle.status !== 'SYNCED_SIPD'"
                                         type="button"
                                         @click="handleUnbundle(bundle, kw)"
                                         :disabled="isUnbundling"
@@ -303,22 +338,30 @@ const BUNDLE_STATUS_LABELS = {
                                 Anggaran Telah Cair Definitif (SP2D: {{ bundle.nomor_sipd || bundle.nomor_sp2d_sipd }})
                             </strong>
                             <strong v-else class="text-slate-700">
-                                Siap Pengesahan & Pencatatan SP2D SIPD-RI
+                                {{ isKelurahanScoped ? 'Siap Pengesahan oleh Bendahara Pengeluaran Kecamatan' : 'Siap Pengesahan & Pencatatan SP2D SIPD-RI' }}
                             </strong>
                         </span>
                     </div>
                     <div class="flex items-center gap-2">
-                        <GovButton
-                            v-if="bundle.status !== 'SYNCED_SIPD'"
-                            variant="success"
-                            size="sm"
-                            @click="openSp2dModal(bundle)"
-                        >
-                            <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            Catat SP2D SIPD-RI
-                        </GovButton>
+                        <template v-if="bundle.status !== 'SYNCED_SIPD'">
+                            <GovButton
+                                v-if="canRecordSp2d"
+                                variant="success"
+                                size="sm"
+                                @click="openSp2dModal(bundle)"
+                            >
+                                <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Catat SP2D SIPD-RI
+                            </GovButton>
+                            <span v-else-if="isKelurahanScoped" class="text-xs text-slate-500 italic">
+                                Pencatatan SP2D dilakukan oleh BP Kecamatan
+                            </span>
+                            <span v-else-if="isLurah" class="text-xs text-slate-500 italic">
+                                Pengawasan Lurah (Read-Only)
+                            </span>
+                        </template>
                         <span
                             v-else
                             class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200"
@@ -330,14 +373,14 @@ const BUNDLE_STATUS_LABELS = {
             </div>
         </div>
 
-        <!-- Modal Buat Bundel SPP Baru -->
+        <!-- Modal Buat Bundel SPP / LPJ-BPP Baru -->
         <div v-if="showCreateModal" class="fixed inset-0 z-50 overflow-y-auto">
             <div class="fixed inset-0 bg-gov-navy-950/70 backdrop-blur-sm" @click="showCreateModal = false"></div>
             <div class="flex min-h-full items-center justify-center p-4">
                 <div class="relative w-full max-w-2xl rounded-2xl bg-white shadow-2xl border border-gov-surface-border overflow-hidden">
                     <div class="bg-gov-navy-950 text-white px-6 py-4 flex items-center justify-between">
                         <h3 class="text-base font-bold text-white flex items-center gap-2">
-                            Penyatuan Bundel SPP Baru (Two-Tier Model)
+                            {{ isKelurahanBpp ? 'Penyatuan Bundel LPJ-BPP Baru (Kelurahan)' : 'Penyatuan Bundel SPP Baru (Two-Tier Model)' }}
                         </h3>
                         <button type="button" @click="showCreateModal = false" class="text-slate-400 hover:text-white">✕</button>
                     </div>
@@ -345,16 +388,28 @@ const BUNDLE_STATUS_LABELS = {
                     <div class="p-6 space-y-4 text-xs">
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block font-bold text-gov-navy-900 mb-1">Jenis Pengajuan SPP *</label>
-                                <select v-model="newBundleForm.jenis_bundel" class="w-full text-xs rounded-lg border-gov-surface-border py-2 px-3">
-                                    <option value="SPP_GU">SPP-GU (Ganti Uang Persediaan)</option>
-                                    <option value="SPP_TU">SPP-TU (Tambah Uang)</option>
-                                    <option value="SPP_LS">SPP-LS (Langsung)</option>
+                                <label class="block font-bold text-gov-navy-900 mb-1">
+                                    {{ isKelurahanBpp ? 'Jenis Pertanggungjawaban *' : 'Jenis Pengajuan SPP *' }}
+                                </label>
+                                <select v-model="newBundleForm.jenis_bundel" class="w-full text-xs rounded-lg border-gov-surface-border py-2 px-3" :disabled="isKelurahanBpp">
+                                    <option v-if="isKelurahanBpp" value="LPJ_BPP">LPJ-BPP (Laporan Pertanggungjawaban BPP Kelurahan)</option>
+                                    <template v-else>
+                                        <option value="SPP_GU">SPP-GU (Ganti Uang Persediaan)</option>
+                                        <option value="SPP_TU">SPP-TU (Tambah Uang)</option>
+                                        <option value="SPP_LS">SPP-LS (Langsung)</option>
+                                    </template>
                                 </select>
                             </div>
                             <div>
-                                <label class="block font-bold text-gov-navy-900 mb-1">Nomor Referensi SPP SIPD-RI</label>
-                                <input v-model="newBundleForm.nomor_spp_sipd" type="text" placeholder="Contoh: 0012/SPP-GU/TARKID/2026" class="w-full text-xs rounded-lg border-gov-surface-border py-2 px-3" />
+                                <label class="block font-bold text-gov-navy-900 mb-1">
+                                    {{ isKelurahanBpp ? 'Nomor Referensi LPJ-BPP' : 'Nomor Referensi SPP SIPD-RI' }}
+                                </label>
+                                <input
+                                    v-model="newBundleForm.nomor_spp_sipd"
+                                    type="text"
+                                    :placeholder="isKelurahanBpp ? 'Contoh: 001/LPJ-BPP/PATARUMAN/2026' : 'Contoh: 0012/SPP-GU/TARKID/2026'"
+                                    class="w-full text-xs rounded-lg border-gov-surface-border py-2 px-3"
+                                />
                             </div>
                         </div>
 

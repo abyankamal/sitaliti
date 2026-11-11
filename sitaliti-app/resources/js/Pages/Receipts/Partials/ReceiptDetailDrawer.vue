@@ -34,8 +34,9 @@ const errorMessage = ref('');
 const taxDeductions = computed(() => (receipt.value?.pajak || []).filter(p => p.kode_pajak !== 'BEA_METERAI'));
 const meteraiTax = computed(() => (receipt.value?.pajak || []).find(p => p.kode_pajak === 'BEA_METERAI'));
 
-// State Modal Penolakan PPTK
+// State Modal Penolakan (PPTK / Lurah)
 const isRejectModalOpen = ref(false);
+const rejectMode = ref('PPTK'); // 'PPTK' | 'LURAH'
 const rejectReason = ref('');
 const rejectError = ref('');
 
@@ -127,7 +128,7 @@ async function handlePptkApprove() {
             catatan: catatan || 'Disetujui oleh PPTK',
         });
         if (response.data?.success) {
-            alert('Kuitansi disetujui PPTK dan berhasil diteruskan ke Tim Verifikator Kecamatan.');
+            alert('Kuitansi disetujui PPTK dan berhasil diteruskan ke tahap berikutnya.');
             emit('refresh');
             await fetchReceiptDetail(receipt.value.id);
         }
@@ -138,14 +139,38 @@ async function handlePptkApprove() {
     }
 }
 
-// Aksi PPTK: Tolak Kuitansi
-function openRejectModal() {
+// Aksi Lurah: Otorisasi Kuitansi
+async function handleLurahApprove() {
+    if (!receipt.value || isActionLoading.value) return;
+    const catatan = prompt('Masukkan catatan otorisasi Lurah / KPA (opsional):', 'Disetujui dan diotorisasi oleh Lurah.');
+    if (catatan === null) return; // User cancel
+
+    isActionLoading.value = true;
+    try {
+        const response = await axios.post(`/api/v1/receipts/${receipt.value.id}/lurah-approve`, {
+            catatan: catatan || 'Disetujui oleh Lurah',
+        });
+        if (response.data?.success) {
+            alert('Kuitansi berhasil diotorisasi Lurah dan diteruskan ke Tim Verifikator Kecamatan.');
+            emit('refresh');
+            await fetchReceiptDetail(receipt.value.id);
+        }
+    } catch (err) {
+        alert(err.response?.data?.error?.message || err.response?.data?.message || 'Gagal mengotorisasi kuitansi.');
+    } finally {
+        isActionLoading.value = false;
+    }
+}
+
+// Aksi Penolakan (PPTK / Lurah)
+function openRejectModal(mode = 'PPTK') {
+    rejectMode.value = mode;
     rejectReason.value = '';
     rejectError.value = '';
     isRejectModalOpen.value = true;
 }
 
-async function handlePptkRejectConfirm() {
+async function handleRejectConfirm() {
     if (rejectReason.value.trim().length < 5) {
         rejectError.value = 'Alasan penolakan wajib diisi minimal 5 karakter demi akuntabilitas jejak audit.';
         return;
@@ -153,12 +178,19 @@ async function handlePptkRejectConfirm() {
 
     isActionLoading.value = true;
     rejectError.value = '';
+    const endpoint = rejectMode.value === 'LURAH'
+        ? `/api/v1/receipts/${receipt.value.id}/lurah-reject`
+        : `/api/v1/receipts/${receipt.value.id}/pptk-reject`;
+
     try {
-        const response = await axios.post(`/api/v1/receipts/${receipt.value.id}/pptk-reject`, {
+        const response = await axios.post(endpoint, {
             alasan: rejectReason.value.trim(),
         });
         if (response.data?.success) {
-            alert('Kuitansi berhasil dikembalikan ke DRAFT dan pagu anggaran kas telah dipulihkan.');
+            const successMsg = rejectMode.value === 'LURAH'
+                ? 'Kuitansi berhasil dikembalikan ke PPTK untuk perbaikan teknis.'
+                : 'Kuitansi berhasil dikembalikan ke DRAFT dan pagu anggaran kas telah dipulihkan.';
+            alert(successMsg);
             isRejectModalOpen.value = false;
             emit('refresh');
             await fetchReceiptDetail(receipt.value.id);
@@ -177,6 +209,8 @@ function getStatusBadge(status) {
             return { variant: 'neutral', label: 'Draft' };
         case 'MENUNGGU_PPTK':
             return { variant: 'info', label: 'Menunggu PPTK' };
+        case 'MENUNGGU_LURAH':
+            return { variant: 'warning', label: 'Menunggu Lurah' };
         case 'MENUNGGU_VERIFIKASI':
             return { variant: 'primary', label: 'Menunggu Verifikasi' };
         case 'REVISI_MINOR':
@@ -481,7 +515,7 @@ function getStatusBadge(status) {
                         <!-- Aksi PPTK: Quick Approve & Reject jika MENUNGGU_PPTK -->
                         <template v-if="(userRole === 'PPTK' || userRole === 'KPA') && receipt.status === 'MENUNGGU_PPTK'">
                             <GovButton
-                                @click="openRejectModal"
+                                @click="openRejectModal('PPTK')"
                                 variant="danger"
                                 size="sm"
                                 :disabled="isActionLoading"
@@ -497,6 +531,28 @@ function getStatusBadge(status) {
                                 class="bg-emerald-600 hover:bg-emerald-700 text-white"
                             >
                                 {{ isActionLoading ? 'Memproses...' : 'Setujui PPTK' }}
+                            </GovButton>
+                        </template>
+
+                        <!-- Aksi Lurah: Otorisasi & Tolak jika MENUNGGU_LURAH -->
+                        <template v-if="(userRole === 'LURAH' || userRole === 'KPA') && receipt.status === 'MENUNGGU_LURAH'">
+                            <GovButton
+                                @click="openRejectModal('LURAH')"
+                                variant="danger"
+                                size="sm"
+                                :disabled="isActionLoading"
+                            >
+                                Tolak / Kembalikan
+                            </GovButton>
+
+                            <GovButton
+                                @click="handleLurahApprove"
+                                variant="primary"
+                                size="sm"
+                                :disabled="isActionLoading"
+                                class="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            >
+                                {{ isActionLoading ? 'Memproses...' : 'Otorisasi Lurah' }}
                             </GovButton>
                         </template>
 
@@ -525,7 +581,7 @@ function getStatusBadge(status) {
             </aside>
         </transition>
 
-        <!-- Modal Dialog Penolakan PPTK -->
+        <!-- Modal Dialog Penolakan (PPTK / Lurah) -->
         <div v-if="isRejectModalOpen" class="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
             <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 border border-slate-200">
                 <div class="flex items-center gap-3 text-rose-600">
@@ -535,8 +591,12 @@ function getStatusBadge(status) {
                         </svg>
                     </div>
                     <div>
-                        <h3 class="font-bold text-slate-900 text-base">Tolak Kuitansi ke DRAFT</h3>
-                        <p class="text-xs text-slate-500">Pagu anggaran kas yang terkunci akan otomatis dipulihkan.</p>
+                        <h3 class="font-bold text-slate-900 text-base">
+                            {{ rejectMode === 'LURAH' ? 'Kembalikan Kuitansi ke PPTK' : 'Tolak Kuitansi ke DRAFT' }}
+                        </h3>
+                        <p class="text-xs text-slate-500">
+                            {{ rejectMode === 'LURAH' ? 'Kuitansi akan dikembalikan ke status MENUNGGU_PPTK untuk revisi teknis.' : 'Pagu anggaran kas yang terkunci akan otomatis dipulihkan.' }}
+                        </p>
                     </div>
                 </div>
 
@@ -555,7 +615,7 @@ function getStatusBadge(status) {
                     <GovButton @click="isRejectModalOpen = false" variant="secondary" size="sm" :disabled="isActionLoading">
                         Batal
                     </GovButton>
-                    <GovButton @click="handlePptkRejectConfirm" variant="danger" size="sm" :disabled="isActionLoading">
+                    <GovButton @click="handleRejectConfirm" variant="danger" size="sm" :disabled="isActionLoading">
                         {{ isActionLoading ? 'Memproses...' : 'Konfirmasi Penolakan' }}
                     </GovButton>
                 </div>
