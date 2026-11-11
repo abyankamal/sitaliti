@@ -8,6 +8,7 @@ use App\Models\Kuitansi;
 use App\Models\KuitansiVerifikasiChecklist;
 use App\Models\MasterChecklistItem;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -32,21 +33,33 @@ class VerificationService implements VerificationServiceInterface
      */
     public function getQueue(string $userId, string $role, array $filters = []): array
     {
+        $user = User::find($userId);
+
         $query = Kuitansi::with(['unitKerja', 'rekening', 'creator', 'lampiran'])
             ->orderBy('created_at', 'desc');
 
         if (! empty($filters['status'])) {
             $query->where('status', $filters['status']);
         } elseif ($role === 'PPTK') {
-            // Khusus peran PPTK, default antrean adalah kuitansi yang menunggu approvalnya
+            // Khusus peran PPTK, default antrean adalah kuitansi yang menunggu persetujuannya
             $query->whereIn('status', [
                 'MENUNGGU_PPTK',
+                'MENUNGGU_LURAH',
                 'MENUNGGU_VERIFIKASI',
                 'REVISI_MINOR',
                 'LOLOS_VERIFIKASI',
             ]);
+        } elseif ($role === 'LURAH') {
+            // Khusus Lurah (KPA Kelurahan), default antrean mencakup MENUNGGU_LURAH
+            $query->whereIn('status', [
+                'MENUNGGU_LURAH',
+                'MENUNGGU_VERIFIKASI',
+                'REVISI_MINOR',
+                'REVISI_MAYOR',
+                'LOLOS_VERIFIKASI',
+            ]);
         } else {
-            // Default antrean verifikator/lainnya mengecualikan DRAFT dan MENUNGGU_PPTK
+            // Default antrean verifikator/lainnya mengecualikan DRAFT, MENUNGGU_PPTK, dan MENUNGGU_LURAH
             $query->whereIn('status', [
                 'MENUNGGU_VERIFIKASI',
                 'REVISI_MINOR',
@@ -55,8 +68,32 @@ class VerificationService implements VerificationServiceInterface
             ]);
         }
 
-        if (! empty($filters['unit_id'])) {
-            $query->where('unit_kerja_id', $filters['unit_id']);
+        // Penerapan isolasi wewenang unit & subkegiatan
+        if ($user) {
+            if ($user->isKelurahanScoped()) {
+                if ($user->unit_kerja_id) {
+                    $query->where('unit_kerja_id', $user->unit_kerja_id);
+                }
+            } elseif (! empty($filters['unit_id'])) {
+                $query->where('unit_kerja_id', $filters['unit_id']);
+            }
+
+            if ($user->role === 'PPTK' || $role === 'PPTK') {
+                if ($user->unit_kerja_id) {
+                    $query->where('unit_kerja_id', $user->unit_kerja_id);
+                }
+                $assignedCodes = $user->assignedSubkegiatanCodes();
+                if (! empty($assignedCodes)) {
+                    $query->whereHas('rekening', function (Builder $q) use ($assignedCodes) {
+                        $q->whereIn('kode_sub_kegiatan', $assignedCodes);
+                    });
+                }
+            }
+        } else {
+            // Fallback jika user model tidak ditemukan
+            if (! empty($filters['unit_id'])) {
+                $query->where('unit_kerja_id', $filters['unit_id']);
+            }
         }
 
         $receipts = $query->get();

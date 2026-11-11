@@ -5,6 +5,8 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Public\QrVerificationPublicController;
 use App\Http\Controllers\ReceiptAttachmentController;
 use App\Http\Controllers\Web\ReceiptWebController;
+use App\Models\Kuitansi;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -35,12 +37,22 @@ Route::middleware('auth')->group(function () {
         return Inertia::render('Verification/Index');
     })->middleware('permission:verification.queue')->name('verification.index');
 
-    Route::get('/verification/{id}/workspace', function ($id) {
+    Route::get('/verification/{id}/workspace', function (Request $request, $id) {
+        $kuitansi = Kuitansi::where('id', $id)->orWhere('nomor_kuitansi', (string) $id)->firstOrFail();
+        if (! $request->user()->canAccessReceipt($kuitansi)) {
+            abort(403, 'Anda tidak memiliki hak akses untuk membuka ruang verifikasi kuitansi ini.');
+        }
+
         return Inertia::render('Verification/Workspace', ['id' => $id]);
     })->middleware('permission:verification.audit')->name('verification.workspace');
 
     // Routes Lembar Kendali & Lampiran
-    Route::get('/control-sheet/{id}', function ($id) {
+    Route::get('/control-sheet/{id}', function (Request $request, $id) {
+        $kuitansi = Kuitansi::where('id', $id)->orWhere('nomor_kuitansi', (string) $id)->firstOrFail();
+        if (! $request->user()->canAccessReceipt($kuitansi)) {
+            abort(403, 'Anda tidak memiliki hak akses untuk membuka lembar kendali kuitansi ini.');
+        }
+
         return Inertia::render('ControlSheet/Show', ['id' => $id]);
     })->middleware('permission:kuitansi.view')->name('control-sheet.show');
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Contracts\VerificationServiceInterface;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ApiResponseTrait;
+use App\Models\Kuitansi;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -36,8 +37,31 @@ class VerificationApiController extends Controller
     /**
      * Endpoint detail kuitansi & dynamic checklist untuk split-screen workspace (GET /api/v1/verification/{id}).
      */
-    public function getDetail(string|int $id): JsonResponse
+    public function getDetail(Request $request, string|int $id): JsonResponse
     {
+        $kuitansi = Kuitansi::where('id', $id)
+            ->orWhere('nomor_kuitansi', (string) $id)
+            ->first();
+
+        if (! $kuitansi) {
+            return $this->errorResponse(
+                'RECEIPT_NOT_FOUND',
+                'Kuitansi tidak ditemukan.',
+                null,
+                404
+            );
+        }
+
+        $user = $request->user();
+        if ($user && ! $user->canAccessReceipt($kuitansi)) {
+            return $this->errorResponse(
+                'FORBIDDEN',
+                'Anda tidak memiliki hak akses untuk detail verifikasi kuitansi ini.',
+                null,
+                403
+            );
+        }
+
         try {
             $detail = $this->verificationService->getDetailForWorkspace((string) $id);
 
@@ -74,7 +98,17 @@ class VerificationApiController extends Controller
             'checklist_results.*.notes' => ['nullable', 'string'],
         ]);
 
-        $verifierUserId = (string) ($request->user()?->id ?? 1);
+        $user = $request->user();
+        if ($user && ($user->role !== 'VERIFIKATOR' || ! $user->can('verification.process_action'))) {
+            return $this->errorResponse(
+                'FORBIDDEN',
+                'Hanya Verifikator yang berwenang memproses keputusan verifikasi.',
+                null,
+                403
+            );
+        }
+
+        $verifierUserId = (string) ($user?->id ?? 1);
 
         try {
             $result = $this->verificationService->processAction(
