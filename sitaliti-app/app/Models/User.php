@@ -70,6 +70,7 @@ class User extends Authenticatable
                 'verification.audit',
                 'verification.process_action',
                 'verification.generate_qr',
+                'user.manage',
             ],
             'LURAH' => [
                 'kuitansi.view',
@@ -87,6 +88,7 @@ class User extends Authenticatable
                 'bundle.unbundle',
                 'bundle.record_sp2d',
                 'dashboard.view_all',
+                'user.manage',
             ],
         ];
 

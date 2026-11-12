@@ -156,4 +156,17 @@ class ReceiptWebRouteTest extends TestCase
         $resBundle->assertStatus(200);
         $resBundle->assertInertia(fn (Assert $page) => $page->component('Bundles/Index'));
     }
+
+    public function test_verifikator_can_access_users_management_page(): void
+    {
+        $response = $this->actingAs($this->verifikator)->get('/users');
+        $response->assertStatus(200);
+        $response->assertInertia(fn (Assert $page) => $page->component('Users/Index'));
+    }
+
+    public function test_operator_cannot_access_users_management_page(): void
+    {
+        $response = $this->actingAs($this->operator)->get('/users');
+        $response->assertStatus(403);
+    }
 }

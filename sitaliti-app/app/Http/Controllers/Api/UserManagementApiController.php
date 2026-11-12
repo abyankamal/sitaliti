@@ -1,0 +1,217 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\AnggaranRekening;
+use App\Models\Kuitansi;
+use App\Models\PptkSubkegiatanAssignment;
+use App\Models\User;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
+
+class UserManagementApiController extends Controller
+{
+    /**
+     * Menampilkan daftar seluruh pengguna beserta unit kerja dan penugasan PPTK.
+     */
+    public function index(Request $request): JsonResponse
+    {
+        $query = User::with(['unitKerja', 'pptkSubkegiatanAssignments']);
+
+        if ($request->filled('q')) {
+            $keyword = '%'.$request->q.'%';
+            $query->where(function ($q) use ($keyword) {
+                $q->where('name', 'like', $keyword)
+                    ->orWhere('email', 'like', $keyword)
+                    ->orWhere('nip', 'like', $keyword)
+                    ->orWhere('jabatan', 'like', $keyword);
+            });
+        }
+
+        if ($request->filled('unit_kerja_id')) {
+            $query->where('unit_kerja_id', $request->unit_kerja_id);
+        }
+
+        if ($request->filled('role')) {
+            $query->where('role', $request->role);
+        }
+
+        $users = $query->orderBy('name', 'asc')->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $users,
+        ]);
+    }
+
+    /**
+     * Mengambil daftar opsi subkegiatan untuk penugasan PPTK berdasarkan unit kerja.
+     */
+    public function subActivitiesOptions(Request $request): JsonResponse
+    {
+        $query = AnggaranRekening::select('unit_kerja_id', 'kode_sub_kegiatan', 'nama_sub_kegiatan')
+            ->distinct();
+
+        if ($request->filled('unit_kerja_id')) {
+            $query->where('unit_kerja_id', $request->unit_kerja_id);
+        }
+
+        $items = $query->orderBy('kode_sub_kegiatan')->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $items,
+        ]);
+    }
+
+    /**
+     * Menyimpan pengguna baru dan penugasan subkegiatan jika peran PPTK.
+     */
+    public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email',
+            'password' => 'required|string|min:8',
+            'role' => ['required', 'string', Rule::in(['OPERATOR', 'BPP', 'PPTK', 'VERIFIKATOR', 'LURAH', 'KPA'])],
+            'unit_kerja_id' => 'required|exists:master_unit_kerja,id',
+            'nip' => 'nullable|string|max:50',
+            'jabatan' => 'nullable|string|max:100',
+            'sub_kegiatan_codes' => 'nullable|array',
+            'sub_kegiatan_codes.*' => 'string',
+        ]);
+
+        return DB::transaction(function () use ($validated) {
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => Hash::make($validated['password']),
+                'role' => $validated['role'],
+                'unit_kerja_id' => $validated['unit_kerja_id'],
+                'nip' => $validated['nip'] ?? null,
+                'jabatan' => $validated['jabatan'] ?? null,
+            ]);
+
+            if ($user->role === 'PPTK' && ! empty($validated['sub_kegiatan_codes'])) {
+                foreach ($validated['sub_kegiatan_codes'] as $code) {
+                    PptkSubkegiatanAssignment::create([
+                        'user_id' => $user->id,
+                        'unit_kerja_id' => $user->unit_kerja_id,
+                        'kode_sub_kegiatan' => $code,
+                    ]);
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pengguna baru berhasil ditambahkan.',
+                'data' => $user->load(['unitKerja', 'pptkSubkegiatanAssignments']),
+            ], 201);
+        });
+    }
+
+    /**
+     * Memperbarui data pengguna dan sinkronisasi penugasan PPTK.
+     */
+    public function update(Request $request, int|string $id): JsonResponse
+    {
+        $user = User::findOrFail($id);
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'password' => 'nullable|string|min:8',
+            'role' => ['required', 'string', Rule::in(['OPERATOR', 'BPP', 'PPTK', 'VERIFIKATOR', 'LURAH', 'KPA'])],
+            'unit_kerja_id' => 'required|exists:master_unit_kerja,id',
+            'nip' => 'nullable|string|max:50',
+            'jabatan' => 'nullable|string|max:100',
+            'sub_kegiatan_codes' => 'nullable|array',
+            'sub_kegiatan_codes.*' => 'string',
+        ]);
+
+        return DB::transaction(function () use ($user, $validated) {
+            $updateData = [
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'role' => $validated['role'],
+                'unit_kerja_id' => $validated['unit_kerja_id'],
+                'nip' => $validated['nip'] ?? null,
+                'jabatan' => $validated['jabatan'] ?? null,
+            ];
+
+            if (! empty($validated['password'])) {
+                $updateData['password'] = Hash::make($validated['password']);
+            }
+
+            $user->update($updateData);
+
+            if ($user->role === 'PPTK') {
+                PptkSubkegiatanAssignment::where('user_id', $user->id)->delete();
+
+                if (! empty($validated['sub_kegiatan_codes'])) {
+                    foreach ($validated['sub_kegiatan_codes'] as $code) {
+                        PptkSubkegiatanAssignment::create([
+                            'user_id' => $user->id,
+                            'unit_kerja_id' => $user->unit_kerja_id,
+                            'kode_sub_kegiatan' => $code,
+                        ]);
+                    }
+                }
+            } else {
+                PptkSubkegiatanAssignment::where('user_id', $user->id)->delete();
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data pengguna berhasil diperbarui.',
+                'data' => $user->load(['unitKerja', 'pptkSubkegiatanAssignments']),
+            ]);
+        });
+    }
+
+    /**
+     * Menghapus pengguna dengan proteksi jejak audit BPK & integritas transaksi.
+     */
+    public function destroy(Request $request, int|string $id): JsonResponse
+    {
+        $user = User::findOrFail($id);
+
+        if ($user->id === $request->user()->id) {
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'message' => 'Anda tidak dapat menghapus akun Anda sendiri.',
+                ],
+            ], 422);
+        }
+
+        $hasTransactions = Kuitansi::where('user_id', $user->id)
+            ->orWhere('pptk_user_id', $user->id)
+            ->orWhere('lurah_user_id', $user->id)
+            ->orWhere('verifikator_id', $user->id)
+            ->exists();
+
+        if ($hasTransactions) {
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'message' => 'Pengguna tidak dapat dihapus karena tercatat dalam jejak audit kuitansi. Anda dapat mengubah perannya jika dinonaktifkan.',
+                ],
+            ], 422);
+        }
+
+        DB::transaction(function () use ($user) {
+            PptkSubkegiatanAssignment::where('user_id', $user->id)->delete();
+            $user->delete();
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pengguna berhasil dihapus.',
+        ]);
+    }
+}

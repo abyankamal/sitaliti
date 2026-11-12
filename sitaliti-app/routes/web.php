@@ -69,6 +69,11 @@ Route::middleware('auth')->group(function () {
         return Inertia::render('Bundles/Index');
     })->middleware('permission:bundle.view')->name('bundles.index');
 
+    // Routes Manajemen Pengguna & Penugasan PPTK (Kecamatan Administrator / Kepegawaian)
+    Route::get('/users', function () {
+        return Inertia::render('Users/Index');
+    })->middleware('permission:user.manage')->name('users.index');
+
     // Profile Routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

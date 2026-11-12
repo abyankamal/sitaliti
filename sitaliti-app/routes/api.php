@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\BudgetApiController;
 use App\Http\Controllers\Api\ReceiptApiController;
 use App\Http\Controllers\Api\SettlementApiController;
+use App\Http\Controllers\Api\UserManagementApiController;
 use App\Http\Controllers\Api\VerificationApiController;
 use App\Http\Controllers\ControlSheetPdfController;
 use App\Http\Controllers\ReceiptAttachmentController;
@@ -80,6 +81,15 @@ Route::prefix('v1')->group(function () {
         Route::prefix('control-sheet')->group(function () {
             Route::get('{id}/pdf', [ControlSheetPdfController::class, 'download'])
                 ->middleware('permission:kuitansi.view');
+        });
+
+        // User Management & PPTK Assignment Endpoints (Kecamatan Administrator / Kepegawaian)
+        Route::prefix('users')->middleware('permission:user.manage')->group(function () {
+            Route::get('/', [UserManagementApiController::class, 'index']);
+            Route::get('sub-activities-options', [UserManagementApiController::class, 'subActivitiesOptions']);
+            Route::post('/', [UserManagementApiController::class, 'store']);
+            Route::put('{id}', [UserManagementApiController::class, 'update']);
+            Route::delete('{id}', [UserManagementApiController::class, 'destroy']);
         });
     });
 });
