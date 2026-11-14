@@ -6,6 +6,7 @@ use App\Contracts\BudgetReservationServiceInterface;
 use App\Models\AnggaranKasBulanan;
 use App\Models\AnggaranRekening;
 use App\Models\Kuitansi;
+use App\Models\KuitansiLampiran;
 use App\Models\MasterChecklistItem;
 use App\Models\UnitKerja;
 use App\Models\User;
@@ -170,18 +171,33 @@ class VerificationActionTest extends TestCase
             'status' => 'MENUNGGU_VERIFIKASI',
         ]);
 
-        $checklistItem = MasterChecklistItem::where('kategori_belanja', 'B.1')->first();
+        KuitansiLampiran::create([
+            'kuitansi_id' => $kuitansi->id,
+            'anggaran_rekening_id' => $this->rekening->id,
+            'checklist_code' => 'B.1.1',
+            'nama_dokumen' => 'Nota Toko',
+            'file_path' => 'receipts/2026/03/nota.pdf',
+            'file_name' => 'nota.pdf',
+            'file_size' => 1024,
+            'mime_type' => 'application/pdf',
+            'file_hash' => hash('sha256', 'nota-valid-001'),
+        ]);
+
+        $requiredItems = MasterChecklistItem::where('kategori_belanja', 'B.1')
+            ->where('is_active', true)
+            ->where('is_required', true)
+            ->get();
+
+        $checklistItem = $requiredItems->first();
 
         $payload = [
             'action' => 'VERIFIED',
             'notes' => 'Semua bukti dukung lengkap dan sesuai.',
-            'checklist_results' => [
-                [
-                    'item_id' => $checklistItem->id,
-                    'status' => 'SESUAI',
-                    'notes' => 'Faktur pajak dan nota fisik valid.',
-                ],
-            ],
+            'checklist_results' => $requiredItems->map(fn ($item) => [
+                'item_id' => $item->id,
+                'status' => 'SESUAI',
+                'notes' => 'Faktur pajak dan nota fisik valid.',
+            ])->values()->all(),
         ];
 
         $response = $this->actingAs($this->verifier)
@@ -359,5 +375,130 @@ class VerificationActionTest extends TestCase
                     'message' => 'Kuitansi harus disetujui oleh PPTK terlebih dahulu sebelum dapat diverifikasi.',
                 ],
             ]);
+    }
+
+    public function test_process_action_verified_rejects_when_no_attachments(): void
+    {
+        $kuitansi = Kuitansi::create([
+            'nomor_kuitansi' => 'KW-NO-ATT-001',
+            'unit_kerja_id' => $this->unit->id,
+            'anggaran_rekening_id' => $this->rekening->id,
+            'user_id' => $this->verifier->id,
+            'bulan_anggaran' => 3,
+            'tanggal_transaksi' => '2026-03-10',
+            'uraian' => 'Kuitansi tanpa lampiran',
+            'nama_penerima' => 'Toko Mitra',
+            'nominal_bruto' => 500000.00,
+            'total_pajak' => 0.00,
+            'nominal_neto' => 500000.00,
+            'status' => 'MENUNGGU_VERIFIKASI',
+        ]);
+
+        $response = $this->actingAs($this->verifier)
+            ->postJson("/api/v1/verification/{$kuitansi->id}/action", [
+                'action' => 'VERIFIED',
+                'notes' => 'Mencoba meloloskan tanpa lampiran',
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonPath('error.code', 'INVALID_ACTION');
+        $this->assertEquals('MENUNGGU_VERIFIKASI', $kuitansi->fresh()->status);
+    }
+
+    public function test_process_action_verified_rejects_when_required_checklist_incomplete(): void
+    {
+        $kuitansi = Kuitansi::create([
+            'nomor_kuitansi' => 'KW-CHK-INC-001',
+            'unit_kerja_id' => $this->unit->id,
+            'anggaran_rekening_id' => $this->rekening->id,
+            'user_id' => $this->verifier->id,
+            'bulan_anggaran' => 3,
+            'tanggal_transaksi' => '2026-03-10',
+            'uraian' => 'Kuitansi checklist belum lengkap',
+            'nama_penerima' => 'Toko Mitra',
+            'nominal_bruto' => 500000.00,
+            'total_pajak' => 0.00,
+            'nominal_neto' => 500000.00,
+            'status' => 'MENUNGGU_VERIFIKASI',
+        ]);
+
+        KuitansiLampiran::create([
+            'kuitansi_id' => $kuitansi->id,
+            'anggaran_rekening_id' => $this->rekening->id,
+            'checklist_code' => 'B.1.1',
+            'nama_dokumen' => 'Nota',
+            'file_path' => 'receipts/2026/03/nota2.pdf',
+            'file_name' => 'nota2.pdf',
+            'file_size' => 1024,
+            'mime_type' => 'application/pdf',
+            'file_hash' => hash('sha256', 'nota-incomplete-001'),
+        ]);
+
+        $firstItem = MasterChecklistItem::where('kategori_belanja', 'B.1')
+            ->where('is_required', true)
+            ->first();
+
+        $response = $this->actingAs($this->verifier)
+            ->postJson("/api/v1/verification/{$kuitansi->id}/action", [
+                'action' => 'VERIFIED',
+                'checklist_results' => [
+                    ['item_id' => $firstItem->id, 'status' => 'SESUAI'],
+                ],
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonPath('error.code', 'INVALID_ACTION');
+        $this->assertEquals('MENUNGGU_VERIFIKASI', $kuitansi->fresh()->status);
+    }
+
+    public function test_process_action_rejects_invalid_source_status_and_skips_double_release_on_sla_breach(): void
+    {
+        // 1. Kuitansi sudah REVISI_MAYOR tidak dapat diproses ulang (anti double-release)
+        $revisiMayor = Kuitansi::create([
+            'nomor_kuitansi' => 'KW-DOUBLE-001',
+            'unit_kerja_id' => $this->unit->id,
+            'anggaran_rekening_id' => $this->rekening->id,
+            'user_id' => $this->verifier->id,
+            'bulan_anggaran' => 4,
+            'tanggal_transaksi' => '2026-04-10',
+            'uraian' => 'Sudah revisi mayor',
+            'nama_penerima' => 'Toko Mitra',
+            'nominal_bruto' => 1000000.00,
+            'total_pajak' => 0.00,
+            'nominal_neto' => 1000000.00,
+            'status' => 'REVISI_MAYOR',
+        ]);
+
+        $repeatRes = $this->actingAs($this->verifier)
+            ->postJson("/api/v1/verification/{$revisiMayor->id}/action", [
+                'action' => 'REVISION_MAJOR',
+                'notes' => 'Mencoba tolak ulang',
+            ]);
+        $repeatRes->assertStatus(422);
+
+        // 2. Kuitansi REVISI_MINOR yang sudah melewati SLA (is_sla_breached) tidak memanggil releaseBudget() lagi
+        $slaBreached = Kuitansi::create([
+            'nomor_kuitansi' => 'KW-SLA-BREACH-001',
+            'unit_kerja_id' => $this->unit->id,
+            'anggaran_rekening_id' => $this->rekening->id,
+            'user_id' => $this->verifier->id,
+            'bulan_anggaran' => 4,
+            'tanggal_transaksi' => '2026-04-10',
+            'uraian' => 'SLA sudah lewat dan pagu sudah dilepas',
+            'nama_penerima' => 'Toko Mitra',
+            'nominal_bruto' => 1000000.00,
+            'total_pajak' => 0.00,
+            'nominal_neto' => 1000000.00,
+            'status' => 'REVISI_MINOR',
+            'tenggat_sla' => now()->subDay(),
+        ]);
+
+        $breachRes = $this->actingAs($this->verifier)
+            ->postJson("/api/v1/verification/{$slaBreached->id}/action", [
+                'action' => 'REVISION_MAJOR',
+                'notes' => 'Eskalasi ke revisi mayor setelah SLA lewat',
+            ]);
+        $breachRes->assertStatus(200)
+            ->assertJsonPath('data.new_status', 'REVISI_MAYOR');
     }
 }

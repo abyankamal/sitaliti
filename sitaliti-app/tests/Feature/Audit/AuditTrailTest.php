@@ -7,7 +7,9 @@ use App\Contracts\VerificationServiceInterface;
 use App\Models\AnggaranKasBulanan;
 use App\Models\AnggaranRekening;
 use App\Models\Kuitansi;
+use App\Models\KuitansiLampiran;
 use App\Models\KuitansiRiwayat;
+use App\Models\MasterChecklistItem;
 use App\Models\UnitKerja;
 use App\Models\User;
 use App\Services\ReceiptService;
@@ -142,10 +144,33 @@ class AuditTrailTest extends TestCase
         $this->assertEquals($this->pptk->id, $riwayat3->user_id);
 
         // 4. VERIFIED
+        KuitansiLampiran::create([
+            'kuitansi_id' => $kuitansi->id,
+            'anggaran_rekening_id' => $this->rekening->id,
+            'checklist_code' => 'B.1.1',
+            'nama_dokumen' => 'Nota Audit',
+            'file_path' => 'receipts/2026/02/nota_audit.pdf',
+            'file_name' => 'nota_audit.pdf',
+            'file_size' => 1024,
+            'mime_type' => 'application/pdf',
+            'file_hash' => hash('sha256', 'nota-audit-001'),
+        ]);
+
+        $checklistResults = MasterChecklistItem::where('kategori_belanja', 'B.1')
+            ->where('is_active', true)
+            ->where('is_required', true)
+            ->get()
+            ->map(fn ($item) => ['item_id' => $item->id, 'status' => 'SESUAI'])
+            ->values()
+            ->all();
+
         $verifResult = $this->verificationService->processAction(
             (string) $kuitansi->id,
             'VERIFIED',
-            ['notes' => 'Dokumen sah dan terverifikasi akuntabel.'],
+            [
+                'notes' => 'Dokumen sah dan terverifikasi akuntabel.',
+                'checklist_results' => $checklistResults,
+            ],
             (string) $this->verifikator->id
         );
         $riwayat4 = KuitansiRiwayat::where('kuitansi_id', $kuitansi->id)->latest('id')->first();

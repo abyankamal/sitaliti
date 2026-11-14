@@ -222,23 +222,28 @@ class VerificationService implements VerificationServiceInterface
      */
     public function processAction(string $kuitansiId, string $action, array $payload, string $verifierUserId): array
     {
-        $kuitansi = Kuitansi::where('id', $kuitansiId)
-            ->orWhere('nomor_kuitansi', $kuitansiId)
-            ->firstOrFail();
-
-        // Anti-bypass guard: Kuitansi harus disetujui PPTK (dan diotorisasi Lurah untuk Kelurahan) terlebih dahulu sebelum diverifikasi
-        if (in_array($kuitansi->status, ['DRAFT', 'MENUNGGU_PPTK'], true)) {
-            throw new InvalidArgumentException('Kuitansi harus disetujui oleh PPTK terlebih dahulu sebelum dapat diverifikasi.');
-        }
-
-        if ($kuitansi->status === 'MENUNGGU_LURAH') {
-            throw new InvalidArgumentException('Kuitansi harus diotorisasi oleh Lurah terlebih dahulu sebelum dapat diverifikasi.');
-        }
-
         $notes = $payload['notes'] ?? '';
         $checklistResults = $payload['checklist_results'] ?? [];
 
-        return DB::transaction(function () use ($kuitansi, $action, $notes, $checklistResults, $verifierUserId) {
+        return DB::transaction(function () use ($kuitansiId, $action, $notes, $checklistResults, $verifierUserId) {
+            $kuitansi = Kuitansi::where('id', $kuitansiId)
+                ->orWhere('nomor_kuitansi', $kuitansiId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            // Anti-bypass guard: Kuitansi harus disetujui PPTK (dan diotorisasi Lurah untuk Kelurahan) terlebih dahulu sebelum diverifikasi
+            if (in_array($kuitansi->status, ['DRAFT', 'MENUNGGU_PPTK'], true)) {
+                throw new InvalidArgumentException('Kuitansi harus disetujui oleh PPTK terlebih dahulu sebelum dapat diverifikasi.');
+            }
+
+            if ($kuitansi->status === 'MENUNGGU_LURAH') {
+                throw new InvalidArgumentException('Kuitansi harus diotorisasi oleh Lurah terlebih dahulu sebelum dapat diverifikasi.');
+            }
+
+            if (! in_array($kuitansi->status, ['MENUNGGU_VERIFIKASI', 'REVISI_MINOR'], true)) {
+                throw new InvalidArgumentException("Kuitansi berstatus '{$kuitansi->status}' tidak dapat diproses verifikasi.");
+            }
+
             $statusLama = $kuitansi->status;
             $verifierUser = User::find($verifierUserId);
 
@@ -272,6 +277,27 @@ class VerificationService implements VerificationServiceInterface
             switch (strtoupper($action)) {
                 case 'VERIFIED':
                 case 'LOLOS_VERIFIKASI':
+                    if ($kuitansi->lampiran()->count() === 0) {
+                        throw new InvalidArgumentException('Kuitansi tidak dapat diloloskan tanpa minimal 1 berkas lampiran bukti.');
+                    }
+
+                    $kategori = $kuitansi->rekening?->kategori_belanja ?? 'B.1';
+                    $requiredItemIds = MasterChecklistItem::where('kategori_belanja', $kategori)
+                        ->where('is_active', true)
+                        ->where('is_required', true)
+                        ->pluck('id');
+
+                    if ($requiredItemIds->isNotEmpty()) {
+                        $verifiedRequiredCount = KuitansiVerifikasiChecklist::where('kuitansi_id', $kuitansi->id)
+                            ->whereIn('master_checklist_item_id', $requiredItemIds)
+                            ->where('status_kesesuaian', 'SESUAI')
+                            ->count();
+
+                        if ($verifiedRequiredCount < $requiredItemIds->count()) {
+                            throw new InvalidArgumentException('Seluruh butir checklist wajib harus berstatus SESUAI sebelum kuitansi dapat diloloskan.');
+                        }
+                    }
+
                     $newStatus = 'LOLOS_VERIFIKASI';
                     if (empty($qrToken)) {
                         $qrToken = Str::uuid()->toString();
@@ -333,12 +359,14 @@ class VerificationService implements VerificationServiceInterface
                 case 'DITOLAK':
                     $newStatus = 'REVISI_MAYOR';
 
-                    // Lepaskan pagu anggaran yang sebelumnya dikunci
-                    $this->budgetService->releaseBudget(
-                        (string) $kuitansi->anggaran_rekening_id,
-                        $kuitansi->bulan_anggaran,
-                        (float) $kuitansi->nominal_bruto
-                    );
+                    // Lepaskan pagu anggaran hanya jika belum pernah dilepaskan oleh SLA breach
+                    if (! $kuitansi->is_sla_breached) {
+                        $this->budgetService->releaseBudget(
+                            (string) $kuitansi->anggaran_rekening_id,
+                            $kuitansi->bulan_anggaran,
+                            (float) $kuitansi->nominal_bruto
+                        );
+                    }
 
                     $kuitansi->update([
                         'status' => $newStatus,
