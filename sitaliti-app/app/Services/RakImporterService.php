@@ -87,21 +87,27 @@ class RakImporterService implements RakImporterServiceInterface
                         $totalRekening++;
                         $totalPaguTahunan += $paguTahunan;
 
-                        // Simpan / update alokasi kas 12 bulan
+                        // Simpan / update alokasi kas 12 bulan tanpa mereset realisasi & kunci berjalan
                         for ($m = 1; $m <= 12; $m++) {
                             $alokasiBulan = (float) ($acc['months'][$m] ?? 0.0);
 
-                            AnggaranKasBulanan::updateOrCreate(
-                                [
+                            $existingKas = AnggaranKasBulanan::where('anggaran_rekening_id', $rekeningModel->id)
+                                ->where('bulan', $m)
+                                ->first();
+
+                            if ($existingKas) {
+                                $existingKas->update([
+                                    'alokasi_pagu' => $alokasiBulan,
+                                ]);
+                            } else {
+                                AnggaranKasBulanan::create([
                                     'anggaran_rekening_id' => $rekeningModel->id,
                                     'bulan' => $m,
-                                ],
-                                [
                                     'alokasi_pagu' => $alokasiBulan,
                                     'terkunci_bulan' => 0.0,
                                     'realisasi_bulan' => 0.0,
-                                ]
-                            );
+                                ]);
+                            }
                         }
                     }
                 }

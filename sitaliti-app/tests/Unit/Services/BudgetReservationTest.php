@@ -17,11 +17,42 @@ class BudgetReservationTest extends TestCase
 
     private BudgetReservationServiceInterface $service;
 
+    private AnggaranRekening $defaultRekening;
+
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->service = app(BudgetReservationServiceInterface::class);
+
+        $unit = UnitKerja::create([
+            'kode_unit' => '7.01.99',
+            'nama_unit' => 'Kelurahan Default Test',
+            'tipe' => 'KELURAHAN',
+            'is_active' => true,
+        ]);
+
+        $this->defaultRekening = AnggaranRekening::create([
+            'unit_kerja_id' => $unit->id,
+            'kode_sub_kegiatan' => '7.01.01.2.01.0001',
+            'nama_sub_kegiatan' => 'Administrasi Umum',
+            'kode_rekening' => '5.1.02.01.01.0024',
+            'nama_rekening' => 'Belanja Alat Tulis Kantor',
+            'pagu_murni' => 125000000.00,
+            'pagu_perubahan' => 125000000.00,
+            'kategori_belanja' => 'B.2',
+            'is_leaf' => true,
+        ]);
+
+        for ($b = 1; $b <= 12; $b++) {
+            AnggaranKasBulanan::create([
+                'anggaran_rekening_id' => $this->defaultRekening->id,
+                'bulan' => $b,
+                'alokasi_pagu' => ($b === 2) ? 15000000.00 : 10000000.00,
+                'terkunci_bulan' => 0.00,
+                'realisasi_bulan' => ($b === 1) ? 6000000.00 : 0.00,
+            ]);
+        }
     }
 
     /**
@@ -34,7 +65,7 @@ class BudgetReservationTest extends TestCase
      */
     public function test_alokasi_popup_menampilkan_pagu_dan_carry_over_akumulatif(): void
     {
-        $rekeningId = '5.1.02.01.01.0024'; // Belanja Alat Tulis Kantor
+        $rekeningId = (string) $this->defaultRekening->id; // Belanja Alat Tulis Kantor
         $bulanDipilih = 2; // Februari
         $activeMonth = 2;
 
@@ -68,7 +99,7 @@ class BudgetReservationTest extends TestCase
      */
     public function test_bulan_mendatang_otomatis_terkunci_dan_sisa_nol(): void
     {
-        $rekeningId = '5.1.02.01.01.0024';
+        $rekeningId = (string) $this->defaultRekening->id;
         $bulanDipilih = 5; // Mei
         $activeMonth = 3; // Maret
 
@@ -84,7 +115,7 @@ class BudgetReservationTest extends TestCase
      */
     public function test_reserve_budget_berhasil_mengunci_pagu_tersedia(): void
     {
-        $rekeningId = '5.1.02.01.01.0024';
+        $rekeningId = (string) $this->defaultRekening->id;
         $bulan = 2;
         $activeMonth = 2;
         $nominal = 2500000.0;
@@ -112,7 +143,7 @@ class BudgetReservationTest extends TestCase
      */
     public function test_reserve_budget_melempar_exception_jika_overlimit(): void
     {
-        $rekeningId = '5.1.02.01.01.0024';
+        $rekeningId = (string) $this->defaultRekening->id;
         $bulan = 2;
         $activeMonth = 2;
 
@@ -128,7 +159,7 @@ class BudgetReservationTest extends TestCase
      */
     public function test_reserve_budget_menolak_penarikan_pada_bulan_masa_depan(): void
     {
-        $rekeningId = '5.1.02.01.01.0024';
+        $rekeningId = (string) $this->defaultRekening->id;
         $bulan = 6; // Juni
         $activeMonth = 3; // Maret
         $nominal = 1000000.0;
@@ -142,7 +173,7 @@ class BudgetReservationTest extends TestCase
      */
     public function test_reserve_budget_menolak_nominal_negatif_atau_nol(): void
     {
-        $rekeningId = '5.1.02.01.01.0024';
+        $rekeningId = (string) $this->defaultRekening->id;
         $bulan = 2;
         $activeMonth = 2;
 
@@ -168,7 +199,7 @@ class BudgetReservationTest extends TestCase
      */
     public function test_release_budget_mengurangi_kuncian_dengan_aman(): void
     {
-        $rekeningId = '5.1.02.01.01.0024';
+        $rekeningId = (string) $this->defaultRekening->id;
         $bulan = 2;
         $activeMonth = 2;
         $nominal = 1500000.0;
@@ -198,7 +229,7 @@ class BudgetReservationTest extends TestCase
      */
     public function test_settle_budget_memindahkan_kuncian_ke_realisasi_definitif(): void
     {
-        $rekeningId = '5.1.02.01.01.0024';
+        $rekeningId = (string) $this->defaultRekening->id;
         $bulan = 2;
         $activeMonth = 2;
         $nominal = 1000000.0;
@@ -326,5 +357,15 @@ class BudgetReservationTest extends TestCase
             ->first();
         $this->assertEquals(0.00, (float) $rowAfterSettle->terkunci_bulan);
         $this->assertEquals(2500000.00, (float) $rowAfterSettle->realisasi_bulan);
+    }
+
+    /**
+     * Test 11: Rekening tanpa data RAK bulanan di database melempar PaguOverlimitException.
+     */
+    public function test_rekening_tanpa_rak_bulanan_melempar_pagu_overlimit_exception(): void
+    {
+        $this->expectException(PaguOverlimitException::class);
+
+        $this->service->getPopupAllocationData('999999', 2, 2);
     }
 }

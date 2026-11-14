@@ -155,14 +155,13 @@ class ReceiptService
         $totalPajak = $taxCalc['total_pajak'];
         $nominalNeto = $totalBruto - $totalPajak;
 
-        // 4. Generate Nomor Kuitansi Berurutan
+        // 4. Generate Nomor Kuitansi Berurutan di dalam transaksi atomik
         $tahun = date('Y');
         $bulanStr = str_pad((string) $bulan, 2, '0', STR_PAD_LEFT);
-        $randomSeq = str_pad((string) mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
-        $nomorKuitansi = $data['nomor_kuitansi'] ?? "KW-{$tahun}-{$bulanStr}-{$randomSeq}";
+        $prefix = "KW-{$tahun}-{$bulanStr}-";
 
         return DB::transaction(function () use (
-            $nomorKuitansi,
+            $prefix,
             $rekening,
             $userId,
             $user,
@@ -177,6 +176,8 @@ class ReceiptService
             $taxCalc,
             $processedAttachments
         ) {
+            $nomorKuitansi = $data['nomor_kuitansi'] ?? $this->generateNextNomorKuitansi($prefix);
+
             $kuitansi = Kuitansi::create([
                 'nomor_kuitansi' => $nomorKuitansi,
                 'unit_kerja_id' => $rekening->unit_kerja_id,
@@ -496,5 +497,33 @@ class ReceiptService
 
             return $kuitansi;
         });
+    }
+
+    /**
+     * Menghasilkan nomor kuitansi berikutnya yang unik secara berurutan di dalam transaksi.
+     */
+    private function generateNextNomorKuitansi(string $prefix): string
+    {
+        $lastNomor = Kuitansi::query()
+            ->where('nomor_kuitansi', 'like', "{$prefix}%")
+            ->lockForUpdate()
+            ->orderByDesc('nomor_kuitansi')
+            ->value('nomor_kuitansi');
+
+        $nextSeq = 1;
+        if (is_string($lastNomor) && str_starts_with($lastNomor, $prefix)) {
+            $suffix = substr($lastNomor, strlen($prefix));
+            if (ctype_digit($suffix)) {
+                $nextSeq = (int) $suffix + 1;
+            }
+        }
+
+        do {
+            $candidate = $prefix.str_pad((string) $nextSeq, 4, '0', STR_PAD_LEFT);
+            $exists = Kuitansi::query()->where('nomor_kuitansi', $candidate)->exists();
+            $nextSeq++;
+        } while ($exists);
+
+        return $candidate;
     }
 }

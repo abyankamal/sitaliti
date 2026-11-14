@@ -91,4 +91,27 @@ class RakImportTest extends TestCase
 
         $this->assertEquals(132, AnggaranRekening::count());
     }
+
+    public function test_reimport_rak_tidak_menimpa_terkunci_dan_realisasi_bulan(): void
+    {
+        $this->seed(UnitKerjaSeeder::class);
+
+        $importer = app(RakImporterServiceInterface::class);
+        $importer->importFromFile($this->rakFilePath);
+
+        $kas = AnggaranKasBulanan::where('bulan', 1)
+            ->where('alokasi_pagu', '>', 0)
+            ->firstOrFail();
+
+        $kas->update([
+            'terkunci_bulan' => 250000.00,
+            'realisasi_bulan' => 500000.00,
+        ]);
+
+        $importer->importFromFile($this->rakFilePath);
+
+        $kas->refresh();
+        $this->assertEquals(250000.00, (float) $kas->terkunci_bulan);
+        $this->assertEquals(500000.00, (float) $kas->realisasi_bulan);
+    }
 }

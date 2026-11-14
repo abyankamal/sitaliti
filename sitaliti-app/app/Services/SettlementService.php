@@ -73,12 +73,11 @@ class SettlementService implements SettlementServiceInterface
             throw new InvalidArgumentException('Unit kerja pengaju SPJ wajib ditentukan.');
         }
 
-        $seq = str_pad((string) mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
         $bulanStr = str_pad((string) $bulan, 2, '0', STR_PAD_LEFT);
-        $nomorBundel = $data['nomor_bundel'] ?? "BND-{$jenis}/{$tahun}/{$bulanStr}/{$seq}";
+        $prefix = "BND-{$jenis}/{$tahun}/{$bulanStr}/";
 
         return DB::transaction(function () use (
-            $nomorBundel,
+            $prefix,
             $unitId,
             $user,
             $jenis,
@@ -87,6 +86,7 @@ class SettlementService implements SettlementServiceInterface
             $kuitansiIds,
             $data
         ) {
+            $nomorBundel = $data['nomor_bundel'] ?? $this->generateNextNomorBundel($prefix);
             // 1. Validasi seluruh kuitansi: harus LOLOS_VERIFIKASI dan belum aktif di bundel lain
             $receipts = Kuitansi::where(function ($q) use ($kuitansiIds) {
                 $q->whereIn('id', $kuitansiIds)
@@ -195,7 +195,7 @@ class SettlementService implements SettlementServiceInterface
             throw new InvalidArgumentException('BPP Kelurahan tidak berwenang mengeluarkan kuitansi dari bundel unit lain.');
         }
 
-        return DB::transaction(function () use ($item) {
+        return DB::transaction(function () use ($item, $reason, $actor) {
             $bundle = $item->pengajuanSpj;
             $kuitansi = $item->kuitansi;
 
@@ -211,7 +211,7 @@ class SettlementService implements SettlementServiceInterface
                 'DIBUNDEL',
                 'LOLOS_VERIFIKASI',
                 $reason ?? "Kuitansi dikeluarkan dari bundel SPJ {$bundle->nomor_bundel}",
-                null,
+                $actor,
                 ['pengajuan_spj_id' => $bundle->id, 'nomor_bundel' => $bundle->nomor_bundel]
             );
 
@@ -231,7 +231,7 @@ class SettlementService implements SettlementServiceInterface
             throw new InvalidArgumentException('Pengguna kelurahan tidak berwenang mencatat nomor SP2D SIPD-RI.');
         }
 
-        return DB::transaction(function () use ($bundleId, $nomorSp2d, $nomorSpp, $tanggalSp2d) {
+        return DB::transaction(function () use ($bundleId, $nomorSp2d, $nomorSpp, $tanggalSp2d, $actor) {
             $bundle = PengajuanSpj::with(['activeItems.kuitansi'])
                 ->where(function ($q) use ($bundleId) {
                     $q->where('id', $bundleId)
@@ -262,7 +262,7 @@ class SettlementService implements SettlementServiceInterface
                         'DIBUNDEL',
                         'SELESAI_SP2D',
                         "Pencairan SP2D SIPD-RI terkonfirmasi: {$nomorSp2d}",
-                        null,
+                        $actor,
                         [
                             'nomor_sp2d' => $nomorSp2d,
                             'nomor_spp' => $nomorSpp ?? $bundle->nomor_spp_sipd,
@@ -384,5 +384,33 @@ class SettlementService implements SettlementServiceInterface
             'checklist_bagian_a' => $bundle->checklist_bagian_a ?? $this->defaultChecklistBagianA,
             'items' => $bundle->activeItems,
         ];
+    }
+
+    /**
+     * Menghasilkan nomor bundel berikutnya yang unik secara berurutan di dalam transaksi.
+     */
+    private function generateNextNomorBundel(string $prefix): string
+    {
+        $lastNomor = PengajuanSpj::query()
+            ->where('nomor_bundel', 'like', "{$prefix}%")
+            ->lockForUpdate()
+            ->orderByDesc('nomor_bundel')
+            ->value('nomor_bundel');
+
+        $nextSeq = 1;
+        if (is_string($lastNomor) && str_starts_with($lastNomor, $prefix)) {
+            $suffix = substr($lastNomor, strlen($prefix));
+            if (ctype_digit($suffix)) {
+                $nextSeq = (int) $suffix + 1;
+            }
+        }
+
+        do {
+            $candidate = $prefix.str_pad((string) $nextSeq, 4, '0', STR_PAD_LEFT);
+            $exists = PengajuanSpj::query()->where('nomor_bundel', $candidate)->exists();
+            $nextSeq++;
+        } while ($exists);
+
+        return $candidate;
     }
 }
