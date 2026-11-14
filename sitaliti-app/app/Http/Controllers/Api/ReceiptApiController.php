@@ -62,6 +62,11 @@ class ReceiptApiController extends Controller
             'kategori_belanja',
             'search',
         ]);
+
+        if ($user && $user->isKelurahanScoped()) {
+            $filters['unit_kerja_id'] = $user->unit_kerja_id;
+        }
+
         $perPage = (int) $request->input('per_page', 15);
 
         $paginated = $this->receiptQueryService->getPaginatedReceipts($user, $filters, $perPage);
@@ -92,6 +97,12 @@ class ReceiptApiController extends Controller
             'items.*.volume' => ['required', 'numeric', 'min:0.01'],
             'items.*.harga_satuan' => ['required', 'numeric', 'min:0'],
         ]);
+
+        $user = $request->user();
+        $rekening = AnggaranRekening::find($validated['anggaran_rekening_id']);
+        if ($user && $rekening && ! $user->canAccessRekening($rekening)) {
+            return $this->errorResponse('FORBIDDEN', 'Anda tidak berwenang memeriksa kuota RAK atau simulasi draft untuk rekening unit kerja lain.', null, 403);
+        }
 
         $result = $this->receiptService->validateDraft($validated);
 

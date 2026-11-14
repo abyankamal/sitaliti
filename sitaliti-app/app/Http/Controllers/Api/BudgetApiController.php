@@ -292,7 +292,7 @@ class BudgetApiController extends Controller
             $query->where('unit_kerja_id', $request->input('unit_id'));
         }
 
-        if ($user && $user->hasRole('PPTK')) {
+        if ($user && ($user->hasRole('PPTK') || $user->role === 'PPTK')) {
             $assignedCodes = $user->pptkSubkegiatanAssignments()->pluck('kode_sub_kegiatan');
             if ($assignedCodes->isNotEmpty()) {
                 $query->whereIn('kode_sub_kegiatan', $assignedCodes);
@@ -344,8 +344,8 @@ class BudgetApiController extends Controller
             return $this->errorResponse('FORBIDDEN', 'Anda tidak memiliki hak akses untuk melihat RAK rekening unit kerja lain.', null, 403);
         }
 
-        if ($user && $user->hasRole('PPTK')) {
-            if (! $user->canAccessPptkSubkegiatan($rekening->kode_sub_kegiatan, $rekening->unit_kerja_id)) {
+        if ($user && ($user->hasRole('PPTK') || $user->role === 'PPTK')) {
+            if (! $user->canAccessPptkSubkegiatan((int) $rekening->unit_kerja_id, (string) $rekening->kode_sub_kegiatan)) {
                 return $this->errorResponse('FORBIDDEN', 'Anda tidak memiliki akses ke subkegiatan rekening ini.', null, 403);
             }
         }

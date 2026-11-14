@@ -32,7 +32,8 @@ Route::prefix('v1')->group(function () {
                 ->middleware('permission:kuitansi.view');
             Route::get('export', [ReceiptApiController::class, 'export'])
                 ->middleware('permission:kuitansi.view');
-            Route::post('validate-draft', [ReceiptApiController::class, 'validateDraft']);
+            Route::post('validate-draft', [ReceiptApiController::class, 'validateDraft'])
+                ->middleware('permission:kuitansi.create|kuitansi.edit');
             Route::post('/', [ReceiptApiController::class, 'store'])
                 ->middleware('permission:kuitansi.create');
             Route::post('{id}/submit', [ReceiptApiController::class, 'submit'])

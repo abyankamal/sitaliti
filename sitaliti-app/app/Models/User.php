@@ -260,6 +260,10 @@ class User extends Authenticatable
             return true;
         }
 
+        if ($this->unit_kerja_id === null) {
+            return false;
+        }
+
         $unitId = (int) $kuitansi->unit_kerja_id;
 
         if ($this->role === 'PPTK') {
@@ -273,6 +277,29 @@ class User extends Authenticatable
         }
 
         return (int) $this->unit_kerja_id === $unitId;
+    }
+
+    /**
+     * Otorisasi domain sentral apakah pengguna berhak mengakses suatu rekening anggaran.
+     */
+    public function canAccessRekening(AnggaranRekening $rekening): bool
+    {
+        if ($this->isSkpdWide()) {
+            return true;
+        }
+
+        if ($this->unit_kerja_id === null) {
+            return false;
+        }
+
+        if ($this->role === 'PPTK') {
+            return $this->canAccessPptkSubkegiatan(
+                (int) $rekening->unit_kerja_id,
+                (string) $rekening->kode_sub_kegiatan
+            );
+        }
+
+        return (int) $this->unit_kerja_id === (int) $rekening->unit_kerja_id;
     }
 
     /**

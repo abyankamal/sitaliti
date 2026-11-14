@@ -407,4 +407,50 @@ class CrossUnitIdorIsolationTest extends TestCase
             ->assertStatus(403)
             ->assertJsonPath('error.code', 'FORBIDDEN');
     }
+
+    public function test_pptk_rak_context_and_receipt_index_scoping_and_validate_draft_isolation(): void
+    {
+        // 1. PPTK Sarpras Pataruman boleh akses rak-context Sarpras Pataruman -> 200
+        $this->actingAs($this->pptkSarprasPataruman)
+            ->getJson("/api/v1/budget/rak-context/{$this->rekeningSarprasPataruman->id}?month=1")
+            ->assertOk();
+
+        // PPTK Pemberdayaan Pataruman ditolak akses rak-context Sarpras Pataruman -> 403
+        $this->actingAs($this->pptkPemberdayaanPataruman)
+            ->getJson("/api/v1/budget/rak-context/{$this->rekeningSarprasPataruman->id}?month=1")
+            ->assertStatus(403);
+
+        // 2. Operator Pataruman memaksa query unit_kerja_id Sukagalih di GET /api/v1/receipts -> tetap terisolasi di Pataruman
+        $resIndex = $this->actingAs($this->operatorPataruman)
+            ->getJson("/api/v1/receipts?unit_kerja_id={$this->kelurahanSukagalih->id}")
+            ->assertOk();
+        $returnedUnitIds = collect($resIndex->json('data.data'))->pluck('unit_kerja_id')->unique()->all();
+        $this->assertNotContains($this->kelurahanSukagalih->id, $returnedUnitIds);
+
+        // 3. Operator Pataruman mencoba validate-draft dengan rekening Sukagalih -> 403
+        $this->actingAs($this->operatorPataruman)
+            ->postJson('/api/v1/receipts/validate-draft', [
+                'anggaran_rekening_id' => $this->rekeningSukagalih->id,
+                'bulan_anggaran' => 1,
+                'items' => [['nama_barang' => 'Kertas', 'volume' => 1, 'harga_satuan' => 50000]],
+            ])
+            ->assertStatus(403);
+
+        // Lurah tidak memiliki permission kuitansi.create|edit -> 403 pada validate-draft
+        $this->actingAs($this->lurahPataruman)
+            ->postJson('/api/v1/receipts/validate-draft', [
+                'anggaran_rekening_id' => $this->rekeningSarprasPataruman->id,
+                'bulan_anggaran' => 1,
+                'items' => [['nama_barang' => 'Kertas', 'volume' => 1, 'harga_satuan' => 50000]],
+            ])
+            ->assertStatus(403);
+
+        // 4. User non-SKPD dengan unit_kerja_id null tidak pernah bisa akses kuitansi
+        $orphanOperator = User::factory()->create([
+            'role' => 'OPERATOR',
+            'unit_kerja_id' => null,
+        ]);
+        $this->assertFalse($orphanOperator->canAccessReceipt($this->kuitansiSarprasPataruman));
+        $this->assertFalse($orphanOperator->canAccessRekening($this->rekeningSarprasPataruman));
+    }
 }
