@@ -32,6 +32,19 @@ Route::middleware('auth')->group(function () {
         return Inertia::render('Receipts/Create');
     })->middleware('permission:kuitansi.create')->name('receipts.create');
 
+    Route::get('/receipts/{id}/edit', function (Request $request, $id) {
+        $kuitansi = Kuitansi::where('id', $id)->orWhere('nomor_kuitansi', (string) $id)->firstOrFail();
+        if (! $request->user()->canAccessReceipt($kuitansi)) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengedit kuitansi ini.');
+        }
+
+        if (! in_array($kuitansi->status, ['DRAFT', 'REVISI_MINOR', 'REVISI_MAYOR'], true)) {
+            abort(403, 'Kuitansi hanya dapat diedit pada status DRAFT, REVISI_MINOR, atau REVISI_MAYOR.');
+        }
+
+        return Inertia::render('Receipts/Edit', ['id' => $kuitansi->id]);
+    })->middleware('permission:kuitansi.create')->name('receipts.edit');
+
     // Routes Verifikasi & Workspace
     Route::get('/verification', function () {
         return Inertia::render('Verification/Index');

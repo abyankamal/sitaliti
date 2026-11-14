@@ -169,4 +169,57 @@ class ReceiptWebRouteTest extends TestCase
         $response = $this->actingAs($this->operator)->get('/users');
         $response->assertStatus(403);
     }
+
+    public function test_operator_can_access_edit_page_for_editable_statuses(): void
+    {
+        foreach (['DRAFT', 'REVISI_MINOR', 'REVISI_MAYOR'] as $status) {
+            $kuitansi = Kuitansi::create([
+                'nomor_kuitansi' => 'KW-EDIT-'.$status,
+                'unit_kerja_id' => $this->operator->unit_kerja_id,
+                'anggaran_rekening_id' => $this->kuitansi->anggaran_rekening_id,
+                'user_id' => $this->operator->id,
+                'bulan_anggaran' => 2,
+                'tanggal_transaksi' => '2026-02-16',
+                'uraian' => 'Kuitansi Edit Test '.$status,
+                'nama_penerima' => 'Toko Mitra',
+                'nominal_bruto' => 500000.00,
+                'total_pajak' => 0.00,
+                'nominal_neto' => 500000.00,
+                'status' => $status,
+                'qr_token' => 'qr-edit-'.$status,
+            ]);
+
+            $response = $this->actingAs($this->operator)->get("/receipts/{$kuitansi->id}/edit");
+            $response->assertStatus(200);
+            $response->assertInertia(fn (Assert $page) => $page
+                ->component('Receipts/Edit')
+                ->where('id', $kuitansi->id)
+            );
+        }
+    }
+
+    public function test_edit_page_rejects_non_editable_status_and_unauthorized_role(): void
+    {
+        $resNonEditable = $this->actingAs($this->operator)->get("/receipts/{$this->kuitansi->id}/edit");
+        $resNonEditable->assertStatus(403);
+
+        $draft = Kuitansi::create([
+            'nomor_kuitansi' => 'KW-EDIT-FORBIDDEN',
+            'unit_kerja_id' => $this->operator->unit_kerja_id,
+            'anggaran_rekening_id' => $this->kuitansi->anggaran_rekening_id,
+            'user_id' => $this->operator->id,
+            'bulan_anggaran' => 2,
+            'tanggal_transaksi' => '2026-02-16',
+            'uraian' => 'Kuitansi Edit Forbidden Role',
+            'nama_penerima' => 'Toko Mitra',
+            'nominal_bruto' => 500000.00,
+            'total_pajak' => 0.00,
+            'nominal_neto' => 500000.00,
+            'status' => 'DRAFT',
+            'qr_token' => 'qr-edit-forbidden',
+        ]);
+
+        $resVerifikator = $this->actingAs($this->verifikator)->get("/receipts/{$draft->id}/edit");
+        $resVerifikator->assertStatus(403);
+    }
 }
