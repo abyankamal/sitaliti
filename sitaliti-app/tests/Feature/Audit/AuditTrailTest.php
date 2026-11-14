@@ -209,7 +209,9 @@ class AuditTrailTest extends TestCase
             'jenis_bundel' => 'SPP_GU',
         ], [$kuitansi->id], $this->bpp);
 
-        // 7. SP2D_SETTLED
+        // 7. PPK Approval & SP2D_SETTLED
+        $this->settlementService->submitForPpk($bundle2->id, $this->bpp);
+        $this->settlementService->approveByPpk($bundle2->id, [], $this->verifikator);
         $this->settlementService->recordSipdSp2d($bundle2->id, 'SP2D-2026-00099', 'SPP-2026-00099', '2026-02-28');
         $riwayat7 = KuitansiRiwayat::where('kuitansi_id', $kuitansi->id)->latest('id')->first();
         $this->assertEquals('SP2D_SETTLED', $riwayat7->action);

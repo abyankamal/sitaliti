@@ -5,6 +5,7 @@ namespace Tests\Feature\Security;
 use App\Models\AnggaranKasBulanan;
 use App\Models\AnggaranRekening;
 use App\Models\Kuitansi;
+use App\Models\KuitansiLampiran;
 use App\Models\MasterChecklistItem;
 use App\Models\UnitKerja;
 use App\Models\User;
@@ -177,7 +178,29 @@ class RbacAuthorizationTest extends TestCase
             'status' => 'MENUNGGU_VERIFIKASI',
         ]);
 
-        $itemChecklist = MasterChecklistItem::where('kategori_belanja', 'B.1')->first();
+        KuitansiLampiran::create([
+            'kuitansi_id' => $kuitansi->id,
+            'anggaran_rekening_id' => $this->rekening->id,
+            'checklist_code' => 'B.1.1',
+            'nama_dokumen' => 'Nota RBAC',
+            'file_path' => 'receipts/2026/02/nota_rbac.pdf',
+            'file_name' => 'nota_rbac.pdf',
+            'file_size' => 1024,
+            'mime_type' => 'application/pdf',
+            'file_hash' => hash('sha256', 'nota-rbac-001'),
+        ]);
+
+        $requiredChecklists = MasterChecklistItem::where('kategori_belanja', 'B.1')
+            ->where('is_active', true)
+            ->where('is_required', true)
+            ->get()
+            ->map(fn ($item) => [
+                'item_id' => $item->id,
+                'status' => 'SESUAI',
+                'notes' => 'Lengkap',
+            ])
+            ->values()
+            ->all();
 
         // 1. Verifikator BISA melihat antrean verifikasi
         $resQueue = $this->actingAs($this->verifikator)->getJson('/api/v1/verification/queue');
@@ -187,13 +210,7 @@ class RbacAuthorizationTest extends TestCase
         $resAction = $this->actingAs($this->verifikator)->postJson("/api/v1/verification/{$kuitansi->id}/action", [
             'action' => 'VERIFIED',
             'notes' => 'Semua bukti fisik valid',
-            'checklist_results' => [
-                [
-                    'item_id' => $itemChecklist->id,
-                    'status' => 'SESUAI',
-                    'notes' => 'Lengkap',
-                ],
-            ],
+            'checklist_results' => $requiredChecklists,
         ]);
         $resAction->assertStatus(200);
 
@@ -232,7 +249,10 @@ class RbacAuthorizationTest extends TestCase
         $resBundle->assertStatus(201);
         $bundleId = $resBundle->json('data.id');
 
-        // 3. KPA BISA mencatat SP2D untuk bundel tersebut
+        // 3. BPP mengajukan ke PPK dan Verifikator menyetujui Bagian A, lalu KPA mencatat SP2D
+        $this->actingAs($this->bpp)->postJson("/api/v1/bundles/{$bundleId}/submit-ppk")->assertStatus(200);
+        $this->actingAs($this->verifikator)->postJson("/api/v1/bundles/{$bundleId}/approve-ppk")->assertStatus(200);
+
         $resSp2d = $this->actingAs($this->kpa)->postJson("/api/v1/bundles/{$bundleId}/sp2d", [
             'nomor_sp2d' => 'SP2D/TARKID/2026/02/0099',
             'tanggal_sp2d' => '2026-02-28',

@@ -245,7 +245,31 @@ class SettlementBundlingTest extends TestCase
         ]);
         $bundleId = $resCreate->json('data.id');
 
-        // 3. Catat SP2D SIPD-RI
+        // 3. SP2D wajib ditolak (422) jika bundel masih DRAFT atau MENUNGGU_PPK
+        $this->actingAs($this->bppUser)->postJson("/api/v1/bundles/{$bundleId}/sp2d", [
+            'nomor_sp2d' => '0451/SP2D-GU/4.01.01/2026',
+        ])->assertStatus(422);
+
+        $this->actingAs($this->bppUser)->postJson("/api/v1/bundles/{$bundleId}/submit-ppk")
+            ->assertStatus(200)
+            ->assertJsonPath('data.status_bundel', 'MENUNGGU_PPK');
+
+        $this->actingAs($this->bppUser)->postJson("/api/v1/bundles/{$bundleId}/sp2d", [
+            'nomor_sp2d' => '0451/SP2D-GU/4.01.01/2026',
+        ])->assertStatus(422);
+
+        // BPP dan LURAH ditolak (403) saat mencoba approve-ppk
+        $lurahUser = User::factory()->create(['unit_kerja_id' => $this->unit->id, 'role' => 'LURAH']);
+        $this->actingAs($this->bppUser)->postJson("/api/v1/bundles/{$bundleId}/approve-ppk")->assertStatus(403);
+        $this->actingAs($lurahUser)->postJson("/api/v1/bundles/{$bundleId}/approve-ppk")->assertStatus(403);
+
+        // VERIFIKATOR (PPK) menyetujui 9 dokumen Bagian A
+        $verifikatorUser = User::factory()->create(['unit_kerja_id' => $this->unit->id, 'role' => 'VERIFIKATOR']);
+        $this->actingAs($verifikatorUser)->postJson("/api/v1/bundles/{$bundleId}/approve-ppk")
+            ->assertStatus(200)
+            ->assertJsonPath('data.status_bundel', 'DISETUJUI_PPK');
+
+        // 4. Catat SP2D SIPD-RI setelah DISETUJUI_PPK
         $resSp2d = $this->actingAs($this->bppUser)->postJson("/api/v1/bundles/{$bundleId}/sp2d", [
             'nomor_sp2d' => '0451/SP2D-GU/4.01.01/2026',
             'nomor_spp' => '001/SPP-GU/4.01.01/2026',

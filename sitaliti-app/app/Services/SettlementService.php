@@ -223,6 +223,89 @@ class SettlementService implements SettlementServiceInterface
     }
 
     /**
+     * Mengajukan bundel SPJ berstatus DRAFT ke PPK (VERIFIKATOR) untuk pemeriksaan Bagian A.
+     */
+    public function submitForPpk(int|string $bundleId, ?User $actor = null): PengajuanSpj
+    {
+        return DB::transaction(function () use ($bundleId, $actor) {
+            $bundle = PengajuanSpj::where(function ($q) use ($bundleId) {
+                $q->where('id', $bundleId)
+                    ->orWhere('nomor_bundel', $bundleId);
+            })
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($actor && $actor->isKelurahanScoped() && (int) $bundle->unit_kerja_id !== (int) $actor->unit_kerja_id) {
+                throw new InvalidArgumentException('Anda tidak berwenang mengajukan bundel SPJ dari unit kerja lain.');
+            }
+
+            if ($bundle->status_bundel !== 'DRAFT') {
+                throw new InvalidArgumentException("Bundel {$bundle->nomor_bundel} harus berstatus DRAFT untuk diajukan ke PPK. Status saat ini: {$bundle->status_bundel}.");
+            }
+
+            if ($bundle->activeItems()->count() === 0) {
+                throw new InvalidArgumentException("Bundel {$bundle->nomor_bundel} tidak memiliki kuitansi aktif.");
+            }
+
+            $bundle->update([
+                'status_bundel' => 'MENUNGGU_PPK',
+            ]);
+
+            return $bundle->fresh(['unitKerja', 'creator', 'activeItems.kuitansi']);
+        });
+    }
+
+    /**
+     * Persetujuan PPK (VERIFIKATOR) atas kelengkapan 9 dokumen Bagian A sebelum SP2D dapat dicatat.
+     *
+     * @param  array<int, array<string, mixed>>  $checklistBagianA
+     */
+    public function approveByPpk(int|string $bundleId, array $checklistBagianA, User $ppk): PengajuanSpj
+    {
+        if ($ppk->role !== 'VERIFIKATOR' && ! $ppk->hasRole('VERIFIKATOR')) {
+            throw new InvalidArgumentException('Hanya Verifikator (PPK) yang berwenang menyetujui bundel SPJ.');
+        }
+
+        return DB::transaction(function () use ($bundleId, $checklistBagianA, $ppk) {
+            $bundle = PengajuanSpj::where(function ($q) use ($bundleId) {
+                $q->where('id', $bundleId)
+                    ->orWhere('nomor_bundel', $bundleId);
+            })
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($bundle->status_bundel !== 'MENUNGGU_PPK') {
+                throw new InvalidArgumentException("Bundel {$bundle->nomor_bundel} harus berstatus MENUNGGU_PPK sebelum disetujui PPK. Status saat ini: {$bundle->status_bundel}.");
+            }
+
+            $resolvedChecklist = ! empty($checklistBagianA)
+                ? $checklistBagianA
+                : ($bundle->checklist_bagian_a ?? $this->defaultChecklistBagianA);
+
+            $checkedById = [];
+            foreach ($resolvedChecklist as $doc) {
+                if (isset($doc['id'])) {
+                    $checkedById[$doc['id']] = (bool) ($doc['checked'] ?? false);
+                }
+            }
+
+            foreach ($this->defaultChecklistBagianA as $requiredDoc) {
+                if ($requiredDoc['required'] && empty($checkedById[$requiredDoc['id']])) {
+                    throw new InvalidArgumentException("Dokumen wajib Bagian A '{$requiredDoc['name']}' belum terverifikasi oleh PPK.");
+                }
+            }
+
+            $bundle->update([
+                'status_bundel' => 'DISETUJUI_PPK',
+                'ppk_skpd_id' => $ppk->id,
+                'checklist_bagian_a' => $resolvedChecklist,
+            ]);
+
+            return $bundle->fresh(['unitKerja', 'creator', 'ppk', 'activeItems.kuitansi']);
+        });
+    }
+
+    /**
      * Mencatat nomor SP2D SIPD-RI dan memindahkan seluruh kuncian pagu kuitansi menjadi realisasi definitif.
      */
     public function recordSipdSp2d(int|string $bundleId, string $nomorSp2d, ?string $nomorSpp = null, ?string $tanggalSp2d = null, ?User $actor = null): PengajuanSpj
@@ -242,6 +325,10 @@ class SettlementService implements SettlementServiceInterface
 
             if ($bundle->status_bundel === 'SYNCED_SIPD') {
                 throw new InvalidArgumentException("Bundel {$bundle->nomor_bundel} sudah berstatus SYNCED_SIPD dan tidak dapat dicatat ulang (Proteksi Anti-Double Settlement).");
+            }
+
+            if ($bundle->status_bundel !== 'DISETUJUI_PPK') {
+                throw new InvalidArgumentException("Bundel {$bundle->nomor_bundel} harus berstatus DISETUJUI_PPK sebelum dapat dicatat SP2D. Status saat ini: {$bundle->status_bundel}.");
             }
 
             foreach ($bundle->activeItems as $item) {

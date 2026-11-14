@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\BudgetApiController;
+use App\Http\Controllers\Api\MasterDataApiController;
 use App\Http\Controllers\Api\ReceiptApiController;
 use App\Http\Controllers\Api\SettlementApiController;
 use App\Http\Controllers\Api\UserManagementApiController;
@@ -82,14 +83,25 @@ Route::prefix('v1')->group(function () {
                 ->middleware('permission:bundle.view');
             Route::post('{id}/unbundle/{kuitansiId}', [SettlementApiController::class, 'unbundle'])
                 ->middleware('permission:bundle.unbundle');
+            Route::post('{id}/submit-ppk', [SettlementApiController::class, 'submitPpk'])
+                ->middleware('permission:bundle.create');
+            Route::post('{id}/approve-ppk', [SettlementApiController::class, 'approvePpk'])
+                ->middleware('permission:verification.process_action');
             Route::post('{id}/sp2d', [SettlementApiController::class, 'recordSp2d'])
                 ->middleware('permission:bundle.record_sp2d');
         });
 
-        // Control Sheet PDF Endpoints
+        // Control Sheet Endpoints
         Route::prefix('control-sheet')->group(function () {
+            Route::get('{id}', [ControlSheetPdfController::class, 'show'])
+                ->middleware('permission:kuitansi.view');
             Route::get('{id}/pdf', [ControlSheetPdfController::class, 'download'])
                 ->middleware('permission:kuitansi.view');
+        });
+
+        // Master Data Endpoints
+        Route::prefix('master')->group(function () {
+            Route::get('checklist/{category}', [MasterDataApiController::class, 'checklist']);
         });
 
         // User Management & PPTK Assignment Endpoints (Kecamatan Administrator / Kepegawaian)

@@ -6,7 +6,9 @@ use App\Models\AnggaranKasBulanan;
 use App\Models\AnggaranRekening;
 use App\Models\Kuitansi;
 use App\Models\KuitansiItem;
+use App\Models\KuitansiLampiran;
 use App\Models\KuitansiPajak;
+use App\Models\MasterChecklistItem;
 use App\Models\UnitKerja;
 use App\Models\User;
 use Database\Seeders\MasterChecklistSeeder;
@@ -190,10 +192,31 @@ class ReceiptLifecycleEndToEndTest extends TestCase
             ->assertJsonPath('data.pptk_user_id', $this->pptk->id);
 
         // Langkah 5: Verifikator menyetujui kuitansi
+        KuitansiLampiran::create([
+            'kuitansi_id' => $kuitansi->id,
+            'anggaran_rekening_id' => $this->rekening->id,
+            'checklist_code' => 'B.1.1',
+            'nama_dokumen' => 'Nota E2E',
+            'file_path' => 'receipts/2026/06/nota_e2e.pdf',
+            'file_name' => 'nota_e2e.pdf',
+            'file_size' => 1024,
+            'mime_type' => 'application/pdf',
+            'file_hash' => hash('sha256', 'nota-e2e-001'),
+        ]);
+
+        $checklistResults = MasterChecklistItem::where('kategori_belanja', 'B.1')
+            ->where('is_active', true)
+            ->where('is_required', true)
+            ->get()
+            ->map(fn ($item) => ['item_id' => $item->id, 'status' => 'SESUAI'])
+            ->values()
+            ->all();
+
         $verifRes = $this->actingAs($this->verifikator)
             ->postJson("/api/v1/verification/{$kuitansi->id}/action", [
                 'action' => 'VERIFIED',
                 'notes' => 'Kelengkapan administrasi dan bukti faktur terverifikasi sah.',
+                'checklist_results' => $checklistResults,
             ]);
         $verifRes->assertStatus(200)
             ->assertJsonPath('data.new_status', 'LOLOS_VERIFIKASI');
@@ -208,6 +231,10 @@ class ReceiptLifecycleEndToEndTest extends TestCase
         $bundleId = $bundleRes->json('data.id');
 
         $this->assertEquals('DIBUNDEL', $kuitansi->fresh()->status);
+
+        // Langkah 6b: Ajukan ke PPK & Persetujuan PPK
+        $this->actingAs($this->bpp)->postJson("/api/v1/bundles/{$bundleId}/submit-ppk")->assertStatus(200);
+        $this->actingAs($this->verifikator)->postJson("/api/v1/bundles/{$bundleId}/approve-ppk")->assertStatus(200);
 
         // Langkah 7: Penerbitan SP2D definitif
         $nomorSp2d = '0890/SP2D-GU/4.01.01/2026';

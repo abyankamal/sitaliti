@@ -21,6 +21,18 @@ interface SettlementServiceInterface
     public function unbundleReceipt(int|string $bundleId, int|string $kuitansiId, ?string $reason = null, ?User $actor = null): bool;
 
     /**
+     * Mengajukan bundel SPJ berstatus DRAFT ke PPK (VERIFIKATOR) untuk pemeriksaan Bagian A.
+     */
+    public function submitForPpk(int|string $bundleId, ?User $actor = null): PengajuanSpj;
+
+    /**
+     * Persetujuan PPK (VERIFIKATOR) atas kelengkapan 9 dokumen Bagian A sebelum SP2D dapat dicatat.
+     *
+     * @param  array<int, array<string, mixed>>  $checklistBagianA
+     */
+    public function approveByPpk(int|string $bundleId, array $checklistBagianA, User $ppk): PengajuanSpj;
+
+    /**
      * Mencatat nomor SP2D SIPD-RI dan memindahkan seluruh kuncian pagu kuitansi menjadi realisasi definitif.
      */
     public function recordSipdSp2d(int|string $bundleId, string $nomorSp2d, ?string $nomorSpp = null, ?string $tanggalSp2d = null, ?User $actor = null): PengajuanSpj;

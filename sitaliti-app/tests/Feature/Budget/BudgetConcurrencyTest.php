@@ -155,6 +155,13 @@ class BudgetConcurrencyTest extends TestCase
 
         $this->assertEquals('DRAFT', $bundle->status_bundel);
 
+        $verifikator = User::factory()->create([
+            'unit_kerja_id' => $this->unit->id,
+            'role' => 'VERIFIKATOR',
+        ]);
+        $this->settlementService->submitForPpk($bundle->id, $this->bpp);
+        $this->settlementService->approveByPpk($bundle->id, [], $verifikator);
+
         // Eksekusi record SP2D pertama kali (berhasil)
         $syncedBundle = $this->settlementService->recordSipdSp2d($bundle->id, 'SP2D/2026/001/KIDUL');
         $this->assertEquals('SYNCED_SIPD', $syncedBundle->status_bundel);

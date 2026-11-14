@@ -109,6 +109,62 @@ class SettlementApiController extends Controller
     }
 
     /**
+     * Endpoint pengajuan bundel SPJ ke PPK (POST /api/v1/bundles/{id}/submit-ppk).
+     */
+    public function submitPpk(Request $request, int|string $id): JsonResponse
+    {
+        $user = $request->user();
+        if ($user && $user->role === 'LURAH') {
+            return $this->errorResponse('FORBIDDEN', 'Lurah hanya memiliki akses baca (read-only) terhadap bundel SPJ.', null, 403);
+        }
+
+        try {
+            $bundle = $this->settlementService->submitForPpk($id, $user);
+
+            return $this->successResponse($bundle, 'Bundel SPJ berhasil diajukan ke PPK untuk pemeriksaan Bagian A');
+        } catch (ModelNotFoundException) {
+            return $this->errorResponse('BUNDLE_NOT_FOUND', 'Bundel SPJ tidak ditemukan.', null, 404);
+        } catch (InvalidArgumentException $e) {
+            $statusCode = str_contains($e->getMessage(), 'tidak berwenang') ? 403 : 422;
+
+            return $this->errorResponse('SUBMIT_PPK_FAILED', $e->getMessage(), null, $statusCode);
+        } catch (Throwable $e) {
+            return $this->errorResponse('SUBMIT_PPK_ERROR', $e->getMessage(), null, 500);
+        }
+    }
+
+    /**
+     * Endpoint persetujuan PPK atas kelengkapan 9 dokumen Bagian A (POST /api/v1/bundles/{id}/approve-ppk).
+     */
+    public function approvePpk(Request $request, int|string $id): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user || ($user->role !== 'VERIFIKATOR' && ! $user->hasRole('VERIFIKATOR'))) {
+            return $this->errorResponse('FORBIDDEN', 'Hanya Verifikator (PPK) yang berwenang menyetujui bundel SPJ.', null, 403);
+        }
+
+        $validated = $request->validate([
+            'checklist_bagian_a' => ['nullable', 'array'],
+            'checklist_bagian_a.*.id' => ['required_with:checklist_bagian_a', 'string'],
+            'checklist_bagian_a.*.checked' => ['required_with:checklist_bagian_a', 'boolean'],
+        ]);
+
+        try {
+            $bundle = $this->settlementService->approveByPpk($id, $validated['checklist_bagian_a'] ?? [], $user);
+
+            return $this->successResponse($bundle, 'Bundel SPJ telah disetujui PPK dan siap dicatat SP2D');
+        } catch (ModelNotFoundException) {
+            return $this->errorResponse('BUNDLE_NOT_FOUND', 'Bundel SPJ tidak ditemukan.', null, 404);
+        } catch (InvalidArgumentException $e) {
+            $statusCode = str_contains($e->getMessage(), 'tidak berwenang') ? 403 : 422;
+
+            return $this->errorResponse('APPROVE_PPK_FAILED', $e->getMessage(), null, $statusCode);
+        } catch (Throwable $e) {
+            return $this->errorResponse('APPROVE_PPK_ERROR', $e->getMessage(), null, 500);
+        }
+    }
+
+    /**
      * Endpoint pencatatan SP2D SIPD-RI (POST /api/v1/bundles/{id}/sp2d).
      * Memicu settleBudget() untuk mengubah seluruh pagu terkunci menjadi realisasi definitif.
      */
@@ -138,7 +194,10 @@ class SettlementApiController extends Controller
         } catch (ModelNotFoundException $e) {
             return $this->errorResponse('BUNDLE_NOT_FOUND', 'Bundel SPJ tidak ditemukan.', null, 404);
         } catch (InvalidArgumentException $e) {
-            return $this->errorResponse('FORBIDDEN', $e->getMessage(), null, 403);
+            $statusCode = str_contains($e->getMessage(), 'tidak berwenang') ? 403 : 422;
+            $errorCode = $statusCode === 403 ? 'FORBIDDEN' : 'INVALID_BUNDLE_STATE';
+
+            return $this->errorResponse($errorCode, $e->getMessage(), null, $statusCode);
         } catch (Throwable $e) {
             return $this->errorResponse('RECORD_SP2D_ERROR', $e->getMessage(), null, 500);
         }

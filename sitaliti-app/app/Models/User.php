@@ -66,6 +66,7 @@ class User extends Authenticatable
             ],
             'VERIFIKATOR' => [
                 'kuitansi.view',
+                'bundle.view',
                 'verification.queue',
                 'verification.audit',
                 'verification.process_action',
