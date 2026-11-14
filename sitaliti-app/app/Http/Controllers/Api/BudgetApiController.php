@@ -12,6 +12,7 @@ use App\Models\KuitansiRiwayat;
 use App\Models\UnitKerja;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class BudgetApiController extends Controller
 {
@@ -43,8 +44,11 @@ class BudgetApiController extends Controller
         if ($isKelurahan) {
             $kasQuery->whereIn('anggaran_rekening_id', $rekeningIds);
         }
-        $totalTerkunci = (float) (clone $kasQuery)->sum('terkunci_bulan');
-        $totalRealisasi = (float) (clone $kasQuery)->sum('realisasi_bulan');
+        $kasTotals = (clone $kasQuery)
+            ->selectRaw('COALESCE(SUM(terkunci_bulan), 0) as total_terkunci, COALESCE(SUM(realisasi_bulan), 0) as total_realisasi')
+            ->first();
+        $totalTerkunci = (float) ($kasTotals?->total_terkunci ?? 0);
+        $totalRealisasi = (float) ($kasTotals?->total_realisasi ?? 0);
         $sisaPagu = max(0.0, $totalPagu - $totalTerkunci - $totalRealisasi);
         $persentaseRealisasi = $totalPagu > 0 ? round(($totalRealisasi / $totalPagu) * 100, 2) : 0;
 
@@ -53,18 +57,27 @@ class BudgetApiController extends Controller
             $kuitansiQuery->where('unit_kerja_id', $targetUnitId);
         }
 
-        $pendingPptkCount = (clone $kuitansiQuery)->where('status', 'MENUNGGU_PPTK')->count();
-        $pendingLurahCount = (clone $kuitansiQuery)->where('status', 'MENUNGGU_LURAH')->count();
-        $pendingVerificationCount = (clone $kuitansiQuery)->where('status', 'MENUNGGU_VERIFIKASI')->count();
-        $activeRevisionsCount = (clone $kuitansiQuery)->whereIn('status', ['REVISI_MINOR', 'REVISI_MAYOR'])->count();
-        $verifiedCount = (clone $kuitansiQuery)->whereIn('status', ['LOLOS_VERIFIKASI', 'DIBUNDEL', 'SELESAI_SP2D'])->count();
+        $statusCounts = (clone $kuitansiQuery)
+            ->selectRaw('status, COUNT(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        $pendingPptkCount = (int) ($statusCounts['MENUNGGU_PPTK'] ?? 0);
+        $pendingLurahCount = (int) ($statusCounts['MENUNGGU_LURAH'] ?? 0);
+        $pendingVerificationCount = (int) ($statusCounts['MENUNGGU_VERIFIKASI'] ?? 0);
+        $revisiMinorCount = (int) ($statusCounts['REVISI_MINOR'] ?? 0);
+        $revisiMayorCount = (int) ($statusCounts['REVISI_MAYOR'] ?? 0);
+        $activeRevisionsCount = $revisiMinorCount + $revisiMayorCount;
+        $verifiedCount = (int) ($statusCounts['LOLOS_VERIFIKASI'] ?? 0)
+            + (int) ($statusCounts['DIBUNDEL'] ?? 0)
+            + (int) ($statusCounts['SELESAI_SP2D'] ?? 0);
 
         $queueCounts = [
             'menunggu_pptk' => $pendingPptkCount,
             'menunggu_lurah' => $pendingLurahCount,
             'menunggu_verifikasi' => $pendingVerificationCount,
-            'revisi_minor' => (clone $kuitansiQuery)->where('status', 'REVISI_MINOR')->count(),
-            'revisi_mayor' => (clone $kuitansiQuery)->where('status', 'REVISI_MAYOR')->count(),
+            'revisi_minor' => $revisiMinorCount,
+            'revisi_mayor' => $revisiMayorCount,
             'lolos_verifikasi' => $verifiedCount,
         ];
 
@@ -133,59 +146,82 @@ class BudgetApiController extends Controller
             ];
         }
 
-        // 2. Agregasi Realisasi Unit Kerja (1 unit jika kelurahan, seluruh unit jika kecamatan)
-        $unitsQuery = UnitKerja::where('is_active', true);
+        // Subquery agregasi kas bulanan per rekening agar pagu_perubahan tidak terkalikan 12 bulan
+        $kasPerRekeningSub = DB::table('anggaran_kas_bulanan')
+            ->selectRaw('anggaran_rekening_id, SUM(realisasi_bulan) as terserap, SUM(terkunci_bulan) as terkunci')
+            ->groupBy('anggaran_rekening_id');
+
+        // 2. Agregasi Realisasi Unit Kerja (1 query agregasi SQL)
+        $unitsQuery = UnitKerja::query()
+            ->where('master_unit_kerja.is_active', true)
+            ->leftJoin('anggaran_rekening', 'anggaran_rekening.unit_kerja_id', '=', 'master_unit_kerja.id')
+            ->leftJoinSub($kasPerRekeningSub, 'kas_agg', function ($join) {
+                $join->on('kas_agg.anggaran_rekening_id', '=', 'anggaran_rekening.id');
+            })
+            ->selectRaw('
+                master_unit_kerja.id,
+                master_unit_kerja.kode_unit,
+                master_unit_kerja.nama_unit,
+                COALESCE(SUM(anggaran_rekening.pagu_perubahan), 0) as pagu,
+                COALESCE(SUM(kas_agg.terserap), 0) as terserap,
+                COALESCE(SUM(kas_agg.terkunci), 0) as terkunci
+            ')
+            ->groupBy('master_unit_kerja.id', 'master_unit_kerja.kode_unit', 'master_unit_kerja.nama_unit')
+            ->orderBy('master_unit_kerja.id');
+
         if ($isKelurahan) {
-            $unitsQuery->where('id', $targetUnitId);
+            $unitsQuery->where('master_unit_kerja.id', $targetUnitId);
         }
 
-        $units = $unitsQuery->orderBy('id')->get()->map(function (UnitKerja $unit) {
-            $rekeningIds = AnggaranRekening::where('unit_kerja_id', $unit->id)->pluck('id');
-            $pagu = (float) AnggaranRekening::where('unit_kerja_id', $unit->id)->sum('pagu_perubahan');
-
-            $terserap = 0.0;
-            $terkunci = 0.0;
-            if ($rekeningIds->isNotEmpty()) {
-                $terserap = (float) AnggaranKasBulanan::whereIn('anggaran_rekening_id', $rekeningIds)->sum('realisasi_bulan');
-                $terkunci = (float) AnggaranKasBulanan::whereIn('anggaran_rekening_id', $rekeningIds)->sum('terkunci_bulan');
-            }
-
-            $sisa = max(0.0, $pagu - $terserap - $terkunci);
+        $units = $unitsQuery->get()->map(function ($row) {
+            $pagu = (float) $row->pagu;
+            $terserap = (float) $row->terserap;
+            $terkunci = (float) $row->terkunci;
 
             return [
-                'id' => $unit->id,
-                'code' => $unit->kode_unit,
-                'name' => $unit->nama_unit,
+                'id' => $row->id,
+                'code' => $row->kode_unit,
+                'name' => $row->nama_unit,
                 'pagu' => $pagu,
                 'terserap' => $terserap,
                 'terkunci' => $terkunci,
-                'sisa' => $sisa,
+                'sisa' => max(0.0, $pagu - $terserap - $terkunci),
             ];
         })->values()->all();
 
-        // 3. Breakdown Subkegiatan (Dinamis: Sarpras & Pemberdayaan untuk Kelurahan, atau seluruh subkegiatan)
-        $subKegiatanQuery = AnggaranRekening::query();
-        if ($isKelurahan) {
-            $subKegiatanQuery->where('unit_kerja_id', $targetUnitId);
-        }
-        $subKegiatanRecords = $subKegiatanQuery->orderBy('kode_sub_kegiatan')->get();
+        // 3. Breakdown Subkegiatan (1 query agregasi SQL)
+        $subKegiatanQuery = DB::table('anggaran_rekening')
+            ->leftJoinSub($kasPerRekeningSub, 'kas_agg', function ($join) {
+                $join->on('kas_agg.anggaran_rekening_id', '=', 'anggaran_rekening.id');
+            })
+            ->selectRaw('
+                anggaran_rekening.kode_sub_kegiatan as code,
+                MIN(anggaran_rekening.nama_sub_kegiatan) as name,
+                COALESCE(SUM(anggaran_rekening.pagu_perubahan), 0) as pagu,
+                COALESCE(SUM(kas_agg.terserap), 0) as terserap,
+                COALESCE(SUM(kas_agg.terkunci), 0) as terkunci,
+                COUNT(anggaran_rekening.id) as rekening_count
+            ')
+            ->groupBy('anggaran_rekening.kode_sub_kegiatan')
+            ->orderBy('anggaran_rekening.kode_sub_kegiatan');
 
-        $subActivities = $subKegiatanRecords->groupBy('kode_sub_kegiatan')->map(function ($items, $code) {
-            $first = $items->first();
-            $subRekeningIds = $items->pluck('id');
-            $pagu = (float) $items->sum('pagu_perubahan');
-            $terserap = (float) AnggaranKasBulanan::whereIn('anggaran_rekening_id', $subRekeningIds)->sum('realisasi_bulan');
-            $terkunci = (float) AnggaranKasBulanan::whereIn('anggaran_rekening_id', $subRekeningIds)->sum('terkunci_bulan');
-            $sisa = max(0.0, $pagu - $terserap - $terkunci);
+        if ($isKelurahan) {
+            $subKegiatanQuery->where('anggaran_rekening.unit_kerja_id', $targetUnitId);
+        }
+
+        $subActivities = $subKegiatanQuery->get()->map(function ($row) {
+            $pagu = (float) $row->pagu;
+            $terserap = (float) $row->terserap;
+            $terkunci = (float) $row->terkunci;
 
             return [
-                'code' => (string) $code,
-                'name' => $first->nama_sub_kegiatan,
+                'code' => (string) $row->code,
+                'name' => $row->name,
                 'pagu' => $pagu,
                 'terserap' => $terserap,
                 'terkunci' => $terkunci,
-                'sisa' => $sisa,
-                'rekening_count' => $items->count(),
+                'sisa' => max(0.0, $pagu - $terserap - $terkunci),
+                'rekening_count' => (int) $row->rekening_count,
             ];
         })->values()->all();
 

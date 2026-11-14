@@ -5,6 +5,8 @@ namespace Tests\Feature\Workflow;
 use App\Models\AnggaranKasBulanan;
 use App\Models\AnggaranRekening;
 use App\Models\Kuitansi;
+use App\Models\KuitansiLampiran;
+use App\Models\MasterChecklistItem;
 use App\Models\PengajuanSpj;
 use App\Models\PengajuanSpjItem;
 use App\Models\UnitKerja;
@@ -144,11 +146,35 @@ class PptkApprovalWorkflowTest extends TestCase
             ->first();
         $this->assertEquals($nominal, (float) $kasAfterApprove->terkunci_bulan);
 
-        // 5. Verifikator sekarang DAPAT memproses kuitansi tersebut
+        // 5. Verifikator sekarang DAPAT memproses kuitansi tersebut (dengan lampiran & checklist wajib terpenuhi)
+        KuitansiLampiran::create([
+            'kuitansi_id' => $kuitansi->id,
+            'anggaran_rekening_id' => $this->rekening->id,
+            'checklist_code' => 'B1-01',
+            'nama_dokumen' => 'Faktur / Nota Pembelian',
+            'file_name' => 'nota-atk.pdf',
+            'file_path' => 'lampiran/2026/02/nota-atk.pdf',
+            'file_hash' => hash('sha256', 'pptk-flow-nota-atk'),
+            'mime_type' => 'application/pdf',
+            'file_size' => 20480,
+        ]);
+
+        $checklistResults = MasterChecklistItem::where('kategori_belanja', 'B.1')
+            ->where('is_required', true)
+            ->get()
+            ->map(fn ($item) => [
+                'item_id' => $item->id,
+                'status' => 'SESUAI',
+                'notes' => 'Sesuai',
+            ])
+            ->values()
+            ->all();
+
         $resVerif = $this->actingAs($this->verifikator)
             ->postJson("/api/v1/verification/{$kuitansi->id}/action", [
                 'action' => 'VERIFIED',
                 'notes' => 'Dokumen lengkap dan sah.',
+                'checklist_results' => $checklistResults,
             ]);
         $resVerif->assertStatus(200)
             ->assertJson([

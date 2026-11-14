@@ -12,6 +12,7 @@ use App\Services\ReceiptService;
 use Database\Seeders\MasterChecklistSeeder;
 use Database\Seeders\UnitKerjaSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class DashboardApiTest extends TestCase
@@ -192,5 +193,19 @@ class DashboardApiTest extends TestCase
         $this->assertEquals($this->unit1->nama_unit, $latest['unit']);
         $this->assertEquals('DRAFT', $latest['status']);
         $this->assertEquals(500000.00, (float) $latest['nominal']);
+    }
+
+    public function test_dashboard_summary_executes_constant_number_of_queries(): void
+    {
+        $this->actingAs($this->user);
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $response = $this->getJson('/api/v1/budget/summary');
+        $queries = DB::getQueryLog();
+        DB::disableQueryLog();
+
+        $response->assertStatus(200);
+        $this->assertLessThanOrEqual(15, count($queries), 'Expected <= 15 queries for dashboard summary, got '.count($queries));
     }
 }
