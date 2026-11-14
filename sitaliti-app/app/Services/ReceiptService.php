@@ -55,6 +55,8 @@ class ReceiptService
         $taxResult = $this->taxService->calculateTax($kategori, $totalBruto, [
             'has_npwp' => $hasNpwp,
             'golongan_asn' => $golonganAsn,
+            'is_sewa_kendaraan' => (bool) ($data['is_sewa_kendaraan'] ?? false),
+            'is_pkp' => (bool) ($data['is_pkp'] ?? true),
         ]);
 
         // Cek Pagu Anggaran
@@ -84,78 +86,9 @@ class ReceiptService
         $bulan = (int) ($data['bulan_anggaran'] ?? (int) date('n'));
         $userId = $user?->id ?? (int) ($data['user_id'] ?? 1);
 
-        // 1. Synchronous SHA-256 Anti-Duplication Check:
-        // Tolak seketika (sub-50ms) jika ada berkas yang memiliki hash identik pada rekening belanja terkait.
-        $processedAttachments = [];
-        foreach ($attachments as $att) {
-            $file = ($att instanceof UploadedFile) ? $att : ($att['file'] ?? null);
-            if (! $file instanceof UploadedFile) {
-                continue;
-            }
+        $processedAttachments = $this->prepareAttachments($attachments, $rekening->id);
+        [$itemsToSave, $totalBruto, $taxCalc, $totalPajak, $nominalNeto] = $this->calculateItemsAndTaxes($rekening, $data);
 
-            $fileHash = hash_file('sha256', $file->getRealPath());
-
-            // Periksa apakah hash sudah pernah diunggah pada rekening ini
-            $exists = KuitansiLampiran::where('anggaran_rekening_id', $rekening->id)
-                ->where('file_hash', $fileHash)
-                ->exists();
-
-            if ($exists) {
-                throw ValidationException::withMessages([
-                    'lampiran' => [
-                        sprintf(
-                            "Nota atau bukti fisik identik ('%s') telah diunggah sebelumnya pada rekening anggaran ini. Sistem menolak duplikasi bukti transaksi.",
-                            $file->getClientOriginalName()
-                        ),
-                    ],
-                ]);
-            }
-
-            $processedAttachments[] = [
-                'file' => $file,
-                'hash' => $fileHash,
-                'checklist_code' => is_array($att) ? ($att['checklist_code'] ?? 'B.1.4') : 'B.1.4',
-                'nama_dokumen' => is_array($att) ? ($att['nama_dokumen'] ?? $file->getClientOriginalName()) : $file->getClientOriginalName(),
-            ];
-        }
-
-        // 2. Hitung Total Bruto dan Rincian Barang
-        $itemsData = $data['items'] ?? [];
-        if (empty($itemsData)) {
-            throw new InvalidArgumentException('Kuitansi wajib memiliki minimal 1 rincian barang/jasa.');
-        }
-
-        $totalBruto = 0.0;
-        $itemsToSave = [];
-        foreach ($itemsData as $item) {
-            $volume = (float) ($item['volume'] ?? 0);
-            $harga = (float) ($item['harga_satuan'] ?? 0);
-            $totalHarga = round($volume * $harga, 2);
-            $totalBruto += $totalHarga;
-
-            $itemsToSave[] = [
-                'nama_barang' => $item['nama_barang'],
-                'volume' => $volume,
-                'satuan' => $item['satuan'] ?? 'Unit',
-                'harga_satuan' => $harga,
-                'total_harga' => $totalHarga,
-            ];
-        }
-
-        // 3. Kalkulasi Pajak Sesuai Regulasi
-        $kategori = $rekening->kategori_belanja ?? 'B1_ATK';
-        $hasNpwp = (bool) ($data['has_npwp'] ?? ! empty($data['npwp_penerima']));
-        $golonganAsn = $data['golongan_asn'] ?? null;
-
-        $taxCalc = $this->taxService->calculateTax($kategori, $totalBruto, [
-            'has_npwp' => $hasNpwp,
-            'golongan_asn' => $golonganAsn,
-        ]);
-
-        $totalPajak = $taxCalc['total_pajak'];
-        $nominalNeto = $totalBruto - $totalPajak;
-
-        // 4. Generate Nomor Kuitansi Berurutan di dalam transaksi atomik
         $tahun = date('Y');
         $bulanStr = str_pad((string) $bulan, 2, '0', STR_PAD_LEFT);
         $prefix = "KW-{$tahun}-{$bulanStr}-";
@@ -196,43 +129,8 @@ class ReceiptService
                 'status' => 'DRAFT',
             ]);
 
-            // Simpan Rincian Barang
-            foreach ($itemsToSave as $item) {
-                $item['kuitansi_id'] = $kuitansi->id;
-                KuitansiItem::create($item);
-            }
-
-            // Simpan Potongan Pajak
-            foreach ($taxCalc['rincian_pajak'] as $rp) {
-                KuitansiPajak::create([
-                    'kuitansi_id' => $kuitansi->id,
-                    'kode_pajak' => $rp['kode_pajak'],
-                    'nama_pajak' => $rp['nama_pajak'],
-                    'tarif' => $rp['tarif'],
-                    'tipe_tarif' => $rp['tipe_tarif'],
-                    'dpp' => $taxCalc['dpp'],
-                    'nominal' => $rp['nominal'],
-                ]);
-            }
-
-            // Simpan Berkas Lampiran ke Private Storage
-            foreach ($processedAttachments as $att) {
-                /** @var UploadedFile $uploadedFile */
-                $uploadedFile = $att['file'];
-                $path = $uploadedFile->store("receipts/{$tahun}/{$bulanStr}", 'local');
-
-                KuitansiLampiran::create([
-                    'kuitansi_id' => $kuitansi->id,
-                    'anggaran_rekening_id' => $rekening->id,
-                    'checklist_code' => $att['checklist_code'],
-                    'nama_dokumen' => $att['nama_dokumen'],
-                    'file_path' => $path,
-                    'file_name' => $uploadedFile->getClientOriginalName(),
-                    'file_size' => $uploadedFile->getSize(),
-                    'mime_type' => $uploadedFile->getMimeType() ?? 'application/octet-stream',
-                    'file_hash' => $att['hash'],
-                ]);
-            }
+            $this->syncReceiptItemsAndTaxes($kuitansi, $itemsToSave, $taxCalc);
+            $this->storeAttachments($kuitansi, $rekening->id, $processedAttachments, $tahun, $bulanStr);
 
             $this->auditTrailService->log(
                 $kuitansi,
@@ -244,6 +142,158 @@ class ReceiptService
                 [
                     'nominal_bruto' => (float) $kuitansi->nominal_bruto,
                     'nominal_neto' => (float) $kuitansi->nominal_neto,
+                    'bulan_anggaran' => $kuitansi->bulan_anggaran,
+                ]
+            );
+
+            return $kuitansi->load(['items', 'pajak', 'lampiran', 'rekening', 'unitKerja']);
+        });
+    }
+
+    /**
+     * Memperbarui kuitansi pada status DRAFT, REVISI_MINOR, atau REVISI_MAYOR.
+     * Pada REVISI_MINOR, rekening anggaran, bulan anggaran, dan nominal bruto dikunci agar pagu terkunci tetap konsisten.
+     *
+     * @param  array<string, mixed>  $data
+     * @param  array<int, array{file: UploadedFile, checklist_code?: string, nama_dokumen?: string}>|array<int, UploadedFile>  $attachments
+     */
+    public function updateReceipt(int|string $kuitansiId, array $data, array $attachments = [], ?User $actor = null): Kuitansi
+    {
+        return DB::transaction(function () use ($kuitansiId, $data, $attachments, $actor) {
+            $kuitansi = Kuitansi::where('id', $kuitansiId)->lockForUpdate()->firstOrFail();
+
+            if (! in_array($kuitansi->status, ['DRAFT', 'REVISI_MINOR', 'REVISI_MAYOR'], true)) {
+                throw new InvalidArgumentException("Kuitansi dengan status '{$kuitansi->status}' tidak dapat diedit.");
+            }
+
+            $isMinorRevision = $kuitansi->status === 'REVISI_MINOR';
+            $targetRekeningId = $data['anggaran_rekening_id'] ?? $kuitansi->anggaran_rekening_id;
+            $targetBulan = (int) ($data['bulan_anggaran'] ?? $kuitansi->bulan_anggaran);
+
+            if ($isMinorRevision) {
+                if ((int) $targetRekeningId !== (int) $kuitansi->anggaran_rekening_id) {
+                    throw ValidationException::withMessages([
+                        'anggaran_rekening_id' => ['Rekening anggaran tidak dapat diubah saat status REVISI_MINOR.'],
+                    ]);
+                }
+
+                if ($targetBulan !== (int) $kuitansi->bulan_anggaran) {
+                    throw ValidationException::withMessages([
+                        'bulan_anggaran' => ['Bulan anggaran tidak dapat diubah saat status REVISI_MINOR.'],
+                    ]);
+                }
+            }
+
+            $rekening = AnggaranRekening::findOrFail($targetRekeningId);
+            [$itemsToSave, $totalBruto, $taxCalc, $totalPajak, $nominalNeto] = $this->calculateItemsAndTaxes($rekening, $data);
+
+            if ($isMinorRevision && round($totalBruto, 2) !== round((float) $kuitansi->nominal_bruto, 2)) {
+                throw ValidationException::withMessages([
+                    'nominal_bruto' => ['Nominal bruto tidak dapat diubah saat status REVISI_MINOR karena pagu anggaran sudah terkunci.'],
+                ]);
+            }
+
+            $processedAttachments = $this->prepareAttachments($attachments, $rekening->id);
+            $statusLama = $kuitansi->status;
+
+            $kuitansi->update([
+                'unit_kerja_id' => $rekening->unit_kerja_id,
+                'anggaran_rekening_id' => $rekening->id,
+                'bulan_anggaran' => $targetBulan,
+                'nomor_bukti_toko' => array_key_exists('nomor_bukti_toko', $data) ? $data['nomor_bukti_toko'] : $kuitansi->nomor_bukti_toko,
+                'tanggal_transaksi' => $data['tanggal_transaksi'] ?? $kuitansi->tanggal_transaksi,
+                'uraian' => $data['uraian_belanja'] ?? $data['uraian'] ?? $kuitansi->uraian,
+                'nama_penerima' => $data['nama_penerima'] ?? $kuitansi->nama_penerima,
+                'npwp_penerima' => array_key_exists('npwp_penerima', $data) ? $data['npwp_penerima'] : $kuitansi->npwp_penerima,
+                'metode_pembayaran' => $data['metode_pembayaran'] ?? $kuitansi->metode_pembayaran,
+                'nominal_bruto' => $totalBruto,
+                'total_pajak' => $totalPajak,
+                'nominal_neto' => $nominalNeto,
+            ]);
+
+            $this->syncReceiptItemsAndTaxes($kuitansi, $itemsToSave, $taxCalc);
+
+            $tahun = date('Y');
+            $bulanStr = str_pad((string) $targetBulan, 2, '0', STR_PAD_LEFT);
+            $this->storeAttachments($kuitansi, $rekening->id, $processedAttachments, $tahun, $bulanStr);
+
+            $this->auditTrailService->log(
+                $kuitansi,
+                'RECEIPT_UPDATED',
+                $statusLama,
+                $kuitansi->status,
+                'Pembaruan data dan/atau lampiran kuitansi',
+                $actor,
+                [
+                    'nominal_bruto' => (float) $kuitansi->nominal_bruto,
+                    'nominal_neto' => (float) $kuitansi->nominal_neto,
+                    'bulan_anggaran' => $kuitansi->bulan_anggaran,
+                ]
+            );
+
+            return $kuitansi->load(['items', 'pajak', 'lampiran', 'rekening', 'unitKerja']);
+        });
+    }
+
+    /**
+     * Menghapus satu berkas lampiran kuitansi pada status DRAFT, REVISI_MINOR, atau REVISI_MAYOR.
+     */
+    public function deleteAttachment(int|string $kuitansiId, int $attachmentId, ?User $actor = null): void
+    {
+        DB::transaction(function () use ($kuitansiId, $attachmentId, $actor) {
+            $kuitansi = Kuitansi::where('id', $kuitansiId)->lockForUpdate()->firstOrFail();
+
+            if (! in_array($kuitansi->status, ['DRAFT', 'REVISI_MINOR', 'REVISI_MAYOR'], true)) {
+                throw new InvalidArgumentException("Lampiran kuitansi dengan status '{$kuitansi->status}' tidak dapat dihapus.");
+            }
+
+            $lampiran = KuitansiLampiran::where('kuitansi_id', $kuitansi->id)
+                ->where('id', $attachmentId)
+                ->firstOrFail();
+
+            if ($lampiran->file_path && Storage::disk('local')->exists($lampiran->file_path)) {
+                Storage::disk('local')->delete($lampiran->file_path);
+            }
+
+            $fileName = $lampiran->file_name;
+            $lampiran->delete();
+
+            $this->auditTrailService->log(
+                $kuitansi,
+                'ATTACHMENT_DELETED',
+                $kuitansi->status,
+                $kuitansi->status,
+                "Menghapus lampiran '{$fileName}'",
+                $actor
+            );
+        });
+    }
+
+    /**
+     * Mengirim ulang kuitansi REVISI_MINOR ke Verifikator (MENUNGGU_VERIFIKASI) tanpa memanggil reserveBudget() ulang.
+     */
+    public function resubmitMinorRevision(int|string $kuitansiId, ?User $actor = null): Kuitansi
+    {
+        return DB::transaction(function () use ($kuitansiId, $actor) {
+            $kuitansi = Kuitansi::where('id', $kuitansiId)->lockForUpdate()->firstOrFail();
+
+            if ($kuitansi->status !== 'REVISI_MINOR') {
+                throw new InvalidArgumentException('Hanya kuitansi berstatus REVISI_MINOR yang dapat dikirim ulang ke Verifikator.');
+            }
+
+            $kuitansi->update([
+                'status' => 'MENUNGGU_VERIFIKASI',
+            ]);
+
+            $this->auditTrailService->log(
+                $kuitansi,
+                'MINOR_REVISION_RESUBMITTED',
+                'REVISI_MINOR',
+                'MENUNGGU_VERIFIKASI',
+                'Kuitansi dikirim ulang setelah perbaikan revisi minor',
+                $actor,
+                [
+                    'nominal_bruto' => (float) $kuitansi->nominal_bruto,
                     'bulan_anggaran' => $kuitansi->bulan_anggaran,
                 ]
             );
@@ -525,5 +575,150 @@ class ReceiptService
         } while ($exists);
 
         return $candidate;
+    }
+
+    /**
+     * Memvalidasi duplikasi SHA-256 dan menormalisasi metadata lampiran.
+     *
+     * @param  array<int, array{file: UploadedFile, checklist_code?: string, nama_dokumen?: string}>|array<int, UploadedFile>  $attachments
+     * @return array<int, array{file: UploadedFile, hash: string, checklist_code: string, nama_dokumen: string}>
+     */
+    private function prepareAttachments(array $attachments, int $rekeningId): array
+    {
+        $processed = [];
+
+        foreach ($attachments as $att) {
+            $file = ($att instanceof UploadedFile) ? $att : ($att['file'] ?? null);
+            if (! $file instanceof UploadedFile) {
+                continue;
+            }
+
+            $fileHash = hash_file('sha256', $file->getRealPath());
+
+            $exists = KuitansiLampiran::where('anggaran_rekening_id', $rekeningId)
+                ->where('file_hash', $fileHash)
+                ->exists();
+
+            if ($exists) {
+                throw ValidationException::withMessages([
+                    'lampiran' => [
+                        sprintf(
+                            "Nota atau bukti fisik identik ('%s') telah diunggah sebelumnya pada rekening anggaran ini. Sistem menolak duplikasi bukti transaksi.",
+                            $file->getClientOriginalName()
+                        ),
+                    ],
+                ]);
+            }
+
+            $processed[] = [
+                'file' => $file,
+                'hash' => $fileHash,
+                'checklist_code' => is_array($att) ? ($att['checklist_code'] ?? 'B.1.4') : 'B.1.4',
+                'nama_dokumen' => is_array($att) ? ($att['nama_dokumen'] ?? $file->getClientOriginalName()) : $file->getClientOriginalName(),
+            ];
+        }
+
+        return $processed;
+    }
+
+    /**
+     * Menghitung rincian item, total bruto, dan potongan pajak sesuai kategori rekening.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array{0: array<int, array<string, mixed>>, 1: float, 2: array<string, mixed>, 3: float, 4: float}
+     */
+    private function calculateItemsAndTaxes(AnggaranRekening $rekening, array $data): array
+    {
+        $itemsData = $data['items'] ?? [];
+        if (empty($itemsData)) {
+            throw new InvalidArgumentException('Kuitansi wajib memiliki minimal 1 rincian barang/jasa.');
+        }
+
+        $totalBruto = 0.0;
+        $itemsToSave = [];
+        foreach ($itemsData as $item) {
+            $volume = (float) ($item['volume'] ?? 0);
+            $harga = (float) ($item['harga_satuan'] ?? 0);
+            $totalHarga = round($volume * $harga, 2);
+            $totalBruto += $totalHarga;
+
+            $itemsToSave[] = [
+                'nama_barang' => $item['nama_barang'],
+                'volume' => $volume,
+                'satuan' => $item['satuan'] ?? 'Unit',
+                'harga_satuan' => $harga,
+                'total_harga' => $totalHarga,
+            ];
+        }
+
+        $kategori = $rekening->kategori_belanja ?? 'B1_ATK';
+        $hasNpwp = (bool) ($data['has_npwp'] ?? ! empty($data['npwp_penerima']));
+        $golonganAsn = $data['golongan_asn'] ?? null;
+
+        $taxCalc = $this->taxService->calculateTax($kategori, $totalBruto, [
+            'has_npwp' => $hasNpwp,
+            'golongan_asn' => $golonganAsn,
+            'is_sewa_kendaraan' => (bool) ($data['is_sewa_kendaraan'] ?? false),
+            'is_pkp' => (bool) ($data['is_pkp'] ?? true),
+        ]);
+
+        $totalPajak = (float) $taxCalc['total_pajak'];
+        $nominalNeto = $totalBruto - $totalPajak;
+
+        return [$itemsToSave, $totalBruto, $taxCalc, $totalPajak, $nominalNeto];
+    }
+
+    /**
+     * Menyinkronkan ulang rincian barang dan potongan pajak kuitansi.
+     *
+     * @param  array<int, array<string, mixed>>  $itemsToSave
+     * @param  array<string, mixed>  $taxCalc
+     */
+    private function syncReceiptItemsAndTaxes(Kuitansi $kuitansi, array $itemsToSave, array $taxCalc): void
+    {
+        $kuitansi->items()->delete();
+        foreach ($itemsToSave as $item) {
+            $item['kuitansi_id'] = $kuitansi->id;
+            KuitansiItem::create($item);
+        }
+
+        $kuitansi->pajak()->delete();
+        foreach ($taxCalc['rincian_pajak'] as $rp) {
+            KuitansiPajak::create([
+                'kuitansi_id' => $kuitansi->id,
+                'kode_pajak' => $rp['kode_pajak'],
+                'nama_pajak' => $rp['nama_pajak'],
+                'tarif' => $rp['tarif'],
+                'tipe_tarif' => $rp['tipe_tarif'],
+                'dpp' => $taxCalc['dpp'],
+                'nominal' => $rp['nominal'],
+            ]);
+        }
+    }
+
+    /**
+     * Menyimpan berkas lampiran ke private storage dan mencatat metadata KuitansiLampiran.
+     *
+     * @param  array<int, array{file: UploadedFile, hash: string, checklist_code: string, nama_dokumen: string}>  $processedAttachments
+     */
+    private function storeAttachments(Kuitansi $kuitansi, int $rekeningId, array $processedAttachments, string $tahun, string $bulanStr): void
+    {
+        foreach ($processedAttachments as $att) {
+            /** @var UploadedFile $uploadedFile */
+            $uploadedFile = $att['file'];
+            $path = $uploadedFile->store("receipts/{$tahun}/{$bulanStr}", 'local');
+
+            KuitansiLampiran::create([
+                'kuitansi_id' => $kuitansi->id,
+                'anggaran_rekening_id' => $rekeningId,
+                'checklist_code' => $att['checklist_code'],
+                'nama_dokumen' => $att['nama_dokumen'],
+                'file_path' => $path,
+                'file_name' => $uploadedFile->getClientOriginalName(),
+                'file_size' => $uploadedFile->getSize(),
+                'mime_type' => $uploadedFile->getMimeType() ?? 'application/octet-stream',
+                'file_hash' => $att['hash'],
+            ]);
+        }
     }
 }

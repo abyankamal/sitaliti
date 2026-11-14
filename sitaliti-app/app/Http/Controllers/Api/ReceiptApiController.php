@@ -13,6 +13,7 @@ use App\Services\ReceiptService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -92,6 +93,8 @@ class ReceiptApiController extends Controller
             'has_npwp' => ['nullable', 'boolean'],
             'npwp_penerima' => ['nullable', 'string'],
             'golongan_asn' => ['nullable', 'string'],
+            'is_sewa_kendaraan' => ['nullable', 'boolean'],
+            'is_pkp' => ['nullable', 'boolean'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.nama_barang' => ['required', 'string'],
             'items.*.volume' => ['required', 'numeric', 'min:0.01'],
@@ -124,6 +127,10 @@ class ReceiptApiController extends Controller
             'uraian' => ['nullable', 'string'],
             'nama_penerima' => ['required', 'string', 'max:200'],
             'npwp_penerima' => ['nullable', 'string', 'max:30'],
+            'has_npwp' => ['nullable', 'boolean'],
+            'golongan_asn' => ['nullable', 'string', 'max:50'],
+            'is_sewa_kendaraan' => ['nullable', 'boolean'],
+            'is_pkp' => ['nullable', 'boolean'],
             'metode_pembayaran' => ['nullable', 'string', 'in:NON_TUNAI_IBC,TUNAI_UP'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.nama_barang' => ['required', 'string', 'max:255'],
@@ -132,6 +139,8 @@ class ReceiptApiController extends Controller
             'items.*.harga_satuan' => ['required', 'numeric', 'min:0'],
             'files.*' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'], // Max 10MB
             'lampiran.*' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
+            'checklist_codes.*' => ['nullable', 'string', 'max:50'],
+            'nama_dokumen.*' => ['nullable', 'string', 'max:255'],
         ]);
 
         $user = $request->user();
@@ -142,14 +151,10 @@ class ReceiptApiController extends Controller
             }
         }
 
-        // Kumpulkan berkas lampiran yang diunggah
-        $files = $request->file('files') ?? $request->file('lampiran') ?? [];
-        if (! is_array($files)) {
-            $files = [$files];
-        }
+        $attachments = $this->extractAttachmentsFromRequest($request);
 
         try {
-            $kuitansi = $this->receiptService->createDraft($validated, $files, $request->user());
+            $kuitansi = $this->receiptService->createDraft($validated, $attachments, $request->user());
 
             return $this->successResponse([
                 'receipt_id' => $kuitansi->nomor_kuitansi,
@@ -591,5 +596,181 @@ class ReceiptApiController extends Controller
             });
 
         return $this->successResponse($riwayat, 'Riwayat aktivitas kuitansi berhasil diambil');
+    }
+
+    /**
+     * Endpoint pembaruan kuitansi DRAFT, REVISI_MINOR, atau REVISI_MAYOR (PUT /api/v1/receipts/{id} & POST /api/v1/receipts/{id}/update).
+     */
+    public function update(Request $request, int|string $id): JsonResponse
+    {
+        $resolved = $this->findAuthorizedOperatorReceipt($request, $id);
+        if ($resolved instanceof JsonResponse) {
+            return $resolved;
+        }
+        $kuitansi = $resolved;
+
+        $validated = $request->validate([
+            'anggaran_rekening_id' => ['nullable', 'exists:anggaran_rekening,id'],
+            'bulan_anggaran' => ['nullable', 'integer', 'between:1,12'],
+            'nomor_bukti_toko' => ['nullable', 'string', 'max:100'],
+            'tanggal_transaksi' => ['nullable', 'date'],
+            'uraian_belanja' => ['nullable', 'string'],
+            'uraian' => ['nullable', 'string'],
+            'nama_penerima' => ['nullable', 'string', 'max:200'],
+            'npwp_penerima' => ['nullable', 'string', 'max:30'],
+            'has_npwp' => ['nullable', 'boolean'],
+            'golongan_asn' => ['nullable', 'string', 'max:50'],
+            'is_sewa_kendaraan' => ['nullable', 'boolean'],
+            'is_pkp' => ['nullable', 'boolean'],
+            'metode_pembayaran' => ['nullable', 'string', 'in:NON_TUNAI_IBC,TUNAI_UP'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.nama_barang' => ['required', 'string', 'max:255'],
+            'items.*.volume' => ['required', 'numeric', 'min:0.01'],
+            'items.*.satuan' => ['nullable', 'string', 'max:50'],
+            'items.*.harga_satuan' => ['required', 'numeric', 'min:0'],
+            'files.*' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
+            'lampiran.*' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
+            'checklist_codes.*' => ['nullable', 'string', 'max:50'],
+            'nama_dokumen.*' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $user = $request->user();
+        if (! empty($validated['anggaran_rekening_id'])) {
+            $targetRekening = AnggaranRekening::find($validated['anggaran_rekening_id']);
+            if ($user && $targetRekening && ! $user->canAccessRekening($targetRekening)) {
+                return $this->errorResponse('FORBIDDEN', 'Anda tidak berwenang memindahkan kuitansi ke rekening unit kerja lain.', null, 403);
+            }
+        }
+
+        $attachments = $this->extractAttachmentsFromRequest($request);
+
+        try {
+            $updated = $this->receiptService->updateReceipt($kuitansi->id, $validated, $attachments, $user);
+
+            return $this->successResponse([
+                'receipt_id' => $updated->nomor_kuitansi,
+                'id' => $updated->id,
+                'status' => $updated->status,
+                'nominal_bruto' => $updated->nominal_bruto,
+                'total_pajak' => $updated->total_pajak,
+                'nominal_neto' => $updated->nominal_neto,
+                'kuitansi' => $updated,
+            ], 'Kuitansi berhasil diperbarui');
+        } catch (ValidationException $e) {
+            return $this->errorResponse('VALIDATION_ERROR', $e->getMessage(), $e->errors(), 422);
+        } catch (InvalidArgumentException $e) {
+            return $this->errorResponse('INVALID_RECEIPT_STATE', $e->getMessage(), null, 422);
+        } catch (Throwable $e) {
+            return $this->errorResponse('UPDATE_RECEIPT_FAILED', $e->getMessage(), null, 500);
+        }
+    }
+
+    /**
+     * Endpoint hapus satu lampiran kuitansi (DELETE /api/v1/receipts/{id}/attachments/{attachmentId}).
+     */
+    public function deleteAttachment(Request $request, int|string $id, int $attachmentId): JsonResponse
+    {
+        $resolved = $this->findAuthorizedOperatorReceipt($request, $id);
+        if ($resolved instanceof JsonResponse) {
+            return $resolved;
+        }
+        $kuitansi = $resolved;
+
+        try {
+            $this->receiptService->deleteAttachment($kuitansi->id, $attachmentId, $request->user());
+
+            return $this->successResponse(null, 'Lampiran kuitansi berhasil dihapus');
+        } catch (ModelNotFoundException) {
+            return $this->errorResponse('ATTACHMENT_NOT_FOUND', 'Lampiran tidak ditemukan pada kuitansi ini.', null, 404);
+        } catch (InvalidArgumentException $e) {
+            return $this->errorResponse('INVALID_RECEIPT_STATE', $e->getMessage(), null, 422);
+        } catch (Throwable $e) {
+            return $this->errorResponse('DELETE_ATTACHMENT_FAILED', $e->getMessage(), null, 500);
+        }
+    }
+
+    /**
+     * Endpoint kirim ulang kuitansi REVISI_MINOR ke Verifikator (POST /api/v1/receipts/{id}/resubmit-revision).
+     */
+    public function resubmitRevision(Request $request, int|string $id): JsonResponse
+    {
+        $resolved = $this->findAuthorizedOperatorReceipt($request, $id);
+        if ($resolved instanceof JsonResponse) {
+            return $resolved;
+        }
+        $kuitansi = $resolved;
+
+        try {
+            $updated = $this->receiptService->resubmitMinorRevision($kuitansi->id, $request->user());
+
+            return $this->successResponse([
+                'id' => $updated->id,
+                'nomor_kuitansi' => $updated->nomor_kuitansi,
+                'status' => $updated->status,
+            ], 'Kuitansi revisi minor berhasil dikirim ulang ke Verifikator');
+        } catch (InvalidArgumentException $e) {
+            return $this->errorResponse('INVALID_RECEIPT_STATE', $e->getMessage(), null, 422);
+        } catch (Throwable $e) {
+            return $this->errorResponse('RESUBMIT_REVISION_FAILED', $e->getMessage(), null, 500);
+        }
+    }
+
+    /**
+     * Mencari kuitansi dan memvalidasi otorisasi pembuat/unit kerja untuk operasi edit operator.
+     */
+    private function findAuthorizedOperatorReceipt(Request $request, int|string $id): Kuitansi|JsonResponse
+    {
+        $kuitansi = Kuitansi::where('id', $id)
+            ->orWhere('nomor_kuitansi', $id)
+            ->first();
+
+        if (! $kuitansi) {
+            return $this->errorResponse('RECEIPT_NOT_FOUND', 'Kuitansi tidak ditemukan.', null, 404);
+        }
+
+        $user = $request->user();
+        if ($user && ! $user->canAccessReceipt($kuitansi)) {
+            return $this->errorResponse('FORBIDDEN', 'Anda tidak memiliki hak akses untuk mengubah kuitansi ini.', null, 403);
+        }
+
+        if ($user && ($user->hasRole('OPERATOR') || $user->role === 'OPERATOR') && (int) $kuitansi->user_id !== (int) $user->id) {
+            return $this->errorResponse('FORBIDDEN', 'Kuitansi ini hanya dapat diubah oleh operator pembuatnya.', null, 403);
+        }
+
+        return $kuitansi;
+    }
+
+    /**
+     * Mengekstrak berkas lampiran beserta metadata checklist_code dan nama_dokumen dari request.
+     *
+     * @return array<int, array{file: UploadedFile, checklist_code: string, nama_dokumen: string}>
+     */
+    private function extractAttachmentsFromRequest(Request $request): array
+    {
+        $files = $request->file('files') ?? $request->file('lampiran') ?? [];
+        if (! is_array($files)) {
+            $files = [$files];
+        }
+
+        $checklistCodes = $request->input('checklist_codes', []);
+        $namaDokumen = $request->input('nama_dokumen', []);
+
+        $attachments = [];
+        foreach (array_values($files) as $idx => $file) {
+            if (! $file) {
+                continue;
+            }
+            $attachments[] = [
+                'file' => $file,
+                'checklist_code' => is_array($checklistCodes) && ! empty($checklistCodes[$idx])
+                    ? (string) $checklistCodes[$idx]
+                    : 'B.1.4',
+                'nama_dokumen' => is_array($namaDokumen) && ! empty($namaDokumen[$idx])
+                    ? (string) $namaDokumen[$idx]
+                    : $file->getClientOriginalName(),
+            ];
+        }
+
+        return $attachments;
     }
 }

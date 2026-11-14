@@ -36,6 +36,14 @@ Route::prefix('v1')->group(function () {
                 ->middleware('permission:kuitansi.create|kuitansi.edit');
             Route::post('/', [ReceiptApiController::class, 'store'])
                 ->middleware('permission:kuitansi.create');
+            Route::put('{id}', [ReceiptApiController::class, 'update'])
+                ->middleware('permission:kuitansi.edit');
+            Route::post('{id}/update', [ReceiptApiController::class, 'update'])
+                ->middleware('permission:kuitansi.edit');
+            Route::delete('{id}/attachments/{attachmentId}', [ReceiptApiController::class, 'deleteAttachment'])
+                ->middleware('permission:kuitansi.edit');
+            Route::post('{id}/resubmit-revision', [ReceiptApiController::class, 'resubmitRevision'])
+                ->middleware('permission:kuitansi.submit_pptk|kuitansi.edit');
             Route::post('{id}/submit', [ReceiptApiController::class, 'submit'])
                 ->middleware('permission:kuitansi.submit_pptk');
             Route::post('{id}/pptk-approve', [ReceiptApiController::class, 'pptkApprove'])
