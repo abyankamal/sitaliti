@@ -20,11 +20,13 @@ const props = defineProps({
 const emit = defineEmits(['close', 'submit']);
 
 const notes = ref('');
+const errorMessage = ref('');
 const isSubmitting = ref(false);
 
 function handleConfirm() {
+    errorMessage.value = '';
     if (!notes.value.trim()) {
-        alert('Mohon isi uraian catatan pengembalian berkas.');
+        errorMessage.value = 'Mohon isi uraian catatan pengembalian berkas.';
         return;
     }
 
@@ -79,6 +81,9 @@ function handleConfirm() {
                             placeholder="Tuliskan secara jelas dokumen yang perlu diperbaiki atau dasar penolakan..."
                             class="w-full text-xs rounded-lg border-gov-surface-border p-3 focus:border-gov-navy-800 focus:ring-1 focus:ring-gov-navy-800"
                         ></textarea>
+                        <p v-if="errorMessage" class="mt-1.5 text-xs font-semibold text-rose-600">
+                            {{ errorMessage }}
+                        </p>
                     </div>
                 </div>
 

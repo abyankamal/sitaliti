@@ -1,29 +1,30 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { Head, Link, usePage } from '@inertiajs/vue3';
+import { Head, usePage } from '@inertiajs/vue3';
+import axios from 'axios';
 import GovAppLayout from '@/Layouts/GovAppLayout.vue';
-import GovCard from '@/Components/UI/GovCard.vue';
 import GovBadge from '@/Components/UI/GovBadge.vue';
 import GovButton from '@/Components/UI/GovButton.vue';
 import { settlementService } from '@/Services/settlementService';
-import { verificationService } from '@/Services/verificationService';
 import { formatRupiah } from '@/Utils/currency';
-import { formatTanggalIndo } from '@/Utils/date';
 
 const page = usePage();
 const currentUser = computed(() => page.props.auth?.user || {});
 const userRole = computed(() => currentUser.value?.role || '');
 const isKelurahanScoped = computed(() => !!currentUser.value?.is_kelurahan_scoped);
-const isKelurahanBpp = computed(() => !!currentUser.value?.is_kelurahan_bpp);
+const isKelurahanBpp = computed(() => !!currentUser.value?.is_kelurahan_bpp || (userRole.value === 'BPP' && isKelurahanScoped.value));
 const isLurah = computed(() => userRole.value === 'LURAH');
 const isKpa = computed(() => userRole.value === 'KPA');
-const isBp = computed(() => userRole.value === 'BENDAHARA_PENGELUARAN');
-const isBpp = computed(() => userRole.value === 'BPP');
+const isVerifikator = computed(() => userRole.value === 'VERIFIKATOR' || isKpa.value);
+const isBp = computed(() => userRole.value === 'BENDAHARA_PENGELUARAN' || (userRole.value === 'BPP' && !isKelurahanScoped.value));
+const isBpp = computed(() => userRole.value === 'BPP' && isKelurahanScoped.value);
 
 const canCreateBundle = computed(() => {
     if (isLurah.value) return false;
     return isBp.value || isBpp.value || isKpa.value;
 });
+
+const canApprovePpk = computed(() => isVerifikator.value);
 
 const canRecordSp2d = computed(() => {
     if (isKelurahanScoped.value) return false;
@@ -41,6 +42,7 @@ const showCreateModal = ref(false);
 const verifiedReceipts = ref([]);
 const loadingReceipts = ref(false);
 const isSubmitting = ref(false);
+const feedbackBanner = ref(null);
 
 // State Modal Pencatatan SP2D
 const showSp2dModal = ref(false);
@@ -48,20 +50,45 @@ const selectedBundleForSp2d = ref(null);
 const sp2dForm = ref({
     nomor_sp2d: '',
     nomor_spp: '',
-    tanggal_sp2d: new Date().toISOString().split('T')[0]
+    tanggal_sp2d: new Date().toISOString().split('T')[0],
 });
 const isSubmittingSp2d = ref(false);
 
-// State Unbundle
-const isUnbundling = ref(false);
+// State Modal Konfirmasi In-App (submitPpk, approvePpk, unbundle, sp2dConfirm)
+const actionModal = ref({
+    open: false,
+    type: null, // 'SUBMIT_PPK' | 'APPROVE_PPK' | 'UNBUNDLE' | 'CONFIRM_SP2D'
+    title: '',
+    message: '',
+    confirmLabel: 'Ya, Lanjutkan',
+    variant: 'primary',
+    requireReason: false,
+    reason: '',
+    bundle: null,
+    kuitansi: null,
+});
+const isProcessingAction = ref(false);
 
 const newBundleForm = ref({
     jenis_bundel: 'SPP_GU',
     tahun_anggaran: 2026,
     bulan_periode: 6,
     nomor_spp_sipd: '',
-    selected_kuitansi_ids: []
+    selected_kuitansi_ids: [],
 });
+
+function showFeedback(type, title, message) {
+    feedbackBanner.value = { type, title, message };
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function formatApiError(err, fallback) {
+    const data = err.response?.data;
+    if (data?.errors) {
+        return Object.values(data.errors).flat().join(' ');
+    }
+    return data?.error?.message || data?.message || err.message || fallback;
+}
 
 onMounted(async () => {
     await loadBundles();
@@ -71,6 +98,8 @@ async function loadBundles() {
     loading.value = true;
     try {
         bundles.value = await settlementService.getBundles();
+    } catch (err) {
+        showFeedback('error', 'Gagal Memuat Bundel', formatApiError(err, 'Tidak dapat memuat daftar bundel dari server.'));
     } finally {
         loading.value = false;
     }
@@ -85,9 +114,15 @@ async function openCreateModal() {
     showCreateModal.value = true;
     loadingReceipts.value = true;
     try {
-        const queue = await verificationService.getQueue();
-        // Saring kuitansi yang sudah lolos verifikasi dan siap dibundel
-        verifiedReceipts.value = (queue || []).filter(item => item.status === 'LOLOS_VERIFIKASI' || item.status === 'VERIFIED');
+        const res = await axios.get('/api/v1/receipts', {
+            params: { status: 'LOLOS_VERIFIKASI', per_page: 100 },
+        });
+        const payload = res.data?.data;
+        const rows = Array.isArray(payload?.data) ? payload.data : (Array.isArray(payload) ? payload : []);
+        verifiedReceipts.value = rows.filter((item) => item.status === 'LOLOS_VERIFIKASI');
+    } catch (err) {
+        verifiedReceipts.value = [];
+        showFeedback('error', 'Gagal Memuat Kuitansi', formatApiError(err, 'Tidak dapat memuat kuitansi lolos verifikasi.'));
     } finally {
         loadingReceipts.value = false;
     }
@@ -95,7 +130,7 @@ async function openCreateModal() {
 
 async function handleCreateBundle() {
     if (newBundleForm.value.selected_kuitansi_ids.length === 0) {
-        alert('Pilih minimal satu kuitansi lolos verifikasi untuk dibundel ke dalam SPP.');
+        showFeedback('error', 'Kuitansi Belum Dipilih', 'Pilih minimal satu kuitansi lolos verifikasi untuk dibundel.');
         return;
     }
 
@@ -106,14 +141,14 @@ async function handleCreateBundle() {
             tahun_anggaran: newBundleForm.value.tahun_anggaran,
             bulan_periode: newBundleForm.value.bulan_periode,
             nomor_spp_sipd: newBundleForm.value.nomor_spp_sipd,
-            kuitansi_ids: newBundleForm.value.selected_kuitansi_ids
+            kuitansi_ids: newBundleForm.value.selected_kuitansi_ids,
         });
-        alert(`Berhasil! Bundel ${res.message || 'SPP berhasil dibuat.'}`);
         showCreateModal.value = false;
         newBundleForm.value.selected_kuitansi_ids = [];
         await loadBundles();
+        showFeedback('success', 'Bundel Dibuat', res.message || 'Bundel berhasil dibuat.');
     } catch (err) {
-        alert(err.response?.data?.error?.message || err.message || 'Gagal membuat bundel SPP.');
+        showFeedback('error', 'Gagal Membuat Bundel', formatApiError(err, 'Gagal membuat bundel SPP.'));
     } finally {
         isSubmitting.value = false;
     }
@@ -124,50 +159,111 @@ function openSp2dModal(bundle) {
     sp2dForm.value = {
         nomor_sp2d: '',
         nomor_spp: bundle.nomor_spp || bundle.nomor_spp_sipd || '',
-        tanggal_sp2d: new Date().toISOString().split('T')[0]
+        tanggal_sp2d: new Date().toISOString().split('T')[0],
     };
     showSp2dModal.value = true;
 }
 
-async function handleRecordSp2d() {
-    if (!sp2dForm.value.nomor_sp2d) {
-        alert('Nomor SP2D SIPD-RI wajib diisi.');
+function handleRecordSp2d() {
+    if (!sp2dForm.value.nomor_sp2d?.trim()) {
+        showFeedback('error', 'Nomor SP2D Wajib', 'Nomor SP2D SIPD-RI wajib diisi.');
         return;
     }
 
-    if (!confirm(`Konfirmasi: Catat SP2D ${sp2dForm.value.nomor_sp2d}? Tindakan ini akan memindahkan anggaran terkunci menjadi realisasi belanja definitif di sistem.`)) {
-        return;
-    }
-
-    isSubmittingSp2d.value = true;
-    try {
-        const res = await settlementService.recordSp2d(selectedBundleForSp2d.value.id, sp2dForm.value);
-        alert(res.message || 'Nomor SP2D SIPD-RI berhasil dicatat dan realisasi definitif telah dibukukan.');
-        showSp2dModal.value = false;
-        await loadBundles();
-    } catch (err) {
-        alert(err.response?.data?.error?.message || err.message || 'Gagal mencatat SP2D.');
-    } finally {
-        isSubmittingSp2d.value = false;
-    }
+    actionModal.value = {
+        open: true,
+        type: 'CONFIRM_SP2D',
+        title: 'Konfirmasi Pembukuan SP2D',
+        message: `Catat SP2D ${sp2dForm.value.nomor_sp2d}? Tindakan ini akan memindahkan anggaran terkunci menjadi realisasi belanja definitif di sistem.`,
+        confirmLabel: 'Ya, Catat SP2D',
+        variant: 'success',
+        requireReason: false,
+        reason: '',
+        bundle: selectedBundleForSp2d.value,
+        kuitansi: null,
+    };
 }
 
-async function handleUnbundle(bundle, kw) {
-    const kuitansiId = kw.kuitansi_id || kw.id;
-    const nomor = kw.id || kw.nomor_kuitansi || kuitansiId;
+function openSubmitPpkModal(bundle) {
+    actionModal.value = {
+        open: true,
+        type: 'SUBMIT_PPK',
+        title: 'Ajukan Bundel ke PPK',
+        message: `Ajukan bundel ${bundle.nomor_spp || bundle.nomor_bundel} ke PPK untuk pengesahan sebelum pencatatan SP2D?`,
+        confirmLabel: 'Ajukan ke PPK',
+        variant: 'primary',
+        requireReason: false,
+        reason: '',
+        bundle,
+        kuitansi: null,
+    };
+}
 
-    const reason = prompt(`Masukkan alasan mengeluarkan kuitansi ${nomor} dari bundel ini:`, 'Penyesuaian berkas SPP');
-    if (reason === null) return; // User batalkan
+function openApprovePpkModal(bundle) {
+    actionModal.value = {
+        open: true,
+        type: 'APPROVE_PPK',
+        title: 'Sahkan Bundel (PPK)',
+        message: `Sahkan bundel ${bundle.nomor_spp || bundle.nomor_bundel} sebagai PPK? Setelah disahkan, Bendahara dapat mencatat SP2D SIPD-RI.`,
+        confirmLabel: 'Sahkan Bundel',
+        variant: 'success',
+        requireReason: false,
+        reason: '',
+        bundle,
+        kuitansi: null,
+    };
+}
 
-    isUnbundling.value = true;
+function handleUnbundle(bundle, kw) {
+    const nomor = kw.nomor_kuitansi || kw.id || kw.kuitansi_id;
+    actionModal.value = {
+        open: true,
+        type: 'UNBUNDLE',
+        title: `Keluarkan Kuitansi ${nomor}`,
+        message: `Masukkan alasan mengeluarkan kuitansi ${nomor} dari bundel ini. Status kuitansi akan kembali menjadi Lolos Verifikasi.`,
+        confirmLabel: 'Keluarkan Kuitansi',
+        variant: 'danger',
+        requireReason: true,
+        reason: 'Penyesuaian berkas SPP',
+        bundle,
+        kuitansi: kw,
+    };
+}
+
+async function executeActionModal() {
+    const modal = actionModal.value;
+    if (modal.requireReason && !modal.reason.trim()) {
+        showFeedback('error', 'Alasan Wajib Diisi', 'Mohon isi alasan sebelum melanjutkan.');
+        return;
+    }
+
+    isProcessingAction.value = true;
     try {
-        const res = await settlementService.unbundleReceipt(bundle.id, kuitansiId, reason);
-        alert(res.message || `Kuitansi ${nomor} berhasil dikeluarkan dari bundel dan statusnya kembali menjadi Lolos Verifikasi.`);
+        if (modal.type === 'SUBMIT_PPK') {
+            const res = await settlementService.submitPpk(modal.bundle.id);
+            showFeedback('success', 'Diajukan ke PPK', res.message || 'Bundel berhasil diajukan ke PPK.');
+        } else if (modal.type === 'APPROVE_PPK') {
+            const res = await settlementService.approvePpk(modal.bundle.id);
+            showFeedback('success', 'Disahkan PPK', res.message || 'Bundel berhasil disahkan PPK.');
+        } else if (modal.type === 'UNBUNDLE') {
+            const kuitansiId = modal.kuitansi.kuitansi_id || modal.kuitansi.id;
+            const res = await settlementService.unbundleReceipt(modal.bundle.id, kuitansiId, modal.reason.trim());
+            showFeedback('success', 'Kuitansi Dikeluarkan', res.message || 'Kuitansi berhasil dikeluarkan dari bundel.');
+        } else if (modal.type === 'CONFIRM_SP2D') {
+            isSubmittingSp2d.value = true;
+            const res = await settlementService.recordSp2d(modal.bundle.id, sp2dForm.value);
+            showSp2dModal.value = false;
+            showFeedback('success', 'SP2D Dicatat', res.message || 'Nomor SP2D SIPD-RI berhasil dicatat.');
+        }
+
+        actionModal.value.open = false;
         await loadBundles();
     } catch (err) {
-        alert(err.response?.data?.error?.message || err.message || 'Gagal mengeluarkan kuitansi dari bundel.');
+        actionModal.value.open = false;
+        showFeedback('error', 'Operasi Gagal', formatApiError(err, 'Gagal memproses aksi bundel.'));
     } finally {
-        isUnbundling.value = false;
+        isProcessingAction.value = false;
+        isSubmittingSp2d.value = false;
     }
 }
 
@@ -215,6 +311,29 @@ const BUNDLE_STATUS_LABELS = {
         </template>
 
         <div class="space-y-6">
+            <!-- Feedback Banner In-App -->
+            <div
+                v-if="feedbackBanner"
+                :class="[
+                    'p-4 rounded-xl border flex items-start justify-between gap-4',
+                    feedbackBanner.type === 'error'
+                        ? 'bg-rose-50 border-rose-200 text-rose-900'
+                        : 'bg-emerald-50 border-emerald-200 text-emerald-900',
+                ]"
+            >
+                <div class="text-xs">
+                    <p class="font-bold">{{ feedbackBanner.title }}</p>
+                    <p class="mt-0.5 leading-relaxed">{{ feedbackBanner.message }}</p>
+                </div>
+                <button
+                    type="button"
+                    class="text-xs font-semibold underline shrink-0"
+                    @click="feedbackBanner = null"
+                >
+                    Tutup
+                </button>
+            </div>
+
             <!-- Informasi Two-Tier Model / LPJ-BPP -->
             <div class="p-4 bg-sky-50 border border-sky-200 rounded-xl text-sky-900 text-xs flex items-start gap-3">
                 <svg class="w-5 h-5 text-sky-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -313,10 +432,10 @@ const BUNDLE_STATUS_LABELS = {
                                         <span class="text-[10px] text-emerald-700 font-medium">Lolos Verifikasi</span>
                                     </div>
                                     <button
-                                        v-if="canUnbundle && bundle.status !== 'SYNCED_SIPD'"
+                                        v-if="canUnbundle && (bundle.status || bundle.status_bundel) !== 'SYNCED_SIPD'"
                                         type="button"
                                         @click="handleUnbundle(bundle, kw)"
-                                        :disabled="isUnbundling"
+                                        :disabled="isProcessingAction"
                                         title="Keluarkan dari bundel ini"
                                         class="p-1 rounded text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors"
                                     >
@@ -343,7 +462,30 @@ const BUNDLE_STATUS_LABELS = {
                         </span>
                     </div>
                     <div class="flex items-center gap-2">
-                        <template v-if="bundle.status !== 'SYNCED_SIPD'">
+                        <template v-if="(bundle.status || bundle.status_bundel) === 'DRAFT'">
+                            <GovButton
+                                v-if="canCreateBundle"
+                                variant="primary"
+                                size="sm"
+                                @click="openSubmitPpkModal(bundle)"
+                            >
+                                Ajukan ke PPK
+                            </GovButton>
+                        </template>
+                        <template v-else-if="(bundle.status || bundle.status_bundel) === 'MENUNGGU_PPK'">
+                            <GovButton
+                                v-if="canApprovePpk"
+                                variant="gold"
+                                size="sm"
+                                @click="openApprovePpkModal(bundle)"
+                            >
+                                Sahkan Bundel (PPK)
+                            </GovButton>
+                            <span v-else class="text-xs text-amber-700 font-medium italic">
+                                Menunggu pengesahan PPK (Verifikator)
+                            </span>
+                        </template>
+                        <template v-else-if="(bundle.status || bundle.status_bundel) === 'DISETUJUI_PPK'">
                             <GovButton
                                 v-if="canRecordSp2d"
                                 variant="success"
@@ -363,7 +505,7 @@ const BUNDLE_STATUS_LABELS = {
                             </span>
                         </template>
                         <span
-                            v-else
+                            v-else-if="(bundle.status || bundle.status_bundel) === 'SYNCED_SIPD'"
                             class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200"
                         >
                             ✓ Realisasi Definitif Selesai
@@ -539,6 +681,36 @@ const BUNDLE_STATUS_LABELS = {
                             @click="handleRecordSp2d"
                         >
                             Konfirmasi Pembukuan SP2D
+                        </GovButton>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Konfirmasi Aksi In-App -->
+        <div v-if="actionModal.open" class="fixed inset-0 z-[60] overflow-y-auto">
+            <div class="fixed inset-0 bg-gov-navy-950/70 backdrop-blur-sm" @click="actionModal.open = false"></div>
+            <div class="flex min-h-full items-center justify-center p-4">
+                <div class="relative w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-200 p-6 space-y-4">
+                    <h3 class="text-base font-bold text-gov-navy-950">{{ actionModal.title }}</h3>
+                    <p class="text-xs text-slate-600 leading-relaxed">{{ actionModal.message }}</p>
+
+                    <div v-if="actionModal.requireReason">
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Alasan *</label>
+                        <textarea
+                            v-model="actionModal.reason"
+                            rows="3"
+                            class="w-full text-xs rounded-lg border border-slate-300 p-2.5 focus:border-gov-navy-900 focus:ring-gov-navy-900"
+                            placeholder="Tuliskan alasan..."
+                        ></textarea>
+                    </div>
+
+                    <div class="flex justify-end gap-2 pt-2">
+                        <GovButton variant="secondary" size="sm" :disabled="isProcessingAction" @click="actionModal.open = false">
+                            Batal
+                        </GovButton>
+                        <GovButton :variant="actionModal.variant" size="sm" :loading="isProcessingAction" @click="executeActionModal">
+                            {{ actionModal.confirmLabel }}
                         </GovButton>
                     </div>
                 </div>

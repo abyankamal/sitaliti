@@ -19,20 +19,22 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['update:items', 'file-uploaded']);
+const uploadError = ref('');
 
 function handleFileUpload(index, event) {
+    uploadError.value = '';
     const file = event.target.files[0];
     if (!file) return;
 
     // Frontend validation: Hanya PDF dan Gambar (JPG/PNG), Max 10MB
     const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
     if (!allowedTypes.includes(file.type)) {
-        alert('Tipe file tidak didukung. Harap unggah file PDF atau Gambar (JPG/PNG).');
+        uploadError.value = 'Tipe file tidak didukung. Harap unggah file PDF atau Gambar (JPG/PNG).';
         return;
     }
 
     if (file.size > 10 * 1024 * 1024) {
-        alert('Ukuran file melebihi batas maksimal 10MB.');
+        uploadError.value = 'Ukuran file melebihi batas maksimal 10MB.';
         return;
     }
 
@@ -85,6 +87,15 @@ function handleRemoveFile(index) {
                     {{ items.filter(d => d.file).length }} / {{ items.length }}
                 </span>
             </div>
+        </div>
+
+        <!-- Upload Error Banner -->
+        <div
+            v-if="uploadError"
+            class="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between"
+        >
+            <span>{{ uploadError }}</span>
+            <button type="button" class="font-semibold underline ml-3" @click="uploadError = ''">Tutup</button>
         </div>
 
         <!-- Checklist Items List -->
