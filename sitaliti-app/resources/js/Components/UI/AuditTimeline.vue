@@ -14,16 +14,25 @@ const props = defineProps({
  * Mapping action → ikon, warna, dan label
  */
 const ACTION_CONFIG = {
-    CREATED:         { icon: '📝', label: 'Dibuat',              variant: 'neutral',  color: 'bg-slate-400' },
-    SUBMITTED:       { icon: '📤', label: 'Diajukan',            variant: 'info',     color: 'bg-sky-500' },
-    PPTK_APPROVED:   { icon: '✅', label: 'Disetujui PPTK',     variant: 'success',  color: 'bg-emerald-500' },
-    PPTK_REJECTED:   { icon: '❌', label: 'Ditolak PPTK',       variant: 'danger',   color: 'bg-rose-500' },
-    UNDER_REVIEW:    { icon: '🔍', label: 'Sedang Diverifikasi', variant: 'warning',  color: 'bg-amber-500' },
-    VERIFIED:        { icon: '🏆', label: 'Lolos Verifikasi',    variant: 'success',  color: 'bg-emerald-600' },
-    REVISION_MINOR:  { icon: '🔄', label: 'Revisi Minor',        variant: 'warning',  color: 'bg-amber-500' },
-    REVISION_MAJOR:  { icon: '⛔', label: 'Revisi Mayor',        variant: 'danger',   color: 'bg-rose-600' },
-    BUNDLED:         { icon: '📦', label: 'Masuk Bundel SPP',    variant: 'primary',  color: 'bg-gov-navy-600' },
-    SLA_BREACH:      { icon: '⏰', label: 'SLA Breach',          variant: 'danger',   color: 'bg-rose-500' },
+    CREATED:              { icon: '📝', label: 'Dibuat',                variant: 'neutral',  color: 'bg-slate-400' },
+    DRAFT_CREATED:        { icon: '📝', label: 'Draft Dibuat',          variant: 'neutral',  color: 'bg-slate-400' },
+    RECEIPT_UPDATED:      { icon: '✏️', label: 'Kuitansi Diperbarui',   variant: 'info',     color: 'bg-sky-500' },
+    SUBMITTED:            { icon: '📤', label: 'Diajukan',              variant: 'info',     color: 'bg-sky-500' },
+    SUBMITTED_TO_PPTK:    { icon: '📤', label: 'Diajukan ke PPTK',      variant: 'info',     color: 'bg-sky-500' },
+    PPTK_APPROVED:        { icon: '✅', label: 'Disetujui PPTK',        variant: 'success',  color: 'bg-emerald-500' },
+    PPTK_REJECTED:        { icon: '❌', label: 'Ditolak PPTK',          variant: 'danger',   color: 'bg-rose-500' },
+    LURAH_APPROVED:       { icon: '🛡️', label: 'Diotorisasi Lurah',     variant: 'success',  color: 'bg-emerald-600' },
+    LURAH_REJECTED:       { icon: '❌', label: 'Ditolak Lurah',         variant: 'danger',   color: 'bg-rose-500' },
+    UNDER_REVIEW:         { icon: '🔍', label: 'Sedang Diverifikasi',   variant: 'warning',  color: 'bg-amber-500' },
+    VERIFIED:             { icon: '🏆', label: 'Lolos Verifikasi',      variant: 'success',  color: 'bg-emerald-600' },
+    REVISION_MINOR:       { icon: '🔄', label: 'Revisi Minor',          variant: 'warning',  color: 'bg-amber-500' },
+    REVISION_MAJOR:       { icon: '⛔', label: 'Revisi Mayor',          variant: 'danger',   color: 'bg-rose-600' },
+    REVISION_RESUBMITTED: { icon: '🔁', label: 'Revisi Dikirim Ulang',  variant: 'info',     color: 'bg-indigo-500' },
+    BUNDLED:              { icon: '📦', label: 'Masuk Bundel SPP',      variant: 'primary',  color: 'bg-gov-navy-600' },
+    UNBUNDLED:            { icon: '📤', label: 'Dikeluarkan dari Bundel', variant: 'warning', color: 'bg-amber-600' },
+    SP2D_SETTLED:         { icon: '💰', label: 'SP2D Cair / Lunas',     variant: 'success',  color: 'bg-emerald-700' },
+    SLA_BREACH:           { icon: '⏰', label: 'SLA Breach',            variant: 'danger',   color: 'bg-rose-500' },
+    SLA_BREACHED:         { icon: '⏰', label: 'SLA Terlewati',         variant: 'danger',   color: 'bg-rose-600' },
 };
 
 function getConfig(action) {

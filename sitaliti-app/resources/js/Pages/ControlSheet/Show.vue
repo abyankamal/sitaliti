@@ -1,28 +1,40 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { Head, Link } from '@inertiajs/vue3';
+import axios from 'axios';
 import GovButton from '@/Components/UI/GovButton.vue';
 import VerificationQrCard from '@/Modules/ControlSheet/VerificationQrCard.vue';
-import { verificationService } from '@/Services/verificationService';
 import { formatRupiah } from '@/Utils/currency';
 import { formatTanggalIndo } from '@/Utils/date';
 
 const props = defineProps({
     id: {
-        type: String,
-        default: 'KW-2026-06-0042',
+        type: [Number, String],
+        required: true,
     },
 });
 
 const detail = ref(null);
 const loading = ref(true);
+const errorMessage = ref('');
 
 onMounted(async () => {
     try {
-        detail.value = await verificationService.getDetail(props.id);
+        const response = await axios.get(`/api/v1/control-sheet/${props.id}`);
+        detail.value = response.data?.data || null;
+    } catch (error) {
+        errorMessage.value =
+            error.response?.data?.message || 'Gagal memuat data Lembar Kendali dari server.';
     } finally {
         loading.value = false;
     }
+});
+
+const qrVerificationUrl = computed(() => {
+    if (!detail.value) return '';
+    if (detail.value.verification_url) return detail.value.verification_url;
+    if (detail.value.qr_token) return `${window.location.origin}/verify/${detail.value.qr_token}`;
+    return '';
 });
 
 function handlePrint() {
@@ -31,14 +43,14 @@ function handlePrint() {
 </script>
 
 <template>
-    <Head :title="`Lembar Kendali Verifikasi - ${detail?.id || ''}`" />
+    <Head :title="`Lembar Kendali Verifikasi - ${detail?.nomor_kuitansi || props.id}`" />
 
     <div class="min-h-screen bg-slate-200 py-6 px-4 font-sans text-slate-800 print:bg-white print:p-0">
         <!-- Floating Action Header (Disembunyikan saat dicetak) -->
         <div class="max-w-4xl mx-auto mb-6 bg-gov-navy-950 text-white p-4 rounded-xl shadow-md border border-gov-navy-800 flex items-center justify-between print:hidden">
             <div class="flex items-center gap-3">
                 <Link
-                    :href="route('verification.index')"
+                    :href="route('receipts.index')"
                     class="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-gov-navy-900"
                 >
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -51,7 +63,7 @@ function handlePrint() {
                 </div>
             </div>
 
-            <div class="flex items-center gap-3">
+            <div v-if="detail" class="flex items-center gap-3">
                 <a
                     :href="route('control-sheet.download-pdf', { id: detail.id || props.id })"
                     target="_blank"
@@ -71,16 +83,24 @@ function handlePrint() {
             </div>
         </div>
 
+        <div v-if="loading" class="max-w-4xl mx-auto bg-white p-12 text-center text-sm text-slate-500 rounded-sm shadow">
+            Memuat data Lembar Kendali...
+        </div>
+
+        <div v-else-if="errorMessage" class="max-w-4xl mx-auto bg-rose-50 border border-rose-200 text-rose-800 p-6 rounded-xl text-sm">
+            <p class="font-bold">Lembar Kendali Tidak Tersedia</p>
+            <p class="mt-1">{{ errorMessage }}</p>
+        </div>
+
         <!-- Official Control Sheet Document Paper (A4 / Folio Simulation) -->
         <div
-            v-if="detail"
+            v-else-if="detail"
             class="max-w-4xl mx-auto bg-white p-8 sm:p-12 shadow-xl border border-slate-300 rounded-sm print:shadow-none print:border-none print:p-6 print:m-0"
         >
             <!-- Kop Dokumen Resmi Pemerintah Daerah -->
             <div class="flex items-center gap-5 border-b-2 border-slate-900 pb-4 mb-6">
-                <!-- Logo Garut Placeholder -->
                 <div class="w-16 h-16 border-2 border-slate-900 rounded-lg flex items-center justify-center font-bold text-xs text-center shrink-0">
-                    KAB.<br/>GARUT
+                    KAB.<br />GARUT
                 </div>
 
                 <div class="flex-1 text-center">
@@ -107,7 +127,7 @@ function handlePrint() {
                     Lembar Kendali Verifikasi Akuntabilitas SPJ
                 </h1>
                 <p class="text-xs text-slate-600 font-mono mt-1">
-                    No. Register: <strong>LK-V2/{{ detail.id }}/2026</strong>
+                    No. Register: <strong>{{ detail.nomor_register }}</strong>
                 </p>
             </div>
 
@@ -120,27 +140,31 @@ function handlePrint() {
                     <tbody>
                         <tr class="border-b border-slate-100">
                             <td class="py-1.5 font-semibold text-slate-600 w-44">Nomor Bukti Transaksi</td>
-                            <td class="py-1.5 font-bold text-slate-900">: {{ detail.id }}</td>
+                            <td class="py-1.5 font-bold text-slate-900">: {{ detail.nomor_kuitansi }}</td>
                             <td class="py-1.5 font-semibold text-slate-600 w-36">Tanggal Transaksi</td>
-                            <td class="py-1.5 text-slate-900">: {{ formatTanggalIndo(detail.tanggal) }}</td>
+                            <td class="py-1.5 text-slate-900">: {{ formatTanggalIndo(detail.tanggal_transaksi) }}</td>
                         </tr>
                         <tr class="border-b border-slate-100">
                             <td class="py-1.5 font-semibold text-slate-600">Unit Organisasi (SKPD)</td>
-                            <td class="py-1.5 text-slate-900" colspan="3">: {{ detail.unit }}</td>
+                            <td class="py-1.5 text-slate-900" colspan="3">: {{ detail.unit_kerja?.nama_unit || '-' }}</td>
                         </tr>
                         <tr class="border-b border-slate-100">
                             <td class="py-1.5 font-semibold text-slate-600">Program & Subkegiatan</td>
-                            <td class="py-1.5 text-slate-900" colspan="3">: {{ detail.sub_activity }}</td>
+                            <td class="py-1.5 text-slate-900" colspan="3">
+                                : <span class="font-mono">{{ detail.rekening?.kode_sub_kegiatan || '-' }}</span> - {{ detail.rekening?.nama_sub_kegiatan || '-' }}
+                            </td>
                         </tr>
                         <tr class="border-b border-slate-100">
                             <td class="py-1.5 font-semibold text-slate-600">Kode Rekening Belanja</td>
-                            <td class="py-1.5 text-slate-900" colspan="3">: <span class="font-mono font-bold">{{ detail.account_code }}</span> - {{ detail.account_name }}</td>
+                            <td class="py-1.5 text-slate-900" colspan="3">
+                                : <span class="font-mono font-bold">{{ detail.rekening?.kode_rekening || '-' }}</span> - {{ detail.rekening?.nama_rekening || '-' }}
+                            </td>
                         </tr>
                         <tr class="border-b border-slate-100">
                             <td class="py-1.5 font-semibold text-slate-600">Kategori Belanja</td>
-                            <td class="py-1.5 font-bold text-slate-900">: Kategori {{ detail.category }}</td>
+                            <td class="py-1.5 font-bold text-slate-900">: Kategori {{ detail.rekening?.kategori_belanja || '-' }}</td>
                             <td class="py-1.5 font-semibold text-slate-600">Penyedia / Penerima</td>
-                            <td class="py-1.5 text-slate-900">: {{ detail.vendor }}</td>
+                            <td class="py-1.5 text-slate-900">: {{ detail.nama_penerima }}</td>
                         </tr>
                         <tr class="border-b border-slate-100">
                             <td class="py-1.5 font-semibold text-slate-600">Uraian Pengeluaran</td>
@@ -148,9 +172,9 @@ function handlePrint() {
                         </tr>
                         <tr class="bg-slate-50 font-semibold">
                             <td class="py-2 font-bold text-slate-800">Total Nilai Bruto</td>
-                            <td class="py-2 text-base font-bold text-gov-navy-950 tabular-nums">: {{ formatRupiah(detail.nominal) }}</td>
+                            <td class="py-2 text-base font-bold text-gov-navy-950 tabular-nums">: {{ formatRupiah(detail.nominal_bruto) }}</td>
                             <td class="py-2 font-bold text-slate-800">Jumlah Netto Kas</td>
-                            <td class="py-2 text-base font-bold text-emerald-800 tabular-nums">: {{ formatRupiah(detail.taxes?.netto || detail.nominal) }}</td>
+                            <td class="py-2 text-base font-bold text-emerald-800 tabular-nums">: {{ formatRupiah(detail.nominal_neto) }}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -166,27 +190,33 @@ function handlePrint() {
                         <tr>
                             <th class="py-2 px-3 border-b text-center w-10">No</th>
                             <th class="py-2 px-3 border-b text-left">Nama Dokumen Bukti Pertanggungjawaban</th>
-                            <th class="py-2 px-3 border-b text-center w-24">Sifat</th>
-                            <th class="py-2 px-3 border-b text-center w-28">Hasil Uji</th>
+                            <th class="py-2 px-3 border-b text-center w-24">Kode</th>
+                            <th class="py-2 px-3 border-b text-center w-32">Hasil Uji</th>
                             <th class="py-2 px-3 border-b text-left">Catatan Verifikator</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-200">
-                        <tr v-for="(att, idx) in detail.attachments" :key="att.id">
+                        <tr v-for="(item, idx) in detail.checklist || []" :key="item.kode_item || idx">
                             <td class="py-2 px-3 text-center text-slate-500 font-mono">{{ idx + 1 }}</td>
-                            <td class="py-2 px-3 font-medium text-slate-800">{{ att.doc_name }}</td>
-                            <td class="py-2 px-3 text-center">
-                                <span class="text-[10px] font-bold" :class="att.required ? 'text-rose-700' : 'text-slate-500'">
-                                    {{ att.required ? 'WAJIB' : 'OPSIONAL' }}
-                                </span>
-                            </td>
+                            <td class="py-2 px-3 font-medium text-slate-800">{{ item.nama_item || '-' }}</td>
+                            <td class="py-2 px-3 text-center font-mono text-[11px] text-slate-600">{{ item.kode_item || '-' }}</td>
                             <td class="py-2 px-3 text-center font-bold">
-                                <span class="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[10px] border border-emerald-200">
-                                    ✓ MEMENUHI
+                                <span
+                                    :class="item.status_kesesuaian === 'VALID'
+                                        ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                                        : 'text-amber-700 bg-amber-50 border-amber-200'"
+                                    class="px-2 py-0.5 rounded text-[10px] border"
+                                >
+                                    {{ item.status_kesesuaian === 'VALID' ? '✓ MEMENUHI' : (item.status_kesesuaian || 'DIPERIKSA') }}
                                 </span>
                             </td>
                             <td class="py-2 px-3 text-[11px] text-slate-600">
-                                {{ att.notes || 'Lengkap & Sesuai' }}
+                                {{ item.catatan || 'Lengkap & Sesuai' }}
+                            </td>
+                        </tr>
+                        <tr v-if="!detail.checklist || detail.checklist.length === 0">
+                            <td colspan="5" class="py-4 text-center text-slate-500 italic">
+                                Tidak ada item checklist verifikasi tercatat.
                             </td>
                         </tr>
                     </tbody>
@@ -206,15 +236,15 @@ function handlePrint() {
                         DINYATAKAN LOLOS & MEMENUHI SYARAT KELENGKAPAN AKUNTABILITAS SPJ
                     </p>
                     <p class="text-[11px] text-slate-600 leading-relaxed">
-                        Dokumen ini telah diperiksa kesesuaian SSH/SBM, ketersediaan alokasi RAK, dan kelengkapan bukti fisik pengeluaran kas. Berkas ini siap dibundel dalam pengesahan SPP sebelum diproses resmi melalui SIPD-RI.
+                        {{ detail.catatan_verifikasi || 'Dokumen ini telah diperiksa kesesuaian SSH/SBM, ketersediaan alokasi RAK, dan kelengkapan bukti fisik pengeluaran kas. Berkas ini siap dibundel dalam pengesahan SPP sebelum diproses resmi melalui SIPD-RI.' }}
                     </p>
                 </div>
 
                 <!-- QR Code Verification Card -->
                 <div class="shrink-0 text-center">
                     <VerificationQrCard
-                        :value="`https://sitaliti.garutkab.go.id/verify/${detail.id}?hash=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`"
-                        :label="`TOKEN: LK-${detail.id}`"
+                        :value="qrVerificationUrl"
+                        :label="detail.qr_token ? `TOKEN: ${detail.qr_token}` : 'TOKEN: -'"
                         :size="100"
                     />
                     <p class="text-[9px] text-slate-400 mt-1">Pindai untuk validasi</p>
@@ -222,24 +252,35 @@ function handlePrint() {
             </div>
 
             <!-- Bagian 4: Lembar Tanda Tangan Resmi Pengesahan -->
-            <div class="grid grid-cols-2 gap-8 text-xs text-center pt-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-8 text-xs text-center pt-4">
                 <div>
-                    <p class="text-slate-600">Mengetahui,</p>
-                    <p class="font-bold text-gov-navy-950">Pejabat Pembuat Komitmen (PPK)</p>
+                    <p class="text-slate-600">Diverifikasi oleh,</p>
+                    <p class="font-bold text-gov-navy-950">
+                        {{ detail.verifikator?.jabatan || 'Tim Verifikasi Akuntabilitas SPJ' }}
+                    </p>
                     <div class="h-20"></div>
-                    <p class="font-bold text-slate-900 underline">H. DEDI SUTRISNO, S.Sos., M.Si</p>
-                    <p class="text-[11px] text-slate-500">NIP. 19780512 200501 1 008</p>
+                    <p class="font-bold text-slate-900 underline">
+                        {{ detail.verifikator?.name || 'Verifikator Kecamatan' }}
+                    </p>
+                    <p class="text-[11px] text-slate-500">
+                        NIP. {{ detail.verifikator?.nip || '-' }}
+                    </p>
                 </div>
 
                 <div>
-                    <p class="text-slate-600">Tarogong Kidul, {{ formatTanggalIndo(new Date()) }}</p>
-                    <p class="font-bold text-gov-navy-950">Kasubag Perencanaan & Keuangan (PPK)</p>
+                    <p class="text-slate-600">
+                        Tarogong Kidul, {{ formatTanggalIndo(detail.tanggal_verifikasi || new Date()) }}
+                    </p>
+                    <p class="font-bold text-gov-navy-950">Dokumen Tervalidasi Sistem</p>
                     <div class="h-20"></div>
-                    <p class="font-bold text-slate-900 underline">IRA MARLINA, S.IP</p>
-                    <p class="text-[11px] text-slate-500">NIP. 19850924 201001 2 015</p>
+                    <p class="font-mono text-[11px] font-bold text-slate-700">
+                        {{ detail.nomor_register }}
+                    </p>
+                    <p class="text-[11px] text-slate-500">
+                        Status: {{ detail.status }}
+                    </p>
                 </div>
             </div>
         </div>
     </div>
 </template>
-

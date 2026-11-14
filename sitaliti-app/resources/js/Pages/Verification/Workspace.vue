@@ -55,18 +55,18 @@ onMounted(async () => {
     try {
         const res = await verificationService.getDetail(props.id);
         if (res) {
-            // Normalisasi lampiran dari backend (detail.lampiran -> detail.attachments)
-            if (!res.attachments && Array.isArray(res.lampiran)) {
-                res.attachments = res.lampiran.map(lamp => ({
-                    id: lamp.id,
-                    doc_name: lamp.nama_dokumen || lamp.file_name,
-                    required: true,
-                    file_name: lamp.file_name,
-                    file_url: lamp.file_url,
-                    mime_type: lamp.mime_type,
-                    status: 'PENDING',
-                    notes: '',
+            if (Array.isArray(res.checklist)) {
+                res.checklist = res.checklist.map((item) => ({
+                    ...item,
+                    ui_status:
+                        item.is_verified || item.status_kesesuaian === 'SESUAI' || item.status_kesesuaian === 'VALID'
+                            ? 'VALID'
+                            : item.status_kesesuaian === 'TIDAK_SESUAI'
+                              ? 'REVISION_NEEDED'
+                              : 'PENDING',
                 }));
+            } else {
+                res.checklist = [];
             }
             detail.value = res;
         }
@@ -89,23 +89,53 @@ async function fetchHistory() {
     }
 }
 
-const activeAttachment = computed(() => {
-    if (!detail.value || !detail.value.attachments) return null;
-    return detail.value.attachments[activeAttachmentIndex.value] || null;
+const lampiranList = computed(() => {
+    if (!detail.value) return [];
+    const raw = Array.isArray(detail.value.lampiran)
+        ? detail.value.lampiran
+        : Array.isArray(detail.value.attachments)
+          ? detail.value.attachments
+          : [];
+
+    return raw.map((lamp) => ({
+        id: lamp.id,
+        checklist_code: lamp.checklist_code || null,
+        nama_dokumen: lamp.nama_dokumen || lamp.doc_name || lamp.nama_file_asli || lamp.file_name,
+        file_name: lamp.nama_file_asli || lamp.file_name || lamp.nama_dokumen || 'Lampiran',
+        file_url: lamp.file_url || `/receipts/${detail.value.id}/attachments/${lamp.id}/preview`,
+    }));
 });
+
+const activeAttachment = computed(() => {
+    return lampiranList.value[activeAttachmentIndex.value] || null;
+});
+
+function selectAttachmentForChecklist(item) {
+    if (!lampiranList.value.length) return;
+    const matchIdx = lampiranList.value.findIndex(
+        (att) => att.checklist_code && item.kode_item && att.checklist_code === item.kode_item
+    );
+    if (matchIdx >= 0) {
+        activeAttachmentIndex.value = matchIdx;
+    }
+}
 
 // Cek kelayakan lolos verifikasi
 const allMandatoryVerified = computed(() => {
-    if (!detail.value || !detail.value.attachments) return false;
-    return detail.value.attachments
-        .filter(att => att.required)
-        .every(att => att.status === 'VALID');
+    if (!detail.value) return false;
+    const checklist = Array.isArray(detail.value.checklist) ? detail.value.checklist : [];
+    if (checklist.length === 0) return false;
+    if (lampiranList.value.length === 0) return false;
+
+    return checklist
+        .filter((item) => Boolean(item.is_required))
+        .every((item) => item.ui_status === 'VALID');
 });
 
-function setDocStatus(index, newStatus) {
+function setChecklistStatus(index, newStatus) {
     if (!isVerifikator.value) return;
-    if (detail.value && detail.value.attachments[index]) {
-        detail.value.attachments[index].status = newStatus;
+    if (detail.value?.checklist?.[index]) {
+        detail.value.checklist[index].ui_status = newStatus;
     }
 }
 
@@ -125,17 +155,18 @@ async function handleActionSubmit(payload) {
 
 async function handleApprove() {
     if (!allMandatoryVerified.value) {
-        showNotification('Seluruh dokumen bertanda Wajib harus diverifikasi Lolos (Valid) terlebih dahulu.', 'error');
+        showNotification(
+            'Seluruh butir checklist wajib harus berstatus Lolos dan minimal 1 lampiran harus tersedia.',
+            'error'
+        );
         return;
     }
 
-    const checklistResults = Array.isArray(detail.value.checklist)
-        ? detail.value.checklist.map(item => ({
-            item_id: item.item_id,
-            status: 'SESUAI',
-            notes: item.catatan || 'Sesuai dengan ketentuan regulasi dan bukti fisik.',
-        }))
-        : [];
+    const checklistResults = detail.value.checklist.map((item) => ({
+        item_id: item.item_id,
+        status: item.ui_status === 'REVISION_NEEDED' ? 'TIDAK_SESUAI' : 'SESUAI',
+        notes: item.catatan || 'Sesuai dengan ketentuan regulasi dan bukti fisik.',
+    }));
 
     try {
         const res = await verificationService.submitAction(detail.value.id, {
@@ -223,11 +254,11 @@ async function handleQuickAuthSubmit() {
                 <div class="h-5 w-px bg-slate-700"></div>
 
                 <div v-if="detail" class="flex items-center gap-3">
-                    <span class="font-bold text-sm text-white tracking-wide font-mono">{{ detail.id }}</span>
+                    <span class="font-bold text-sm text-white tracking-wide font-mono">{{ detail.nomor_kuitansi || detail.id }}</span>
                     <GovBadge :variant="STATUS_VARIANTS[detail.status]">
                         {{ STATUS_LABELS[detail.status] }}
                     </GovBadge>
-                    <span class="text-xs text-slate-400">{{ formatTanggalIndo(detail.tanggal) }}</span>
+                    <span class="text-xs text-slate-400">{{ formatTanggalIndo(detail.tanggal_transaksi || detail.tanggal) }}</span>
                 </div>
             </div>
 
@@ -313,20 +344,45 @@ async function handleQuickAuthSubmit() {
         <!-- Main Split-Screen Workspace (55% Kiri / 45% Kanan) -->
         <div v-if="detail" class="flex-1 flex overflow-hidden p-3 gap-3">
             <!-- SISI KIRI (55%): PDF / Document Viewer -->
-            <div class="w-[55%] h-full flex flex-col">
-                <PdfViewer
-                    :file-url="activeAttachment?.file_url"
-                    :file-name="activeAttachment?.file_name"
-                />
+            <div class="w-[55%] h-full flex flex-col gap-2">
+                <div v-if="lampiranList.length > 0" class="flex items-center gap-1.5 overflow-x-auto pb-1 shrink-0">
+                    <button
+                        v-for="(att, idx) in lampiranList"
+                        :key="att.id || idx"
+                        type="button"
+                        @click="activeAttachmentIndex = idx"
+                        class="px-2.5 py-1 rounded-lg text-[11px] font-semibold border whitespace-nowrap transition"
+                        :class="activeAttachmentIndex === idx
+                            ? 'bg-gov-navy-900 text-white border-gov-navy-900'
+                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'"
+                    >
+                        {{ att.checklist_code ? `[${att.checklist_code}] ` : '' }}{{ att.nama_dokumen }}
+                    </button>
+                </div>
+                <div class="flex-1 min-h-0">
+                    <PdfViewer
+                        :file-url="activeAttachment?.file_url"
+                        :file-name="activeAttachment?.file_name"
+                    />
+                </div>
             </div>
 
             <!-- SISI KANAN (45%): Checklist Dokumen & Validasi Nilai -->
             <div class="w-[45%] h-full flex flex-col bg-white rounded-xl border border-gov-surface-border shadow-sm overflow-hidden">
                 <!-- Panel Tab & Meta -->
                 <div class="bg-gov-surface-subtle p-4 border-b border-gov-surface-border shrink-0">
-                    <div class="flex items-center justify-between text-xs">
-                        <span class="text-slate-500">Unit: <strong class="text-gov-navy-950">{{ detail.unit }}</strong></span>
-                        <span class="text-base font-bold text-gov-navy-950 tabular-nums">{{ formatRupiah(detail.nominal) }}</span>
+                    <div class="flex items-center justify-between text-xs gap-2">
+                        <span class="text-slate-500">
+                            Unit: <strong class="text-gov-navy-950">{{ detail.unit_kerja?.nama_unit || detail.unit || '-' }}</strong>
+                        </span>
+                        <div class="text-right">
+                            <span class="text-base font-bold text-gov-navy-950 tabular-nums block">
+                                {{ formatRupiah(detail.nominal_bruto ?? detail.nominal ?? 0) }}
+                            </span>
+                            <span class="text-[11px] text-emerald-700 font-semibold tabular-nums">
+                                Neto: {{ formatRupiah(detail.nominal_neto ?? detail.nominal_bruto ?? 0) }}
+                            </span>
+                        </div>
                     </div>
                     <p class="text-xs text-slate-700 mt-1 line-clamp-2 leading-relaxed">{{ detail.uraian }}</p>
 
@@ -372,56 +428,72 @@ async function handleQuickAuthSubmit() {
                 <div v-show="activeTab === 'checklist'" class="flex-1 overflow-y-auto p-4 space-y-3">
                     <div class="flex items-center justify-between text-xs font-bold text-gov-navy-900 border-b pb-2">
                         <span>Checklist Hasil Pemeriksaan Fisik Dokumen</span>
-                        <span class="text-[11px] font-normal text-slate-500">Pilih dokumen untuk diuji</span>
+                        <span class="text-[11px] font-normal text-slate-500">
+                            {{ detail.checklist?.length || 0 }} butir • {{ lampiranList.length }} lampiran
+                        </span>
                     </div>
 
                     <div
-                        v-for="(att, idx) in detail.attachments"
-                        :key="att.id"
-                        @click="activeAttachmentIndex = idx"
-                        class="p-3 rounded-lg border transition-all cursor-pointer text-xs"
-                        :class="[
-                            activeAttachmentIndex === idx
-                                ? 'border-gov-navy-800 ring-2 ring-gov-navy-800/10 bg-gov-navy-50/50'
-                                : 'border-gov-surface-border bg-white hover:bg-slate-50'
-                        ]"
+                        v-if="!detail.checklist || detail.checklist.length === 0"
+                        class="p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800"
+                    >
+                        Daftar checklist kategori rekening ini belum tersedia. Tombol Lolos Verifikasi dikunci sampai checklist tersedia dan terverifikasi.
+                    </div>
+
+                    <div
+                        v-if="lampiranList.length === 0"
+                        class="p-3 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-800"
+                    >
+                        Belum ada berkas lampiran yang diunggah pada kuitansi ini.
+                    </div>
+
+                    <div
+                        v-for="(item, idx) in detail.checklist || []"
+                        :key="item.item_id || item.kode_item || idx"
+                        @click="selectAttachmentForChecklist(item)"
+                        class="p-3 rounded-lg border transition-all cursor-pointer text-xs border-gov-surface-border bg-white hover:bg-slate-50"
                     >
                         <div class="flex items-start justify-between gap-2">
                             <div class="flex items-start gap-2 flex-1">
-                                <span class="w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold"
+                                <span
+                                    class="w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold"
                                     :class="[
-                                        att.status === 'VALID' ? 'bg-emerald-100 text-emerald-800' :
-                                        att.status === 'REVISION_NEEDED' ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-600'
+                                        item.ui_status === 'VALID' ? 'bg-emerald-100 text-emerald-800' :
+                                        item.ui_status === 'REVISION_NEEDED' ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-600'
                                     ]"
                                 >
                                     {{ idx + 1 }}
                                 </span>
                                 <div>
-                                    <div class="flex items-center gap-1.5">
-                                        <h4 class="font-bold text-gov-navy-950">{{ att.doc_name }}</h4>
-                                        <span v-if="att.required" class="text-[9px] font-bold text-rose-600 bg-rose-50 px-1 rounded">
+                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                        <span class="font-mono text-[10px] text-slate-500">{{ item.kode_item }}</span>
+                                        <h4 class="font-bold text-gov-navy-950">{{ item.nama_item }}</h4>
+                                        <span v-if="item.is_required" class="text-[9px] font-bold text-rose-600 bg-rose-50 px-1 rounded">
                                             Wajib
                                         </span>
+                                        <span v-else class="text-[9px] font-semibold text-slate-500 bg-slate-100 px-1 rounded">
+                                            Opsional
+                                        </span>
                                     </div>
-                                    <p class="text-[11px] text-slate-400 font-mono truncate max-w-xs mt-0.5">{{ att.file_name }}</p>
+                                    <p v-if="item.deskripsi" class="text-[11px] text-slate-500 mt-0.5">{{ item.deskripsi }}</p>
                                 </div>
                             </div>
 
-                            <!-- Document Status Buttons (Khusus Verifikator) atau Status Badge (Lurah/PPTK/Lainnya) -->
+                            <!-- Document Status Buttons (Khusus Verifikator) atau Status Badge -->
                             <div v-if="isVerifikator" class="flex items-center gap-1 shrink-0">
                                 <button
                                     type="button"
-                                    @click.stop="setDocStatus(idx, 'VALID')"
+                                    @click.stop="setChecklistStatus(idx, 'VALID')"
                                     class="px-2 py-1 rounded text-[10px] font-bold transition-colors"
-                                    :class="att.status === 'VALID' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                                    :class="item.ui_status === 'VALID' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
                                 >
                                     ✓ Lolos
                                 </button>
                                 <button
                                     type="button"
-                                    @click.stop="setDocStatus(idx, 'REVISION_NEEDED')"
+                                    @click.stop="setChecklistStatus(idx, 'REVISION_NEEDED')"
                                     class="px-2 py-1 rounded text-[10px] font-bold transition-colors"
-                                    :class="att.status === 'REVISION_NEEDED' ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                                    :class="item.ui_status === 'REVISION_NEEDED' ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
                                 >
                                     ✕ Ada Catatan
                                 </button>
@@ -429,16 +501,16 @@ async function handleQuickAuthSubmit() {
                             <div v-else class="shrink-0">
                                 <span
                                     class="px-2 py-0.5 rounded text-[10px] font-semibold"
-                                    :class="att.status === 'VALID' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'"
+                                    :class="item.ui_status === 'VALID' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'"
                                 >
-                                    {{ att.status === 'VALID' ? 'Lolos' : 'Pending' }}
+                                    {{ item.ui_status === 'VALID' ? 'Lolos' : 'Pending' }}
                                 </span>
                             </div>
                         </div>
 
                         <!-- Catatan Temuan jika ada -->
-                        <div v-if="att.notes" class="mt-2 p-2 bg-amber-50 rounded text-[11px] text-amber-800 border border-amber-200">
-                            <strong>Temuan:</strong> {{ att.notes }}
+                        <div v-if="item.catatan" class="mt-2 p-2 bg-amber-50 rounded text-[11px] text-amber-800 border border-amber-200">
+                            <strong>Temuan:</strong> {{ item.catatan }}
                         </div>
                     </div>
 
