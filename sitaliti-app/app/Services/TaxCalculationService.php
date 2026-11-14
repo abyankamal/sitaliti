@@ -11,20 +11,24 @@ class TaxCalculationService implements TaxCalculationServiceInterface
      * Menghitung simulasi potongan pajak otomatis berdasarkan kategori belanja, nominal bruto, dan opsi NPWP/PPh.
      * Sesuai ketentuan UU HPP, UU HKPD (PBJT 10%), dan PMK 59/2022.
      *
-     * @param  string  $kategoriChecklist  Contoh: 'B1_ATK', 'B2_MAMIN', 'B3_HONOR', 'B4_PERJADIN'
+     * @param  string  $kategoriChecklist  Contoh: 'B1_ATK', 'B2_MAMIN', 'B3_HONOR', 'B4_PERJADIN', 'B5_PEMELIHARAAN', 'B6_MODAL'
      * @param  float  $nilaiBruto  Nilai kuitansi bruto
      * @param array{
      *     has_npwp?: bool,
      *     golongan_asn?: string|null,
      *     is_rekanan_badan?: bool,
+     *     is_sewa_kendaraan?: bool,
+     *     is_pkp?: bool,
      *     pph21_custom_rate?: float|null
      * } $options
      * @return array<string, mixed>
      */
     public function calculateTax(string $kategoriChecklist, float $nilaiBruto, array $options = []): array
     {
-        $hasNpwp = $options['has_npwp'] ?? true;
+        $hasNpwp = (bool) ($options['has_npwp'] ?? true);
         $golonganAsn = $options['golongan_asn'] ?? null;
+        $isSewaKendaraan = (bool) ($options['is_sewa_kendaraan'] ?? false);
+        $isPkp = (bool) ($options['is_pkp'] ?? true);
 
         $dpp = 0.0;
         $ppn = 0.0;
@@ -55,42 +59,16 @@ class TaxCalculationService implements TaxCalculationServiceInterface
             'B.2', 'B2_MAMIN' => 'B2_MAMIN',
             'B.3', 'B3_HONOR' => 'B3_HONOR',
             'B.4', 'B4_PERJADIN' => 'B4_PERJADIN',
-            'B.5', 'B5_MODAL' => 'B5_MODAL',
-            'B.6', 'B6_LAINNYA' => 'B6_LAINNYA',
+            'B.5', 'B5_PEMELIHARAAN', 'B5_MODAL' => 'B5_PEMELIHARAAN',
+            'B.6', 'B6_MODAL', 'B6_LAINNYA' => 'B6_MODAL',
             default => $kategoriChecklist,
         };
 
         switch ($normalizedCategory) {
             case 'B1_ATK':
-                // Belanja kena PPN. Ekstraksi DPP bebas rounding drift:
-                $dpp = round($nilaiBruto / 1.11);
-                $calculatedPpn = $nilaiBruto - $dpp;
-
-                // Evaluasi ambang batas PMK 59/2022:
-                // Pembayaran <= Rp 2.000.000 (termasuk PPN) dikecualikan dari pemungutan PPN & PPh 22 oleh bendahara.
-                if ($nilaiBruto > 2000000.0) {
-                    $ppn = $calculatedPpn;
-
-                    // PPh 22 dihitung dari DPP: 1.5% jika NPWP, penalti 100% (3.0%) jika non-NPWP
-                    $tarifPph22 = $hasNpwp ? 0.015 : 0.030;
-                    $pph22 = round($tarifPph22 * $dpp);
-
-                    $rincianPajak[] = [
-                        'kode_pajak' => 'PPN_11',
-                        'nama_pajak' => 'Pajak Pertambahan Nilai 11%',
-                        'tarif' => 0.11,
-                        'tipe_tarif' => 'PERSENTASE_DPP',
-                        'nominal' => $ppn,
-                    ];
-
-                    $rincianPajak[] = [
-                        'kode_pajak' => 'PPH_22',
-                        'nama_pajak' => $hasNpwp ? 'PPh Pasal 22 (1.5%)' : 'PPh Pasal 22 Non-NPWP (3.0%)',
-                        'tarif' => $tarifPph22,
-                        'tipe_tarif' => 'PERSENTASE_DPP',
-                        'nominal' => $pph22,
-                    ];
-                }
+            case 'B6_MODAL':
+                [$dpp, $ppn, $pph22, $goodsRincian] = $this->calculateGoodsPurchaseTax($nilaiBruto, $hasNpwp);
+                $rincianPajak = array_merge($rincianPajak, $goodsRincian);
                 break;
 
             case 'B2_MAMIN':
@@ -112,14 +90,15 @@ class TaxCalculationService implements TaxCalculationServiceInterface
                 // Honorarium bebas PPN. DPP adalah 100% Bruto.
                 $dpp = $nilaiBruto;
 
-                // Tarif PPh 21 Final berdasarkan kepangkatan PNS (PP 80/2010):
+                // Tarif PPh 21:
                 // - Golongan I & II: 0%
                 // - Golongan III: 5%
                 // - Golongan IV: 15%
-                // - Non-ASN: 5%
+                // - Non-ASN: 2.5% efektif (5% x 50% bukan pegawai per PMK 168/2023)
                 $tarifPph21 = match ($golonganAsn) {
                     'GOLONGAN_IV' => 0.15,
-                    'GOLONGAN_III', 'NON_ASN' => 0.05,
+                    'GOLONGAN_III' => 0.05,
+                    'NON_ASN' => 0.025,
                     default => 0.0,
                 };
 
@@ -141,17 +120,49 @@ class TaxCalculationService implements TaxCalculationServiceInterface
                 break;
 
             case 'B4_PERJADIN':
-                // Perjadin sewa transportasi/kendaraan dikenakan PPh 23 dari bruto/sewa:
-                // 2.0% jika NPWP, penalti 100% (4.0%) jika non-NPWP
+                // SPPD ASN biasa (uang harian/tiket/penginapan) bebas pajak (0%).
+                // Hanya memotong PPh 23 (2% NPWP / 4% Non-NPWP) jika termasuk sewa kendaraan / jasa pihak ketiga.
                 $dpp = $nilaiBruto;
+                if ($isSewaKendaraan) {
+                    $tarifPph23 = $hasNpwp ? 0.020 : 0.040;
+                    $pph23 = round($tarifPph23 * $dpp);
+
+                    $rincianPajak[] = [
+                        'kode_pajak' => 'PPH_23',
+                        'nama_pajak' => $hasNpwp ? 'PPh Pasal 23 Sewa (2.0%)' : 'PPh Pasal 23 Sewa Non-NPWP (4.0%)',
+                        'tarif' => $tarifPph23,
+                        'tipe_tarif' => 'PERSENTASE_BRUTO',
+                        'nominal' => $pph23,
+                    ];
+                }
+                break;
+
+            case 'B5_PEMELIHARAAN':
+                // Jasa pemeliharaan: PPh 23 (2% NPWP / 4% Non-NPWP) dari DPP,
+                // ditambah PPN 11% jika pembayaran > Rp 2.000.000 dan rekanan PKP (PMK 59/2022).
+                if ($nilaiBruto > 2000000.0 && $isPkp) {
+                    $dpp = round($nilaiBruto / 1.11);
+                    $ppn = $nilaiBruto - $dpp;
+
+                    $rincianPajak[] = [
+                        'kode_pajak' => 'PPN_11',
+                        'nama_pajak' => 'Pajak Pertambahan Nilai 11%',
+                        'tarif' => 0.11,
+                        'tipe_tarif' => 'PERSENTASE_DPP',
+                        'nominal' => $ppn,
+                    ];
+                } else {
+                    $dpp = $nilaiBruto;
+                }
+
                 $tarifPph23 = $hasNpwp ? 0.020 : 0.040;
                 $pph23 = round($tarifPph23 * $dpp);
 
                 $rincianPajak[] = [
                     'kode_pajak' => 'PPH_23',
-                    'nama_pajak' => $hasNpwp ? 'PPh Pasal 23 Sewa (2.0%)' : 'PPh Pasal 23 Sewa Non-NPWP (4.0%)',
+                    'nama_pajak' => $hasNpwp ? 'PPh Pasal 23 Jasa (2.0%)' : 'PPh Pasal 23 Jasa Non-NPWP (4.0%)',
                     'tarif' => $tarifPph23,
-                    'tipe_tarif' => 'PERSENTASE_BRUTO',
+                    'tipe_tarif' => 'PERSENTASE_DPP',
                     'nominal' => $pph23,
                 ];
                 break;
@@ -214,5 +225,42 @@ class TaxCalculationService implements TaxCalculationServiceInterface
         }
 
         return true;
+    }
+
+    /**
+     * Menghitung PPN 11% dan PPh 22 (1.5% NPWP / 3.0% Non-NPWP) untuk belanja barang/modal (B.1 & B.6) sesuai PMK 59/2022.
+     *
+     * @return array{0: float, 1: float, 2: float, 3: array<int, array<string, mixed>>}
+     */
+    private function calculateGoodsPurchaseTax(float $nilaiBruto, bool $hasNpwp): array
+    {
+        $dpp = round($nilaiBruto / 1.11);
+        $ppn = 0.0;
+        $pph22 = 0.0;
+        $rincian = [];
+
+        if ($nilaiBruto > 2000000.0) {
+            $ppn = $nilaiBruto - $dpp;
+            $tarifPph22 = $hasNpwp ? 0.015 : 0.030;
+            $pph22 = round($tarifPph22 * $dpp);
+
+            $rincian[] = [
+                'kode_pajak' => 'PPN_11',
+                'nama_pajak' => 'Pajak Pertambahan Nilai 11%',
+                'tarif' => 0.11,
+                'tipe_tarif' => 'PERSENTASE_DPP',
+                'nominal' => $ppn,
+            ];
+
+            $rincian[] = [
+                'kode_pajak' => 'PPH_22',
+                'nama_pajak' => $hasNpwp ? 'PPh Pasal 22 (1.5%)' : 'PPh Pasal 22 Non-NPWP (3.0%)',
+                'tarif' => $tarifPph22,
+                'tipe_tarif' => 'PERSENTASE_DPP',
+                'nominal' => $pph22,
+            ];
+        }
+
+        return [$dpp, $ppn, $pph22, $rincian];
     }
 }

@@ -13,15 +13,15 @@ export const BUDGET_CATEGORIES = {
     },
     B3: {
         code: 'B.3',
-        name: 'Belanja Perjalanan Dinas (SPPD)',
-        prefix: '5.1.02.04.01',
-        description: 'Transport, uang harian, dan penginapan dalam/luar daerah'
-    },
-    B4: {
-        code: 'B.4',
         name: 'Belanja Honorarium Narasumber / Tenaga Ahli',
         prefix: '5.1.02.02.01',
         description: 'Honor tim pelaksana, narasumber sosialisasi/bimtek'
+    },
+    B4: {
+        code: 'B.4',
+        name: 'Belanja Perjalanan Dinas (SPPD)',
+        prefix: '5.1.02.04.01',
+        description: 'Transport, uang harian, dan penginapan dalam/luar daerah'
     },
     B5: {
         code: 'B.5',

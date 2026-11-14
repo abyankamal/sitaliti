@@ -148,26 +148,39 @@ class TaxCalculationTest extends TestCase
         $this->assertEquals(300000.0, $resGol4['pph21']); // 15% * 2.000.000
         $this->assertEquals(1700000.0, $resGol4['nilai_neto']);
 
-        // Non-ASN (5%)
+        // Non-ASN (2.5% efektif: 5% x 50% per PMK 168/2023)
         $resNonAsn = $this->service->calculateTax('B3_HONOR', $bruto, ['golongan_asn' => 'NON_ASN']);
-        $this->assertEquals(100000.0, $resNonAsn['pph21']);
-        $this->assertEquals(1900000.0, $resNonAsn['nilai_neto']);
+        $this->assertEquals(50000.0, $resNonAsn['pph21']);
+        $this->assertEquals(1950000.0, $resNonAsn['nilai_neto']);
     }
 
     /**
-     * Test 7: Perjadin (B.4) Sewa Kendaraan dikenakan PPh 23 (2.0% jika NPWP, 4.0% non-NPWP)
+     * Test 7: Perjadin (B.4) default bebas pajak untuk SPPD biasa,
+     * dan dikenakan PPh 23 (2.0% jika NPWP, 4.0% non-NPWP) jika is_sewa_kendaraan = true.
      */
     public function test_perjadin_sewa_kendaraan_kena_pph23(): void
     {
         $bruto = 1000000.0;
 
-        // Dengan NPWP (2%)
-        $resNpwp = $this->service->calculateTax('B4_PERJADIN', $bruto, ['has_npwp' => true]);
+        // Default SPPD biasa -> bebas pajak
+        $resDefault = $this->service->calculateTax('B4_PERJADIN', $bruto, ['has_npwp' => true]);
+        $this->assertEquals(0.0, $resDefault['pph23']);
+        $this->assertEquals(0.0, $resDefault['total_pajak']);
+        $this->assertEquals($bruto, $resDefault['nilai_neto']);
+
+        // Sewa Kendaraan dengan NPWP (2%)
+        $resNpwp = $this->service->calculateTax('B4_PERJADIN', $bruto, [
+            'has_npwp' => true,
+            'is_sewa_kendaraan' => true,
+        ]);
         $this->assertEquals(20000.0, $resNpwp['pph23']);
         $this->assertEquals(980000.0, $resNpwp['nilai_neto']);
 
-        // Tanpa NPWP (4% - surcharge 100%)
-        $resNonNpwp = $this->service->calculateTax('B4_PERJADIN', $bruto, ['has_npwp' => false]);
+        // Sewa Kendaraan tanpa NPWP (4% - surcharge 100%)
+        $resNonNpwp = $this->service->calculateTax('B4_PERJADIN', $bruto, [
+            'has_npwp' => false,
+            'is_sewa_kendaraan' => true,
+        ]);
         $this->assertEquals(40000.0, $resNonNpwp['pph23']);
         $this->assertEquals(960000.0, $resNonNpwp['nilai_neto']);
     }
@@ -228,18 +241,72 @@ class TaxCalculationTest extends TestCase
         $resB3 = $this->service->calculateTax('B.3', 2000000.0, ['golongan_asn' => 'GOLONGAN_III']);
         $this->assertEquals(100000.0, $resB3['pph21']);
 
-        // B.4 -> Perjadin
-        $resB4 = $this->service->calculateTax('B.4', 1000000.0, ['has_npwp' => true]);
-        $this->assertEquals(20000.0, $resB4['pph23']);
+        // B.4 -> Perjadin (default bebas pajak, sewa kendaraan kena PPh 23)
+        $resB4Default = $this->service->calculateTax('B.4', 1000000.0, ['has_npwp' => true]);
+        $this->assertEquals(0.0, $resB4Default['pph23']);
 
-        // B.5 & B.6 -> Belanja Modal / Lainnya (tanpa potongan pajak default)
-        $resB5 = $this->service->calculateTax('B.5', 500000.0);
-        $this->assertEquals(0.0, $resB5['total_pajak']);
-        $this->assertEquals(500000.0, $resB5['nilai_neto']);
+        $resB4Sewa = $this->service->calculateTax('B.4', 1000000.0, [
+            'has_npwp' => true,
+            'is_sewa_kendaraan' => true,
+        ]);
+        $this->assertEquals(20000.0, $resB4Sewa['pph23']);
 
-        $resB6 = $this->service->calculateTax('B.6', 500000.0);
+        // B.5 -> Jasa Pemeliharaan (<= 2jt bebas PPN, kena PPh 23 2%)
+        $resB5 = $this->service->calculateTax('B.5', 500000.0, ['has_npwp' => true]);
+        $this->assertEquals(0.0, $resB5['ppn']);
+        $this->assertEquals(10000.0, $resB5['pph23']);
+        $this->assertEquals(490000.0, $resB5['nilai_neto']);
+
+        // B.6 -> Belanja Modal (<= 2jt bebas PPN dan PPh 22 per PMK 59/2022)
+        $resB6 = $this->service->calculateTax('B.6', 500000.0, ['has_npwp' => true]);
         $this->assertEquals(0.0, $resB6['total_pajak']);
         $this->assertEquals(500000.0, $resB6['nilai_neto']);
+    }
+
+    /**
+     * Test 10: Belanja Pemeliharaan (B.5) menghitung PPh 23 dan PPN > Rp 2 juta sesuai PMK 59/2022.
+     */
+    public function test_pemeliharaan_b5_menghitung_pph23_dan_ppn_sesuai_ambang_2_juta(): void
+    {
+        // <= 2 juta: bebas PPN, kena PPh 23 (2% NPWP / 4% Non-NPWP)
+        $resSmall = $this->service->calculateTax('B5_PEMELIHARAAN', 1000000.0, ['has_npwp' => true]);
+        $this->assertEquals(0.0, $resSmall['ppn']);
+        $this->assertEquals(20000.0, $resSmall['pph23']);
+        $this->assertEquals(980000.0, $resSmall['nilai_neto']);
+        $this->assertTrue($this->service->validateTaxCompliance(1000000.0, $resSmall));
+
+        // > 2 juta (PKP + NPWP): DPP = 2jt, PPN = 220rb, PPh 23 = 40rb
+        $resLargeNpwp = $this->service->calculateTax('B5_PEMELIHARAAN', 2220000.0, ['has_npwp' => true]);
+        $this->assertEquals(2000000.0, $resLargeNpwp['dpp']);
+        $this->assertEquals(220000.0, $resLargeNpwp['ppn']);
+        $this->assertEquals(40000.0, $resLargeNpwp['pph23']);
+        $this->assertEquals(260000.0, $resLargeNpwp['total_pajak']);
+        $this->assertEquals(1960000.0, $resLargeNpwp['nilai_neto']);
+        $this->assertTrue($this->service->validateTaxCompliance(2220000.0, $resLargeNpwp));
+
+        // > 2 juta (PKP + Non-NPWP): PPh 23 = 80rb (4%)
+        $resLargeNonNpwp = $this->service->calculateTax('B5_PEMELIHARAAN', 2220000.0, ['has_npwp' => false]);
+        $this->assertEquals(80000.0, $resLargeNonNpwp['pph23']);
+        $this->assertEquals(1920000.0, $resLargeNonNpwp['nilai_neto']);
+        $this->assertTrue($this->service->validateTaxCompliance(2220000.0, $resLargeNonNpwp));
+    }
+
+    /**
+     * Test 11: Belanja Modal (B.6) mengikuti aturan PPN & PPh 22 PMK 59/2022 seperti B.1.
+     */
+    public function test_belanja_modal_b6_menghitung_ppn_dan_pph22_di_atas_2_juta(): void
+    {
+        $resSmall = $this->service->calculateTax('B6_MODAL', 2000000.0, ['has_npwp' => true]);
+        $this->assertEquals(0.0, $resSmall['ppn']);
+        $this->assertEquals(0.0, $resSmall['pph22']);
+        $this->assertTrue($this->service->validateTaxCompliance(2000000.0, $resSmall));
+
+        $resLarge = $this->service->calculateTax('B6_MODAL', 2220000.0, ['has_npwp' => true]);
+        $this->assertEquals(2000000.0, $resLarge['dpp']);
+        $this->assertEquals(220000.0, $resLarge['ppn']);
+        $this->assertEquals(30000.0, $resLarge['pph22']);
+        $this->assertEquals(1970000.0, $resLarge['nilai_neto']);
+        $this->assertTrue($this->service->validateTaxCompliance(2220000.0, $resLarge));
     }
 
     /**
@@ -265,7 +332,10 @@ class TaxCalculationTest extends TestCase
             ['B1_ATK', 3450000.0, ['has_npwp' => false]],
             ['B2_MAMIN', 1850000.0, []],
             ['B3_HONOR', 4500000.0, ['golongan_asn' => 'GOLONGAN_IV']],
-            ['B4_PERJADIN', 2500000.0, ['has_npwp' => false]],
+            ['B3_HONOR', 2000000.0, ['golongan_asn' => 'NON_ASN']],
+            ['B4_PERJADIN', 2500000.0, ['has_npwp' => false, 'is_sewa_kendaraan' => true]],
+            ['B5_PEMELIHARAAN', 3330000.0, ['has_npwp' => true]],
+            ['B6_MODAL', 6660000.0, ['has_npwp' => false]],
         ];
 
         foreach ($testCases as [$kategori, $bruto, $opts]) {
