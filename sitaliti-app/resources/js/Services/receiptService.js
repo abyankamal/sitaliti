@@ -1,77 +1,83 @@
 import axios from 'axios';
-import checklistData from '@/Mocks/checklistTemplatesMock.json';
 
 const API_BASE = '/api/v1/receipts';
 
 /**
- * Service adapter untuk pengelolaan checklist dokumen dan draft kuitansi
+ * Service adapter untuk pengelolaan checklist dokumen, validasi pajak, dan siklus hidup kuitansi.
  */
 export const receiptService = {
     /**
-     * Dapatkan daftar template checklist dokumen wajib & pendukung berdasarkan kategori (B.1 - B.6)
-     * @param {string} categoryCode Contoh: 'B.1'
+     * Dapatkan daftar template checklist dokumen wajib & pendukung dari DB berdasarkan kategori (B.1 - B.6).
+     *
+     * @param {string} categoryCode Contoh: 'B.1' atau 'B1_ATK'
      */
     async getChecklistByCategory(categoryCode) {
-        const list = checklistData[categoryCode] || checklistData['B.1'];
-        const formatted = list.map(item => ({
-            ...item,
+        const response = await axios.get(`/api/v1/master/checklist/${encodeURIComponent(categoryCode || 'B.1')}`);
+        const list = response.data?.data || [];
+
+        return list.map((item) => ({
+            id: item.id,
+            code: item.kode_item,
+            name: item.nama_item,
+            description: item.deskripsi,
+            required: Boolean(item.is_required),
             file: null,
             file_name: null,
             file_size: null,
             upload_date: null,
         }));
-        return Promise.resolve(formatted);
     },
 
     /**
-     * Simulasi validasi draft kuitansi ke backend (Contract-First)
+     * Simulasi validasi draft kuitansi & kalkulasi pajak resmi ke backend.
      */
     async validateDraft(payload) {
-        try {
-            const response = await axios.post(`${API_BASE}/validate-draft`, payload);
-            if (response.data && response.data.success) {
-                return response.data.data;
-            }
-        } catch (error) {
-            console.warn('Fallback to local draft validation:', error);
-        }
-
-        // Fallback local calculation
-        const totalNilai = (payload.items || []).reduce((acc, curr) => acc + (curr.volume * curr.harga_satuan), 0);
-        const sisaPagu = payload.budget_context?.rakContext?.sisa_dapat_digunakan || 0;
-        const isExceedingBudget = totalNilai > sisaPagu;
-        const missingMandatoryDocs = (payload.checklist || [])
-            .filter(doc => doc.required && !doc.file)
-            .map(doc => doc.name);
-
-        return {
-            success: !isExceedingBudget && missingMandatoryDocs.length === 0,
-            total_belanja: totalNilai,
-            is_exceeding_budget: isExceedingBudget,
-            missing_mandatory_docs: missingMandatoryDocs,
-            calculated_tax: {
-                ppn: payload.tax_settings?.apply_ppn ? Math.round(totalNilai * 0.11) : 0,
-                pph21: payload.tax_settings?.pph21_rate ? Math.round(totalNilai * (payload.tax_settings.pph21_rate / 100)) : 0,
-                pph22: payload.tax_settings?.apply_pph22 ? Math.round(totalNilai * 0.015) : 0,
-                pph23: payload.tax_settings?.apply_pph23 ? Math.round(totalNilai * 0.02) : 0,
-            }
-        };
+        const response = await axios.post(`${API_BASE}/validate-draft`, payload);
+        return response.data?.data;
     },
 
     /**
-     * Simpan kuitansi draft ke backend database
+     * Simpan kuitansi draft ke backend database.
      */
     async storeReceipt(formData) {
         const response = await axios.post(API_BASE, formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
-            }
+            },
         });
         return response.data;
     },
 
     /**
-     * Submit kuitansi ke PPTK
+     * Perbarui kuitansi (DRAFT, REVISI_MINOR, REVISI_MAYOR).
+     */
+    async updateReceipt(receiptId, formData) {
+        const response = await axios.post(`${API_BASE}/${receiptId}/update`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+        return response.data;
+    },
+
+    /**
+     * Hapus satu lampiran kuitansi.
+     */
+    async deleteAttachment(receiptId, attachmentId) {
+        const response = await axios.delete(`${API_BASE}/${receiptId}/attachments/${attachmentId}`);
+        return response.data;
+    },
+
+    /**
+     * Kirim ulang kuitansi REVISI_MINOR ke Verifikator.
+     */
+    async resubmitRevision(receiptId) {
+        const response = await axios.post(`${API_BASE}/${receiptId}/resubmit-revision`);
+        return response.data;
+    },
+
+    /**
+     * Submit kuitansi ke PPTK.
      */
     async submitReceipt(receiptId) {
         const response = await axios.post(`${API_BASE}/${receiptId}/submit`);
@@ -79,7 +85,7 @@ export const receiptService = {
     },
 
     /**
-     * Persetujuan kuitansi oleh PPTK
+     * Persetujuan kuitansi oleh PPTK.
      */
     async approveByPptk(receiptId, catatan = null) {
         const response = await axios.post(`${API_BASE}/${receiptId}/pptk-approve`, { catatan });
@@ -87,7 +93,7 @@ export const receiptService = {
     },
 
     /**
-     * Penolakan kuitansi oleh PPTK (mengembalikan ke DRAFT & melepaskan pagu)
+     * Penolakan kuitansi oleh PPTK (mengembalikan ke DRAFT & melepaskan pagu).
      */
     async rejectByPptk(receiptId, alasan) {
         const response = await axios.post(`${API_BASE}/${receiptId}/pptk-reject`, { alasan });
@@ -95,7 +101,7 @@ export const receiptService = {
     },
 
     /**
-     * Otorisasi kuitansi oleh Lurah (menuju MENUNGGU_VERIFIKASI)
+     * Otorisasi kuitansi oleh Lurah (menuju MENUNGGU_VERIFIKASI).
      */
     async approveByLurah(receiptId, catatan = null) {
         const response = await axios.post(`${API_BASE}/${receiptId}/lurah-approve`, { catatan });
@@ -103,7 +109,7 @@ export const receiptService = {
     },
 
     /**
-     * Penolakan kuitansi oleh Lurah (mengembalikan ke DRAFT & melepaskan pagu)
+     * Penolakan kuitansi oleh Lurah (mengembalikan ke DRAFT & melepaskan pagu).
      */
     async rejectByLurah(receiptId, alasan) {
         const response = await axios.post(`${API_BASE}/${receiptId}/lurah-reject`, { alasan });
@@ -111,10 +117,10 @@ export const receiptService = {
     },
 
     /**
-     * Mengambil riwayat mutasi audit trail kuitansi
+     * Mengambil riwayat mutasi audit trail kuitansi.
      */
     async getHistory(receiptId) {
         const response = await axios.get(`${API_BASE}/${receiptId}/history`);
         return response.data?.data || [];
-    }
+    },
 };

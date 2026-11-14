@@ -40,6 +40,20 @@ const rejectMode = ref('PPTK'); // 'PPTK' | 'LURAH'
 const rejectReason = ref('');
 const rejectError = ref('');
 
+// State Modal Konfirmasi Aksi & Toast In-App (menggantikan alert/confirm/prompt)
+const isActionModalOpen = ref(false);
+const actionModalMode = ref(''); // 'SUBMIT_PPTK' | 'PPTK_APPROVE' | 'LURAH_APPROVE'
+const actionNote = ref('');
+const actionModalError = ref('');
+const drawerToast = ref({ show: false, type: 'success', message: '' });
+
+function showDrawerToast(message, type = 'success') {
+    drawerToast.value = { show: true, type, message };
+    setTimeout(() => {
+        drawerToast.value.show = false;
+    }, 4500);
+}
+
 // Load detail kuitansi saat receiptId berubah atau drawer dibuka
 watch(
     () => [props.show, props.receiptId],
@@ -96,67 +110,57 @@ onUnmounted(() => {
     window.removeEventListener('keydown', handleKeyDown);
 });
 
-// Aksi Operator: Submit ke PPTK
-async function handleOperatorSubmit() {
+function openActionModal(mode) {
     if (!receipt.value || isActionLoading.value) return;
-    if (!confirm(`Ajukan kuitansi ${receipt.value.nomor_kuitansi} ke PPTK untuk diverifikasi?`)) return;
-
-    isActionLoading.value = true;
-    try {
-        const response = await axios.post(`/api/v1/receipts/${receipt.value.id}/submit`);
-        if (response.data?.success) {
-            alert('Kuitansi berhasil diajukan ke PPTK. Pagu anggaran kas telah dikunci.');
-            emit('refresh');
-            await fetchReceiptDetail(receipt.value.id);
-        }
-    } catch (err) {
-        alert(err.response?.data?.error?.message || err.response?.data?.message || 'Gagal mengajukan kuitansi.');
-    } finally {
-        isActionLoading.value = false;
+    actionModalMode.value = mode;
+    actionModalError.value = '';
+    if (mode === 'PPTK_APPROVE') {
+        actionNote.value = 'Sesuai dengan spesifikasi teknis dan ketersediaan anggaran.';
+    } else if (mode === 'LURAH_APPROVE') {
+        actionNote.value = 'Disetujui dan diotorisasi oleh Lurah.';
+    } else {
+        actionNote.value = '';
     }
+    isActionModalOpen.value = true;
 }
 
-// Aksi PPTK: Setujui Kuitansi
-async function handlePptkApprove() {
+async function handleActionConfirm() {
     if (!receipt.value || isActionLoading.value) return;
-    const catatan = prompt('Masukkan catatan persetujuan teknis (opsional):', 'Sesuai dengan spesifikasi teknis dan ketersediaan anggaran.');
-    if (catatan === null) return; // User cancel
-
     isActionLoading.value = true;
+    actionModalError.value = '';
+
     try {
-        const response = await axios.post(`/api/v1/receipts/${receipt.value.id}/pptk-approve`, {
-            catatan: catatan || 'Disetujui oleh PPTK',
-        });
-        if (response.data?.success) {
-            alert('Kuitansi disetujui PPTK dan berhasil diteruskan ke tahap berikutnya.');
-            emit('refresh');
-            await fetchReceiptDetail(receipt.value.id);
+        if (actionModalMode.value === 'SUBMIT_PPTK') {
+            const response = await axios.post(`/api/v1/receipts/${receipt.value.id}/submit`);
+            if (response.data?.success) {
+                isActionModalOpen.value = false;
+                showDrawerToast('Kuitansi berhasil diajukan ke PPTK. Pagu anggaran kas telah dikunci.');
+                emit('refresh');
+                await fetchReceiptDetail(receipt.value.id);
+            }
+        } else if (actionModalMode.value === 'PPTK_APPROVE') {
+            const response = await axios.post(`/api/v1/receipts/${receipt.value.id}/pptk-approve`, {
+                catatan: actionNote.value.trim() || 'Disetujui oleh PPTK',
+            });
+            if (response.data?.success) {
+                isActionModalOpen.value = false;
+                showDrawerToast('Kuitansi disetujui PPTK dan berhasil diteruskan ke tahap berikutnya.');
+                emit('refresh');
+                await fetchReceiptDetail(receipt.value.id);
+            }
+        } else if (actionModalMode.value === 'LURAH_APPROVE') {
+            const response = await axios.post(`/api/v1/receipts/${receipt.value.id}/lurah-approve`, {
+                catatan: actionNote.value.trim() || 'Disetujui oleh Lurah',
+            });
+            if (response.data?.success) {
+                isActionModalOpen.value = false;
+                showDrawerToast('Kuitansi berhasil diotorisasi Lurah dan diteruskan ke Tim Verifikator Kecamatan.');
+                emit('refresh');
+                await fetchReceiptDetail(receipt.value.id);
+            }
         }
     } catch (err) {
-        alert(err.response?.data?.error?.message || err.response?.data?.message || 'Gagal menyetujui kuitansi.');
-    } finally {
-        isActionLoading.value = false;
-    }
-}
-
-// Aksi Lurah: Otorisasi Kuitansi
-async function handleLurahApprove() {
-    if (!receipt.value || isActionLoading.value) return;
-    const catatan = prompt('Masukkan catatan otorisasi Lurah / KPA (opsional):', 'Disetujui dan diotorisasi oleh Lurah.');
-    if (catatan === null) return; // User cancel
-
-    isActionLoading.value = true;
-    try {
-        const response = await axios.post(`/api/v1/receipts/${receipt.value.id}/lurah-approve`, {
-            catatan: catatan || 'Disetujui oleh Lurah',
-        });
-        if (response.data?.success) {
-            alert('Kuitansi berhasil diotorisasi Lurah dan diteruskan ke Tim Verifikator Kecamatan.');
-            emit('refresh');
-            await fetchReceiptDetail(receipt.value.id);
-        }
-    } catch (err) {
-        alert(err.response?.data?.error?.message || err.response?.data?.message || 'Gagal mengotorisasi kuitansi.');
+        actionModalError.value = err.response?.data?.error?.message || err.response?.data?.message || 'Gagal memproses aksi kuitansi.';
     } finally {
         isActionLoading.value = false;
     }
@@ -187,11 +191,8 @@ async function handleRejectConfirm() {
             alasan: rejectReason.value.trim(),
         });
         if (response.data?.success) {
-            const successMsg = rejectMode.value === 'LURAH'
-                ? 'Kuitansi berhasil dikembalikan ke PPTK untuk perbaikan teknis.'
-                : 'Kuitansi berhasil dikembalikan ke DRAFT dan pagu anggaran kas telah dipulihkan.';
-            alert(successMsg);
             isRejectModalOpen.value = false;
+            showDrawerToast('Kuitansi berhasil dikembalikan ke DRAFT Operator & pagu anggaran kas telah dipulihkan.');
             emit('refresh');
             await fetchReceiptDetail(receipt.value.id);
         }
@@ -494,67 +495,90 @@ function getStatusBadge(status) {
                 </div>
 
                 <!-- Drawer Footer: Aksi Kontekstual Berdasarkan Role -->
-                <div v-if="receipt" class="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3">
-                    <GovButton @click="closeDrawer" variant="secondary" size="sm">
-                        Tutup
-                    </GovButton>
+                <div v-if="receipt" class="p-4 bg-slate-50 border-t border-slate-200 space-y-2">
+                    <div
+                        v-if="drawerToast.show"
+                        :class="[
+                            'rounded-lg border px-3 py-2 text-xs font-medium',
+                            drawerToast.type === 'error'
+                                ? 'border-red-200 bg-red-50 text-red-700'
+                                : 'border-emerald-200 bg-emerald-50 text-emerald-700',
+                        ]"
+                    >
+                        {{ drawerToast.message }}
+                    </div>
 
-                    <div class="flex items-center gap-2">
-                        <!-- Aksi Operator: Submit jika DRAFT -->
-                        <GovButton
-                            v-if="(userRole === 'OPERATOR' || userRole === 'KPA') && receipt.status === 'DRAFT'"
-                            @click="handleOperatorSubmit"
-                            variant="primary"
-                            size="sm"
-                            :disabled="isActionLoading"
-                            class="shadow-sm"
-                        >
-                            {{ isActionLoading ? 'Memproses...' : 'Ajukan ke PPTK' }}
+                    <div class="flex items-center justify-between gap-3">
+                        <GovButton @click="closeDrawer" variant="secondary" size="sm">
+                            Tutup
                         </GovButton>
 
-                        <!-- Aksi PPTK: Quick Approve & Reject jika MENUNGGU_PPTK -->
-                        <template v-if="(userRole === 'PPTK' || userRole === 'KPA') && receipt.status === 'MENUNGGU_PPTK'">
-                            <GovButton
-                                @click="openRejectModal('PPTK')"
-                                variant="danger"
-                                size="sm"
-                                :disabled="isActionLoading"
+                        <div class="flex flex-wrap items-center justify-end gap-2">
+                            <!-- Aksi Operator: Edit / Revisi untuk DRAFT, REVISI_MINOR, REVISI_MAYOR -->
+                            <Link
+                                v-if="(userRole === 'OPERATOR' || userRole === 'KPA') && ['DRAFT', 'REVISI_MINOR', 'REVISI_MAYOR'].includes(receipt.status)"
+                                :href="`/receipts/${receipt.id}/edit`"
                             >
-                                Tolak / Revisi
-                            </GovButton>
+                                <GovButton variant="secondary" size="sm">
+                                    Perbaiki / Revisi Kuitansi
+                                </GovButton>
+                            </Link>
 
+                            <!-- Aksi Operator: Submit jika DRAFT -->
                             <GovButton
-                                @click="handlePptkApprove"
+                                v-if="(userRole === 'OPERATOR' || userRole === 'KPA') && receipt.status === 'DRAFT'"
+                                @click="openActionModal('SUBMIT_PPTK')"
                                 variant="primary"
                                 size="sm"
                                 :disabled="isActionLoading"
-                                class="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                class="shadow-sm"
                             >
-                                {{ isActionLoading ? 'Memproses...' : 'Setujui PPTK' }}
-                            </GovButton>
-                        </template>
-
-                        <!-- Aksi Lurah: Otorisasi & Tolak jika MENUNGGU_LURAH -->
-                        <template v-if="(userRole === 'LURAH' || userRole === 'KPA') && receipt.status === 'MENUNGGU_LURAH'">
-                            <GovButton
-                                @click="openRejectModal('LURAH')"
-                                variant="danger"
-                                size="sm"
-                                :disabled="isActionLoading"
-                            >
-                                Tolak / Kembalikan
+                                {{ isActionLoading ? 'Memproses...' : 'Ajukan ke PPTK' }}
                             </GovButton>
 
-                            <GovButton
-                                @click="handleLurahApprove"
-                                variant="primary"
-                                size="sm"
-                                :disabled="isActionLoading"
-                                class="bg-emerald-600 hover:bg-emerald-700 text-white"
-                            >
-                                {{ isActionLoading ? 'Memproses...' : 'Otorisasi Lurah' }}
-                            </GovButton>
-                        </template>
+                            <!-- Aksi PPTK: Quick Approve & Reject jika MENUNGGU_PPTK -->
+                            <template v-if="(userRole === 'PPTK' || userRole === 'KPA') && receipt.status === 'MENUNGGU_PPTK'">
+                                <GovButton
+                                    @click="openRejectModal('PPTK')"
+                                    variant="danger"
+                                    size="sm"
+                                    :disabled="isActionLoading"
+                                >
+                                    Tolak / Revisi
+                                </GovButton>
+
+                                <GovButton
+                                    @click="openActionModal('PPTK_APPROVE')"
+                                    variant="primary"
+                                    size="sm"
+                                    :disabled="isActionLoading"
+                                    class="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                >
+                                    {{ isActionLoading ? 'Memproses...' : 'Setujui PPTK' }}
+                                </GovButton>
+                            </template>
+
+                            <!-- Aksi Lurah: Otorisasi & Tolak jika MENUNGGU_LURAH -->
+                            <template v-if="(userRole === 'LURAH' || userRole === 'KPA') && receipt.status === 'MENUNGGU_LURAH'">
+                                <GovButton
+                                    @click="openRejectModal('LURAH')"
+                                    variant="danger"
+                                    size="sm"
+                                    :disabled="isActionLoading"
+                                >
+                                    Tolak / Kembalikan
+                                </GovButton>
+
+                                <GovButton
+                                    @click="openActionModal('LURAH_APPROVE')"
+                                    variant="primary"
+                                    size="sm"
+                                    :disabled="isActionLoading"
+                                    class="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                >
+                                    {{ isActionLoading ? 'Memproses...' : 'Otorisasi Lurah' }}
+                                </GovButton>
+                            </template>
 
                         <!-- Aksi Verifikator: Tautan ke Workspace Verifikasi -->
                         <Link
@@ -576,10 +600,57 @@ function getStatusBadge(status) {
                                 Unduh Lembar Kendali (PDF)
                             </GovButton>
                         </a>
+                        </div>
                     </div>
                 </div>
             </aside>
         </transition>
+
+        <!-- Modal Dialog Konfirmasi Aksi (Operator Submit / PPTK Approve / Lurah Approve) -->
+        <div v-if="isActionModalOpen" class="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+            <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 border border-slate-200">
+                <div>
+                    <h3 class="font-bold text-slate-900 text-base">
+                        {{
+                            actionModalMode === 'SUBMIT_PPTK'
+                                ? 'Ajukan Kuitansi ke PPTK'
+                                : actionModalMode === 'PPTK_APPROVE'
+                                    ? 'Persetujuan Teknis PPTK'
+                                    : 'Otorisasi Kuitansi Lurah'
+                        }}
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-1">
+                        {{
+                            actionModalMode === 'SUBMIT_PPTK'
+                                ? `Ajukan kuitansi ${receipt?.nomor_kuitansi} ke PPTK? Pagu anggaran kas akan otomatis dikunci.`
+                                : actionModalMode === 'PPTK_APPROVE'
+                                    ? 'Tambahkan catatan persetujuan teknis (opsional) sebelum meneruskan kuitansi.'
+                                    : 'Tambahkan catatan otorisasi Lurah (opsional) sebelum meneruskan ke Verifikator Kecamatan.'
+                        }}
+                    </p>
+                </div>
+
+                <div v-if="actionModalMode !== 'SUBMIT_PPTK'" class="space-y-1">
+                    <label class="text-xs font-semibold text-slate-700">Catatan Persetujuan (Opsional):</label>
+                    <textarea
+                        v-model="actionNote"
+                        rows="3"
+                        class="w-full text-xs p-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gov-navy-800/20 focus:border-gov-navy-800"
+                    ></textarea>
+                </div>
+
+                <p v-if="actionModalError" class="text-xs text-rose-600 font-medium">{{ actionModalError }}</p>
+
+                <div class="flex items-center justify-end gap-2 pt-2">
+                    <GovButton @click="isActionModalOpen = false" variant="secondary" size="sm" :disabled="isActionLoading">
+                        Batal
+                    </GovButton>
+                    <GovButton @click="handleActionConfirm" variant="primary" size="sm" :disabled="isActionLoading">
+                        {{ isActionLoading ? 'Memproses...' : 'Ya, Lanjutkan' }}
+                    </GovButton>
+                </div>
+            </div>
+        </div>
 
         <!-- Modal Dialog Penolakan (PPTK / Lurah) -->
         <div v-if="isRejectModalOpen" class="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
@@ -592,10 +663,14 @@ function getStatusBadge(status) {
                     </div>
                     <div>
                         <h3 class="font-bold text-slate-900 text-base">
-                            {{ rejectMode === 'LURAH' ? 'Kembalikan Kuitansi ke PPTK' : 'Tolak Kuitansi ke DRAFT' }}
+                            Tolak Kuitansi ke DRAFT
                         </h3>
                         <p class="text-xs text-slate-500">
-                            {{ rejectMode === 'LURAH' ? 'Kuitansi akan dikembalikan ke status MENUNGGU_PPTK untuk revisi teknis.' : 'Pagu anggaran kas yang terkunci akan otomatis dipulihkan.' }}
+                            {{
+                                rejectMode === 'LURAH'
+                                    ? 'Kuitansi akan dikembalikan ke DRAFT Operator & pagu anggaran kas yang terkunci otomatis dipulihkan.'
+                                    : 'Pagu anggaran kas yang terkunci akan otomatis dipulihkan.'
+                            }}
                         </p>
                     </div>
                 </div>
