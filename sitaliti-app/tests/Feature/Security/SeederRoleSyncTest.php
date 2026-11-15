@@ -7,6 +7,8 @@ use App\Models\UnitKerja;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
+use RuntimeException;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -120,6 +122,73 @@ class SeederRoleSyncTest extends TestCase
             $this->assertEquals($role, $user->role);
             $this->assertEquals($kecamatan->id, $user->unit_kerja_id);
             $this->assertTrue($user->hasRole($role));
+        }
+    }
+
+    public function test_reseeding_does_not_overwrite_existing_user_password(): void
+    {
+        $user = User::where('email', 'operator@tarkid.garutkab.go.id')->firstOrFail();
+        $user->update(['password' => Hash::make('MyCustomStrongPass!99')]);
+
+        $this->seed(DatabaseSeeder::class);
+
+        $user->refresh();
+        $this->assertTrue(Hash::check('MyCustomStrongPass!99', $user->password));
+        $this->assertFalse(Hash::check('password', $user->password));
+    }
+
+    public function test_changing_user_role_revokes_previous_spatie_role(): void
+    {
+        $user = User::where('email', 'operator@tarkid.garutkab.go.id')->firstOrFail();
+        $this->assertTrue($user->hasRole('OPERATOR'));
+
+        $user->update(['role' => 'PPTK']);
+        $user->refresh();
+
+        $this->assertTrue($user->hasRole('PPTK'));
+        $this->assertFalse($user->hasRole('OPERATOR'));
+        $this->assertCount(1, $user->roles);
+    }
+
+    public function test_production_seeder_rejects_empty_or_default_password(): void
+    {
+        $originalEnv = app()->environment();
+        app()->detectEnvironment(fn () => 'production');
+
+        try {
+            config(['app.seed_initial_password' => null]);
+            $this->expectException(RuntimeException::class);
+            $this->artisan('db:seed', ['--force' => true]);
+        } finally {
+            app()->detectEnvironment(fn () => $originalEnv);
+        }
+    }
+
+    public function test_production_seeder_skips_test_user_and_uses_configured_password(): void
+    {
+        User::where('email', 'test@example.com')->delete();
+
+        $originalEnv = app()->environment();
+        app()->detectEnvironment(fn () => 'production');
+
+        try {
+            config(['app.seed_initial_password' => 'ProdInitialPass#2026']);
+            $this->artisan('db:seed', ['--force' => true])->assertSuccessful();
+
+            $this->assertNull(User::where('email', 'test@example.com')->first());
+
+            // Akun baru (jika belum ada) akan memakai configured password;
+            // akun yang sudah ada di setUp tetap tidak tertimpa password-nya.
+            $operator = User::where('email', 'operator@tarkid.garutkab.go.id')->firstOrFail();
+            $this->assertTrue(Hash::check('password', $operator->password));
+
+            // Verifikasi pembuatan user baru di production memakai configured password
+            $operator->delete();
+            $this->artisan('db:seed', ['--force' => true])->assertSuccessful();
+            $recreated = User::where('email', 'operator@tarkid.garutkab.go.id')->firstOrFail();
+            $this->assertTrue(Hash::check('ProdInitialPass#2026', $recreated->password));
+        } finally {
+            app()->detectEnvironment(fn () => $originalEnv);
         }
     }
 }

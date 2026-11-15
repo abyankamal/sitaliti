@@ -123,4 +123,16 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Seed Initial Password
+    |--------------------------------------------------------------------------
+    |
+    | Password awal untuk pembuatan akun resmi saat DatabaseSeeder dijalankan
+    | di environment non-local/non-testing (kompatibel dengan config:cache).
+    |
+    */
+
+    'seed_initial_password' => env('SEED_INITIAL_PASSWORD'),
+
 ];

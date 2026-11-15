@@ -151,16 +151,37 @@ class DatabaseSeeder extends Seeder
             ],
         ];
 
+        $isLocalOrTesting = app()->environment(['local', 'testing']);
+        $seedPassword = config('app.seed_initial_password');
+
+        if (! $isLocalOrTesting && (empty($seedPassword) || $seedPassword === 'password')) {
+            throw new \RuntimeException('SEED_INITIAL_PASSWORD wajib disetel (dan bukan "password") pada environment non-local.');
+        }
+
+        $plainPassword = is_string($seedPassword) && $seedPassword !== '' ? $seedPassword : 'password';
+
         foreach ($officialUsers as $userData) {
-            $user = User::updateOrCreate(
-                ['email' => $userData['email']],
-                [
+            if (! $isLocalOrTesting && $userData['email'] === 'test@example.com') {
+                continue;
+            }
+
+            $user = User::where('email', $userData['email'])->first();
+
+            if ($user) {
+                $user->update([
                     'name' => $userData['name'],
                     'role' => $userData['role'],
                     'unit_kerja_id' => $userData['unit_kerja_id'] ?? null,
-                    'password' => Hash::make('password'),
-                ]
-            );
+                ]);
+            } else {
+                $user = User::create([
+                    'name' => $userData['name'],
+                    'email' => $userData['email'],
+                    'role' => $userData['role'],
+                    'unit_kerja_id' => $userData['unit_kerja_id'] ?? null,
+                    'password' => Hash::make($plainPassword),
+                ]);
+            }
             $user->syncSpatieRole();
 
             // Setup penugasan subkegiatan PPTK bila didefinisikan

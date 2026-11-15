@@ -125,8 +125,8 @@ class User extends Authenticatable
                 $role->syncPermissions($defaultPerms);
             }
 
-            if (! $this->hasRole($this->role)) {
-                $this->assignRole($this->role);
+            if (! $this->hasRole($this->role) || $this->roles()->count() !== 1) {
+                $this->syncRoles([$this->role]);
             }
         }
     }
