@@ -137,7 +137,7 @@ class VerificationService implements VerificationServiceInterface
      */
     public function getDetailForWorkspace(string $kuitansiId): array
     {
-        $kuitansi = Kuitansi::with([
+        $kuitansi = Kuitansi::resolveOrFailByIdOrNumber($kuitansiId, [
             'unitKerja',
             'rekening',
             'creator',
@@ -146,10 +146,7 @@ class VerificationService implements VerificationServiceInterface
             'pajak',
             'lampiran',
             'checklistVerifikasi.checklistItem',
-        ])
-            ->where('id', $kuitansiId)
-            ->orWhere('nomor_kuitansi', $kuitansiId)
-            ->firstOrFail();
+        ]);
 
         $kategori = $kuitansi->rekening?->kategori_belanja ?? 'B.1';
 
@@ -226,10 +223,7 @@ class VerificationService implements VerificationServiceInterface
         $checklistResults = $payload['checklist_results'] ?? [];
 
         return DB::transaction(function () use ($kuitansiId, $action, $notes, $checklistResults, $verifierUserId) {
-            $kuitansi = Kuitansi::where('id', $kuitansiId)
-                ->orWhere('nomor_kuitansi', $kuitansiId)
-                ->lockForUpdate()
-                ->firstOrFail();
+            $kuitansi = Kuitansi::resolveOrFailByIdOrNumber($kuitansiId, lockForUpdate: true);
 
             // Anti-bypass guard: Kuitansi harus disetujui PPTK (dan diotorisasi Lurah untuk Kelurahan) terlebih dahulu sebelum diverifikasi
             if (in_array($kuitansi->status, ['DRAFT', 'MENUNGGU_PPTK'], true)) {

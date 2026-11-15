@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -57,6 +58,49 @@ class PengajuanSpj extends Model
     public function ppk(): BelongsTo
     {
         return $this->belongsTo(User::class, 'ppk_skpd_id');
+    }
+
+    /**
+     * Mencari bundel SPJ berdasarkan ID numerik (diprioritaskan) atau nomor_bundel
+     * secara aman di PostgreSQL maupun SQLite tanpa risiko SQLSTATE[22P02].
+     *
+     * @param  array<int, string>  $with
+     */
+    public static function resolveByIdOrNumber(string|int $identifier, array $with = [], bool $lockForUpdate = false): ?self
+    {
+        $key = (string) $identifier;
+
+        if (preg_match('/^[1-9][0-9]*$/', $key) === 1 && filter_var($key, FILTER_VALIDATE_INT) !== false) {
+            $byIdQuery = static::query()->with($with)->where('id', (int) $key);
+            if ($lockForUpdate) {
+                $byIdQuery->lockForUpdate();
+            }
+
+            $byId = $byIdQuery->first();
+            if ($byId) {
+                return $byId;
+            }
+        }
+
+        $byNumberQuery = static::query()->with($with)->where('nomor_bundel', $key);
+        if ($lockForUpdate) {
+            $byNumberQuery->lockForUpdate();
+        }
+
+        return $byNumberQuery->first();
+    }
+
+    /**
+     * @param  array<int, string>  $with
+     */
+    public static function resolveOrFailByIdOrNumber(string|int $identifier, array $with = [], bool $lockForUpdate = false): self
+    {
+        $record = static::resolveByIdOrNumber($identifier, $with, $lockForUpdate);
+        if (! $record) {
+            throw (new ModelNotFoundException)->setModel(static::class, [$identifier]);
+        }
+
+        return $record;
     }
 
     public function items(): HasMany

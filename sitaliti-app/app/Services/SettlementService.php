@@ -88,10 +88,28 @@ class SettlementService implements SettlementServiceInterface
         ) {
             $nomorBundel = $data['nomor_bundel'] ?? $this->generateNextNomorBundel($prefix);
             // 1. Validasi seluruh kuitansi: harus LOLOS_VERIFIKASI dan belum aktif di bundel lain
-            $receipts = Kuitansi::where(function ($q) use ($kuitansiIds) {
-                $q->whereIn('id', $kuitansiIds)
-                    ->orWhereIn('nomor_kuitansi', $kuitansiIds);
-            })->get();
+            $numericIds = [];
+            $nomorList = [];
+            foreach ($kuitansiIds as $identifier) {
+                $str = (string) $identifier;
+                if (preg_match('/^[1-9][0-9]*$/', $str) === 1 && filter_var($str, FILTER_VALIDATE_INT) !== false) {
+                    $numericIds[] = (int) $str;
+                } else {
+                    $nomorList[] = $str;
+                }
+            }
+
+            $receipts = ($numericIds === [] && $nomorList === [])
+                ? collect()
+                : Kuitansi::where(function ($q) use ($numericIds, $nomorList) {
+                    if ($numericIds !== []) {
+                        $q->whereIn('id', $numericIds);
+                    }
+                    if ($nomorList !== []) {
+                        $method = $numericIds !== [] ? 'orWhereIn' : 'whereIn';
+                        $q->{$method}('nomor_kuitansi', $nomorList);
+                    }
+                })->get();
 
             if ($receipts->count() !== count(array_unique($kuitansiIds))) {
                 throw new InvalidArgumentException('Beberapa kuitansi yang dipilih tidak ditemukan dalam sistem.');
@@ -176,15 +194,15 @@ class SettlementService implements SettlementServiceInterface
             throw new InvalidArgumentException('Lurah hanya memiliki akses baca (read-only) dan tidak berwenang mengeluarkan kuitansi dari bundel.');
         }
 
-        $item = PengajuanSpjItem::where('pengajuan_spj_id', $bundleId)
-            ->where(function ($q) use ($kuitansiId) {
-                $q->where('kuitansi_id', $kuitansiId)
-                    ->orWhereHas('kuitansi', function ($k) use ($kuitansiId) {
-                        $k->where('nomor_kuitansi', $kuitansiId);
-                    });
-            })
-            ->where('status_item', 'AKTIF')
-            ->first();
+        $bundleRef = PengajuanSpj::resolveByIdOrNumber($bundleId);
+        $kuitansiRef = Kuitansi::resolveByIdOrNumber($kuitansiId);
+
+        $item = ($bundleRef && $kuitansiRef)
+            ? PengajuanSpjItem::where('pengajuan_spj_id', $bundleRef->id)
+                ->where('kuitansi_id', $kuitansiRef->id)
+                ->where('status_item', 'AKTIF')
+                ->first()
+            : null;
 
         if (! $item) {
             throw new InvalidArgumentException('Kuitansi tidak ditemukan dalam keadaan aktif pada bundel SPJ ini.');
@@ -228,12 +246,7 @@ class SettlementService implements SettlementServiceInterface
     public function submitForPpk(int|string $bundleId, ?User $actor = null): PengajuanSpj
     {
         return DB::transaction(function () use ($bundleId, $actor) {
-            $bundle = PengajuanSpj::where(function ($q) use ($bundleId) {
-                $q->where('id', $bundleId)
-                    ->orWhere('nomor_bundel', $bundleId);
-            })
-                ->lockForUpdate()
-                ->firstOrFail();
+            $bundle = PengajuanSpj::resolveOrFailByIdOrNumber($bundleId, lockForUpdate: true);
 
             if ($actor && $actor->isKelurahanScoped() && (int) $bundle->unit_kerja_id !== (int) $actor->unit_kerja_id) {
                 throw new InvalidArgumentException('Anda tidak berwenang mengajukan bundel SPJ dari unit kerja lain.');
@@ -267,12 +280,7 @@ class SettlementService implements SettlementServiceInterface
         }
 
         return DB::transaction(function () use ($bundleId, $checklistBagianA, $ppk) {
-            $bundle = PengajuanSpj::where(function ($q) use ($bundleId) {
-                $q->where('id', $bundleId)
-                    ->orWhere('nomor_bundel', $bundleId);
-            })
-                ->lockForUpdate()
-                ->firstOrFail();
+            $bundle = PengajuanSpj::resolveOrFailByIdOrNumber($bundleId, lockForUpdate: true);
 
             if ($bundle->status_bundel !== 'MENUNGGU_PPK') {
                 throw new InvalidArgumentException("Bundel {$bundle->nomor_bundel} harus berstatus MENUNGGU_PPK sebelum disetujui PPK. Status saat ini: {$bundle->status_bundel}.");
@@ -315,13 +323,7 @@ class SettlementService implements SettlementServiceInterface
         }
 
         return DB::transaction(function () use ($bundleId, $nomorSp2d, $nomorSpp, $tanggalSp2d, $actor) {
-            $bundle = PengajuanSpj::with(['activeItems.kuitansi'])
-                ->where(function ($q) use ($bundleId) {
-                    $q->where('id', $bundleId)
-                        ->orWhere('nomor_bundel', $bundleId);
-                })
-                ->lockForUpdate()
-                ->firstOrFail();
+            $bundle = PengajuanSpj::resolveOrFailByIdOrNumber($bundleId, ['activeItems.kuitansi'], lockForUpdate: true);
 
             if ($bundle->status_bundel === 'SYNCED_SIPD') {
                 throw new InvalidArgumentException("Bundel {$bundle->nomor_bundel} sudah berstatus SYNCED_SIPD dan tidak dapat dicatat ulang (Proteksi Anti-Double Settlement).");
@@ -433,7 +435,7 @@ class SettlementService implements SettlementServiceInterface
      */
     public function getBundleDetail(int|string $bundleId, ?User $actor = null): array
     {
-        $bundle = PengajuanSpj::with([
+        $bundle = PengajuanSpj::resolveOrFailByIdOrNumber($bundleId, [
             'unitKerja',
             'creator',
             'ppk',
@@ -441,10 +443,7 @@ class SettlementService implements SettlementServiceInterface
             'activeItems.kuitansi.items',
             'activeItems.kuitansi.pajak',
             'activeItems.kuitansi.lampiran',
-        ])
-            ->where('id', $bundleId)
-            ->orWhere('nomor_bundel', $bundleId)
-            ->firstOrFail();
+        ]);
 
         if ($actor && $actor->isKelurahanScoped()) {
             if ((int) $bundle->unit_kerja_id !== (int) $actor->unit_kerja_id) {

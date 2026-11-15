@@ -160,7 +160,7 @@ class ReceiptService
     public function updateReceipt(int|string $kuitansiId, array $data, array $attachments = [], ?User $actor = null): Kuitansi
     {
         return DB::transaction(function () use ($kuitansiId, $data, $attachments, $actor) {
-            $kuitansi = Kuitansi::where('id', $kuitansiId)->lockForUpdate()->firstOrFail();
+            $kuitansi = Kuitansi::resolveOrFailByIdOrNumber($kuitansiId, lockForUpdate: true);
 
             if (! in_array($kuitansi->status, ['DRAFT', 'REVISI_MINOR', 'REVISI_MAYOR'], true)) {
                 throw new InvalidArgumentException("Kuitansi dengan status '{$kuitansi->status}' tidak dapat diedit.");
@@ -241,7 +241,7 @@ class ReceiptService
     public function deleteAttachment(int|string $kuitansiId, int $attachmentId, ?User $actor = null): void
     {
         DB::transaction(function () use ($kuitansiId, $attachmentId, $actor) {
-            $kuitansi = Kuitansi::where('id', $kuitansiId)->lockForUpdate()->firstOrFail();
+            $kuitansi = Kuitansi::resolveOrFailByIdOrNumber($kuitansiId, lockForUpdate: true);
 
             if (! in_array($kuitansi->status, ['DRAFT', 'REVISI_MINOR', 'REVISI_MAYOR'], true)) {
                 throw new InvalidArgumentException("Lampiran kuitansi dengan status '{$kuitansi->status}' tidak dapat dihapus.");
@@ -275,7 +275,7 @@ class ReceiptService
     public function resubmitMinorRevision(int|string $kuitansiId, ?User $actor = null): Kuitansi
     {
         return DB::transaction(function () use ($kuitansiId, $actor) {
-            $kuitansi = Kuitansi::where('id', $kuitansiId)->lockForUpdate()->firstOrFail();
+            $kuitansi = Kuitansi::resolveOrFailByIdOrNumber($kuitansiId, lockForUpdate: true);
 
             if ($kuitansi->status !== 'REVISI_MINOR') {
                 throw new InvalidArgumentException('Hanya kuitansi berstatus REVISI_MINOR yang dapat dikirim ulang ke Verifikator.');
@@ -308,7 +308,7 @@ class ReceiptService
     public function submitToPptk(int|string $kuitansiId, ?User $actor = null): Kuitansi
     {
         return DB::transaction(function () use ($kuitansiId, $actor) {
-            $kuitansi = Kuitansi::where('id', $kuitansiId)->lockForUpdate()->firstOrFail();
+            $kuitansi = Kuitansi::resolveOrFailByIdOrNumber($kuitansiId, lockForUpdate: true);
 
             if (! in_array($kuitansi->status, ['DRAFT', 'REVISI_MAYOR'])) {
                 throw new InvalidArgumentException('Hanya kuitansi berstatus DRAFT atau REVISI_MAYOR yang dapat diajukan ke PPTK.');
@@ -353,7 +353,7 @@ class ReceiptService
     public function approveByPptk(int|string $kuitansiId, ?string $catatan = null, ?User $actor = null): Kuitansi
     {
         return DB::transaction(function () use ($kuitansiId, $catatan, $actor) {
-            $kuitansi = Kuitansi::where('id', $kuitansiId)->lockForUpdate()->firstOrFail();
+            $kuitansi = Kuitansi::resolveOrFailByIdOrNumber($kuitansiId, lockForUpdate: true);
 
             if ($kuitansi->status !== 'MENUNGGU_PPTK') {
                 throw new InvalidArgumentException('Hanya kuitansi berstatus MENUNGGU_PPTK yang dapat disetujui oleh PPTK.');
@@ -398,7 +398,7 @@ class ReceiptService
     public function rejectByPptk(int|string $kuitansiId, string $alasan, ?User $actor = null): Kuitansi
     {
         return DB::transaction(function () use ($kuitansiId, $alasan, $actor) {
-            $kuitansi = Kuitansi::where('id', $kuitansiId)->lockForUpdate()->firstOrFail();
+            $kuitansi = Kuitansi::resolveOrFailByIdOrNumber($kuitansiId, lockForUpdate: true);
 
             if ($kuitansi->status !== 'MENUNGGU_PPTK') {
                 throw new InvalidArgumentException('Hanya kuitansi berstatus MENUNGGU_PPTK yang dapat ditolak oleh PPTK.');
@@ -451,7 +451,7 @@ class ReceiptService
     public function approveByLurah(int|string $kuitansiId, ?string $catatan = null, ?User $actor = null): Kuitansi
     {
         return DB::transaction(function () use ($kuitansiId, $catatan, $actor) {
-            $kuitansi = Kuitansi::where('id', $kuitansiId)->lockForUpdate()->firstOrFail();
+            $kuitansi = Kuitansi::resolveOrFailByIdOrNumber($kuitansiId, lockForUpdate: true);
 
             if ($kuitansi->status !== 'MENUNGGU_LURAH') {
                 throw new InvalidArgumentException('Hanya kuitansi berstatus MENUNGGU_LURAH yang dapat disetujui oleh Lurah.');
@@ -498,7 +498,7 @@ class ReceiptService
     public function rejectByLurah(int|string $kuitansiId, string $alasan, ?User $actor = null): Kuitansi
     {
         return DB::transaction(function () use ($kuitansiId, $alasan, $actor) {
-            $kuitansi = Kuitansi::where('id', $kuitansiId)->lockForUpdate()->firstOrFail();
+            $kuitansi = Kuitansi::resolveOrFailByIdOrNumber($kuitansiId, lockForUpdate: true);
 
             if ($kuitansi->status !== 'MENUNGGU_LURAH') {
                 throw new InvalidArgumentException('Hanya kuitansi berstatus MENUNGGU_LURAH yang dapat ditolak oleh Lurah.');

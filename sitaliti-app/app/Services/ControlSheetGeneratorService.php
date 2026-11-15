@@ -22,7 +22,7 @@ class ControlSheetGeneratorService implements ControlSheetGeneratorServiceInterf
      */
     public function generateData(string $kuitansiIdOrNumber): array
     {
-        $kuitansi = Kuitansi::with([
+        $kuitansi = Kuitansi::resolveOrFailByIdOrNumber($kuitansiIdOrNumber, [
             'unitKerja',
             'rekening',
             'items',
@@ -30,10 +30,7 @@ class ControlSheetGeneratorService implements ControlSheetGeneratorServiceInterf
             'creator',
             'verifikator',
             'checklistVerifikasi.checklistItem',
-        ])
-            ->where('id', $kuitansiIdOrNumber)
-            ->orWhere('nomor_kuitansi', $kuitansiIdOrNumber)
-            ->firstOrFail();
+        ]);
 
         $validStatuses = ['LOLOS_VERIFIKASI', 'TERVERIFIKASI', 'DIBUNDEL', 'SELESAI_SP2D', 'SYNCED_SIPD'];
         if (! in_array($kuitansi->status, $validStatuses, true)) {
