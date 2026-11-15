@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\BudgetApiController;
 use App\Http\Controllers\Api\MasterDataApiController;
 use App\Http\Controllers\Api\ReceiptApiController;
+use App\Http\Controllers\Api\ReceiptWorkflowApiController;
 use App\Http\Controllers\Api\SettlementApiController;
 use App\Http\Controllers\Api\UserManagementApiController;
 use App\Http\Controllers\Api\VerificationApiController;
@@ -43,17 +44,17 @@ Route::prefix('v1')->group(function () {
                 ->middleware('permission:kuitansi.edit');
             Route::delete('{id}/attachments/{attachmentId}', [ReceiptApiController::class, 'deleteAttachment'])
                 ->middleware('permission:kuitansi.edit');
-            Route::post('{id}/resubmit-revision', [ReceiptApiController::class, 'resubmitRevision'])
+            Route::post('{id}/resubmit-revision', [ReceiptWorkflowApiController::class, 'resubmitRevision'])
                 ->middleware('permission:kuitansi.submit_pptk|kuitansi.edit');
-            Route::post('{id}/submit', [ReceiptApiController::class, 'submit'])
+            Route::post('{id}/submit', [ReceiptWorkflowApiController::class, 'submit'])
                 ->middleware('permission:kuitansi.submit_pptk');
-            Route::post('{id}/pptk-approve', [ReceiptApiController::class, 'pptkApprove'])
+            Route::post('{id}/pptk-approve', [ReceiptWorkflowApiController::class, 'pptkApprove'])
                 ->middleware('permission:kuitansi.pptk_approve');
-            Route::post('{id}/pptk-reject', [ReceiptApiController::class, 'pptkReject'])
+            Route::post('{id}/pptk-reject', [ReceiptWorkflowApiController::class, 'pptkReject'])
                 ->middleware('permission:kuitansi.pptk_reject');
-            Route::post('{id}/lurah-approve', [ReceiptApiController::class, 'lurahApprove'])
+            Route::post('{id}/lurah-approve', [ReceiptWorkflowApiController::class, 'lurahApprove'])
                 ->middleware('permission:kuitansi.lurah_approve');
-            Route::post('{id}/lurah-reject', [ReceiptApiController::class, 'lurahReject'])
+            Route::post('{id}/lurah-reject', [ReceiptWorkflowApiController::class, 'lurahReject'])
                 ->middleware('permission:kuitansi.lurah_reject');
             Route::get('{id}', [ReceiptApiController::class, 'show'])
                 ->middleware('permission:kuitansi.view');

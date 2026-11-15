@@ -446,21 +446,24 @@ function openReceiptDetail(receipt) {
                     </div>
 
                     <div class="flex items-center space-x-1">
-                        <Link
-                            v-for="(link, i) in receipts.links"
-                            :key="i"
-                            :href="link.url || '#'"
-                            preserve-scroll
-                            preserve-state
-                            :only="['receipts']"
-                            class="px-3 py-1 text-xs rounded-md font-medium transition-colors"
-                            :class="[
-                                link.active
-                                    ? 'bg-gov-navy-900 text-white font-bold'
-                                    : (link.url ? 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100' : 'bg-slate-100 text-slate-400 cursor-not-allowed')
-                            ]"
-                            v-html="link.label"
-                        />
+                        <!-- Aman: link.label berasal murni dari paginator bawaan Laravel (&laquo; / &raquo;), bukan input pengguna -->
+                        <template v-for="(link, i) in receipts.links" :key="i">
+                            <Link
+                                v-if="link.url"
+                                :href="link.url"
+                                preserve-scroll
+                                preserve-state
+                                :only="['receipts']"
+                                class="px-3 py-1 text-xs rounded-md font-medium transition-colors"
+                                :class="link.active ? 'bg-gov-navy-900 text-white font-bold' : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'"
+                                v-html="link.label"
+                            />
+                            <span
+                                v-else
+                                class="px-3 py-1 text-xs rounded-md font-medium bg-slate-100 text-slate-400 cursor-not-allowed"
+                                v-html="link.label"
+                            />
+                        </template>
                     </div>
                 </div>
             </div>
