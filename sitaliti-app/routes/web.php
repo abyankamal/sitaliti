@@ -15,7 +15,9 @@ Route::get('/', function () {
 });
 
 // Rute Verifikasi Publik (Scan QR Code Fisik - Bebas Login)
-Route::get('/verify/{qr_token}', [QrVerificationPublicController::class, 'show'])->name('public.verify');
+Route::get('/verify/{qr_token}', [QrVerificationPublicController::class, 'show'])
+    ->middleware('throttle:30,1')
+    ->name('public.verify');
 
 // Rute Internal Terproteksi Autentikasi & RBAC
 Route::middleware('auth')->group(function () {

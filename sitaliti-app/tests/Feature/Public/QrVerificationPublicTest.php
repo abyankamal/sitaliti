@@ -11,6 +11,7 @@ use App\Models\UnitKerja;
 use App\Models\User;
 use Database\Seeders\UnitKerjaSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -197,5 +198,18 @@ class QrVerificationPublicTest extends TestCase
         $this->assertCount(1, $sheetData['pajak']);
         $this->assertEquals('Asep Kurniawan, S.IP', $sheetData['verifikator']['name']);
         $this->assertNotNull($sheetData['verification_url']);
+    }
+
+    public function test_public_qr_verification_is_rate_limited_after_30_requests_per_minute(): void
+    {
+        Cache::flush();
+
+        for ($i = 0; $i < 30; $i++) {
+            $this->getJson("/verify/{$this->qrToken}")->assertStatus(200);
+        }
+
+        $this->getJson("/verify/{$this->qrToken}")->assertStatus(429);
+
+        Cache::flush();
     }
 }
