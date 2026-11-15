@@ -39,9 +39,7 @@ class VerificationApiController extends Controller
      */
     public function getDetail(Request $request, string|int $id): JsonResponse
     {
-        $kuitansi = Kuitansi::where('id', $id)
-            ->orWhere('nomor_kuitansi', (string) $id)
-            ->first();
+        $kuitansi = Kuitansi::resolveByIdOrNumber($id);
 
         if (! $kuitansi) {
             return $this->errorResponse(
@@ -63,7 +61,7 @@ class VerificationApiController extends Controller
         }
 
         try {
-            $detail = $this->verificationService->getDetailForWorkspace((string) $id);
+            $detail = $this->verificationService->getDetailForWorkspace((string) $kuitansi->id);
 
             return $this->successResponse($detail, 'Detail verifikasi kuitansi berhasil dimuat');
         } catch (ModelNotFoundException $e) {

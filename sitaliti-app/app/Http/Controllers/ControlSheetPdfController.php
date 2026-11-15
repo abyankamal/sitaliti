@@ -23,9 +23,7 @@ class ControlSheetPdfController extends Controller
      */
     public function show(Request $request, string|int $id): JsonResponse
     {
-        $kuitansi = Kuitansi::where('id', $id)
-            ->orWhere('nomor_kuitansi', (string) $id)
-            ->first();
+        $kuitansi = Kuitansi::resolveByIdOrNumber($id);
 
         if (! $kuitansi) {
             return $this->errorResponse('RECEIPT_NOT_FOUND', 'Kuitansi tidak ditemukan.', null, 404);
@@ -50,16 +48,14 @@ class ControlSheetPdfController extends Controller
      */
     public function download(Request $request, string|int $id): Response
     {
-        $kuitansi = Kuitansi::where('id', $id)
-            ->orWhere('nomor_kuitansi', (string) $id)
-            ->firstOrFail();
+        $kuitansi = Kuitansi::resolveOrFailByIdOrNumber($id);
 
         $user = $request->user();
         if ($user && ! $user->canAccessReceipt($kuitansi)) {
             abort(403, 'Anda tidak berwenang mengunduh Lembar Kendali ini.');
         }
 
-        $pdf = $this->controlSheetService->generatePdf($id);
+        $pdf = $this->controlSheetService->generatePdf((string) $kuitansi->id);
         $cleanId = preg_replace('/[^A-Za-z0-9_-]/', '-', (string) $id);
         $filename = "Lembar-Kendali-{$cleanId}.pdf";
 

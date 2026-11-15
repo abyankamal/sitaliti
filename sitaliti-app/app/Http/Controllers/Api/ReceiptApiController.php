@@ -187,9 +187,7 @@ class ReceiptApiController extends Controller
      */
     public function submit(Request $request, int|string $id): JsonResponse
     {
-        $kuitansi = Kuitansi::where('id', $id)
-            ->orWhere('nomor_kuitansi', $id)
-            ->first();
+        $kuitansi = Kuitansi::resolveByIdOrNumber($id);
 
         if (! $kuitansi) {
             return $this->errorResponse(
@@ -254,7 +252,7 @@ class ReceiptApiController extends Controller
             'catatan' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $kuitansi = Kuitansi::where('id', $id)->orWhere('nomor_kuitansi', $id)->first();
+        $kuitansi = Kuitansi::resolveByIdOrNumber($id);
         if (! $kuitansi) {
             return $this->errorResponse(
                 'RECEIPT_NOT_FOUND',
@@ -326,7 +324,7 @@ class ReceiptApiController extends Controller
             'alasan' => ['required', 'string', 'min:5', 'max:1000'],
         ]);
 
-        $kuitansi = Kuitansi::where('id', $id)->orWhere('nomor_kuitansi', $id)->first();
+        $kuitansi = Kuitansi::resolveByIdOrNumber($id);
         if (! $kuitansi) {
             return $this->errorResponse(
                 'RECEIPT_NOT_FOUND',
@@ -392,7 +390,7 @@ class ReceiptApiController extends Controller
             'catatan' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $kuitansi = Kuitansi::where('id', $id)->orWhere('nomor_kuitansi', $id)->first();
+        $kuitansi = Kuitansi::resolveByIdOrNumber($id);
         if (! $kuitansi) {
             return $this->errorResponse(
                 'RECEIPT_NOT_FOUND',
@@ -460,7 +458,7 @@ class ReceiptApiController extends Controller
             'alasan' => ['required', 'string', 'min:5', 'max:1000'],
         ]);
 
-        $kuitansi = Kuitansi::where('id', $id)->orWhere('nomor_kuitansi', $id)->first();
+        $kuitansi = Kuitansi::resolveByIdOrNumber($id);
         if (! $kuitansi) {
             return $this->errorResponse(
                 'RECEIPT_NOT_FOUND',
@@ -522,10 +520,15 @@ class ReceiptApiController extends Controller
      */
     public function show(Request $request, int|string $id): JsonResponse
     {
-        $kuitansi = Kuitansi::where('id', $id)
-            ->orWhere('nomor_kuitansi', $id)
-            ->with(['rekening.unitKerja', 'items', 'pajak', 'lampiran', 'pptkUser', 'creator', 'riwayat.user'])
-            ->first();
+        $kuitansi = Kuitansi::resolveByIdOrNumber($id, [
+            'rekening.unitKerja',
+            'items',
+            'pajak',
+            'lampiran',
+            'pptkUser',
+            'creator',
+            'riwayat.user',
+        ]);
 
         if (! $kuitansi) {
             return $this->errorResponse(
@@ -554,9 +557,7 @@ class ReceiptApiController extends Controller
      */
     public function history(Request $request, int|string $id): JsonResponse
     {
-        $kuitansi = Kuitansi::where('id', $id)
-            ->orWhere('nomor_kuitansi', $id)
-            ->first();
+        $kuitansi = Kuitansi::resolveByIdOrNumber($id);
 
         if (! $kuitansi) {
             return $this->errorResponse(
@@ -720,9 +721,7 @@ class ReceiptApiController extends Controller
      */
     private function findAuthorizedOperatorReceipt(Request $request, int|string $id): Kuitansi|JsonResponse
     {
-        $kuitansi = Kuitansi::where('id', $id)
-            ->orWhere('nomor_kuitansi', $id)
-            ->first();
+        $kuitansi = Kuitansi::resolveByIdOrNumber($id);
 
         if (! $kuitansi) {
             return $this->errorResponse('RECEIPT_NOT_FOUND', 'Kuitansi tidak ditemukan.', null, 404);

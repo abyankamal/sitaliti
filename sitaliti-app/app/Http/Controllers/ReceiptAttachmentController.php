@@ -15,9 +15,7 @@ class ReceiptAttachmentController extends Controller
      */
     public function preview(Request $request, string|int $kuitansiId, int $attachmentId): StreamedResponse
     {
-        $kuitansi = Kuitansi::where('id', $kuitansiId)
-            ->orWhere('nomor_kuitansi', (string) $kuitansiId)
-            ->firstOrFail();
+        $kuitansi = Kuitansi::resolveOrFailByIdOrNumber($kuitansiId);
 
         $user = $request->user();
         if ($user && ! $user->canAccessReceipt($kuitansi)) {

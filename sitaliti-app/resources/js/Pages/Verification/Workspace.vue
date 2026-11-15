@@ -14,7 +14,7 @@ import { STATUS_LABELS, STATUS_VARIANTS } from '@/Constants/workflowStatus';
 
 const props = defineProps({
     id: {
-        type: String,
+        type: [Number, String],
         default: 'KW-2026-06-0042',
     },
 });

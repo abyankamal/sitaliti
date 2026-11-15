@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Models\Kuitansi;
 use App\Models\UnitKerja;
 use App\Services\ReceiptQueryService;
 use Illuminate\Http\Request;
@@ -53,5 +54,48 @@ class ReceiptWebController extends Controller
             'filters' => $filters,
             'unitKerjaList' => $unitKerjaList,
         ]);
+    }
+
+    /**
+     * Halaman Edit / Revisi Kuitansi (Inertia: Receipts/Edit).
+     */
+    public function edit(Request $request, string|int $id): Response
+    {
+        $kuitansi = Kuitansi::resolveOrFailByIdOrNumber($id);
+        if (! $request->user()->canAccessReceipt($kuitansi)) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengedit kuitansi ini.');
+        }
+
+        if (! in_array($kuitansi->status, ['DRAFT', 'REVISI_MINOR', 'REVISI_MAYOR'], true)) {
+            abort(403, 'Kuitansi hanya dapat diedit pada status DRAFT, REVISI_MINOR, atau REVISI_MAYOR.');
+        }
+
+        return Inertia::render('Receipts/Edit', ['id' => $kuitansi->id]);
+    }
+
+    /**
+     * Halaman Ruang Verifikasi Kuitansi (Inertia: Verification/Workspace).
+     */
+    public function verificationWorkspace(Request $request, string|int $id): Response
+    {
+        $kuitansi = Kuitansi::resolveOrFailByIdOrNumber($id);
+        if (! $request->user()->canAccessReceipt($kuitansi)) {
+            abort(403, 'Anda tidak memiliki hak akses untuk membuka ruang verifikasi kuitansi ini.');
+        }
+
+        return Inertia::render('Verification/Workspace', ['id' => $kuitansi->id]);
+    }
+
+    /**
+     * Halaman Lembar Kendali Kuitansi (Inertia: ControlSheet/Show).
+     */
+    public function controlSheet(Request $request, string|int $id): Response
+    {
+        $kuitansi = Kuitansi::resolveOrFailByIdOrNumber($id);
+        if (! $request->user()->canAccessReceipt($kuitansi)) {
+            abort(403, 'Anda tidak memiliki hak akses untuk membuka lembar kendali kuitansi ini.');
+        }
+
+        return Inertia::render('ControlSheet/Show', ['id' => $kuitansi->id]);
     }
 }
