@@ -90,9 +90,10 @@ class ReceiptQueryService
         if (! empty($filters['search'])) {
             $search = trim($filters['search']);
             $query->where(function (Builder $q) use ($search) {
-                $q->where('nomor_kuitansi', 'like', "%{$search}%")
-                    ->orWhere('uraian', 'like', "%{$search}%")
-                    ->orWhere('nama_penerima', 'like', "%{$search}%");
+                $likeOperator = $q->getConnection()->getDriverName() === 'pgsql' ? 'ilike' : 'like';
+                $q->where('nomor_kuitansi', $likeOperator, "%{$search}%")
+                    ->orWhere('uraian', $likeOperator, "%{$search}%")
+                    ->orWhere('nama_penerima', $likeOperator, "%{$search}%");
             });
         }
 

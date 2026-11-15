@@ -156,7 +156,7 @@ class SettlementService implements SettlementServiceInterface
                         'status_item' => 'AKTIF',
                     ]);
                 } catch (QueryException $e) {
-                    if (str_contains($e->getMessage(), 'uq_satu_kuitansi_aktif') || $e->getCode() === '23000') {
+                    if (str_contains($e->getMessage(), 'uq_satu_kuitansi_aktif') || in_array((string) $e->getCode(), ['23000', '23505'], true)) {
                         throw new InvalidArgumentException(
                             "Kuitansi {$receipt->nomor_kuitansi} gagal dibundel karena telah aktif pada pengajuan SPJ lain (Proteksi Anti-Klaim Ganda)."
                         );

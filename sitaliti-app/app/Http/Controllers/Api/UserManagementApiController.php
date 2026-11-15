@@ -25,10 +25,11 @@ class UserManagementApiController extends Controller
         if ($request->filled('q')) {
             $keyword = '%'.$request->q.'%';
             $query->where(function ($q) use ($keyword) {
-                $q->where('name', 'like', $keyword)
-                    ->orWhere('email', 'like', $keyword)
-                    ->orWhere('nip', 'like', $keyword)
-                    ->orWhere('jabatan', 'like', $keyword);
+                $likeOperator = $q->getConnection()->getDriverName() === 'pgsql' ? 'ilike' : 'like';
+                $q->where('name', $likeOperator, $keyword)
+                    ->orWhere('email', $likeOperator, $keyword)
+                    ->orWhere('nip', $likeOperator, $keyword)
+                    ->orWhere('jabatan', $likeOperator, $keyword);
             });
         }
 
