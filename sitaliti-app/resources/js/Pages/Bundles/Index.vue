@@ -71,8 +71,8 @@ const isProcessingAction = ref(false);
 
 const newBundleForm = ref({
     jenis_bundel: 'SPP_GU',
-    tahun_anggaran: 2026,
-    bulan_periode: 6,
+    tahun_anggaran: new Date().getFullYear(),
+    bulan_periode: new Date().getMonth() + 1,
     nomor_spp_sipd: '',
     selected_kuitansi_ids: [],
 });
@@ -361,7 +361,7 @@ const BUNDLE_STATUS_LABELS = {
                             </GovBadge>
                         </div>
                         <p class="text-xs text-slate-500 mt-1">
-                            Unit: {{ bundle.unit || 'Kecamatan Tarogong Kidul' }} • Periode: {{ bundle.periode || 'Juni 2026' }}
+                            Unit: {{ bundle.unit || 'Kecamatan Tarogong Kidul' }} • Periode: {{ bundle.periode || '-' }}
                         </p>
                     </div>
 

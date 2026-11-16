@@ -55,7 +55,7 @@ export const budgetService = {
     /**
      * Dapatkan alokasi RAK 12 bulan dan status carry-over per rekening belanja
      */
-    async getRakContext(rekeningId, selectedMonth = 6) {
+    async getRakContext(rekeningId, selectedMonth = new Date().getMonth() + 1) {
         const response = await axios.get(`${API_BASE}/rak-context/${rekeningId}`, {
             params: { month: selectedMonth },
         });

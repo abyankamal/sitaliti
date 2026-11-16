@@ -404,6 +404,9 @@ class SettlementService implements SettlementServiceInterface
                 'nomor_bundel' => $b->nomor_bundel,
                 'nomor_spp' => $b->nomor_spp_sipd ?? $b->nomor_bundel,
                 'jenis' => $b->jenis_bundel,
+                'tahun_anggaran' => (int) $b->tahun_anggaran,
+                'bulan_periode' => (int) $b->bulan_periode,
+                'periode' => $this->formatPeriode((int) $b->bulan_periode, (int) $b->tahun_anggaran),
                 'unit' => $b->unitKerja?->nama_unit ?? 'Unit Kerja',
                 'tanggal' => $b->created_at?->format('Y-m-d'),
                 'total_nominal' => (float) $b->total_bruto,
@@ -498,5 +501,25 @@ class SettlementService implements SettlementServiceInterface
         } while ($exists);
 
         return $candidate;
+    }
+
+    private function formatPeriode(int $bulan, int $tahun): string
+    {
+        $namaBulan = [
+            1 => 'Januari',
+            2 => 'Februari',
+            3 => 'Maret',
+            4 => 'April',
+            5 => 'Mei',
+            6 => 'Juni',
+            7 => 'Juli',
+            8 => 'Agustus',
+            9 => 'September',
+            10 => 'Oktober',
+            11 => 'November',
+            12 => 'Desember',
+        ];
+
+        return ($namaBulan[$bulan] ?? "Bulan {$bulan}").' '.$tahun;
     }
 }

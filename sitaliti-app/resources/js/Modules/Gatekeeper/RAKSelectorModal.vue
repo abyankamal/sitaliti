@@ -25,13 +25,16 @@ const units = ref([]);
 const subActivities = ref([]);
 const accounts = ref([]);
 
+const currentMonthFallback = new Date().getMonth() + 1;
+
 const selectedUnitId = ref('');
 const selectedSubActivityId = ref('');
 const selectedAccountId = ref('');
-const selectedMonth = ref(6); // Default Juni (bulan berjalan simulasi)
+const selectedMonth = ref(currentMonthFallback);
 
 const rakContext = ref(null);
 const loadingContext = ref(false);
+const activeMonth = computed(() => Number(rakContext.value?.active_system_month || currentMonthFallback));
 
 onMounted(async () => {
     units.value = await budgetService.getUnits();
@@ -223,7 +226,7 @@ function handleConfirm() {
                                     4. Pilih Alokasi Bulan RAK (2026) <span class="text-rose-500">*</span>
                                 </label>
                                 <span class="text-[11px] text-slate-500">
-                                    Bulan Berjalan: <strong class="text-gov-navy-900">Juni (Bulan 6)</strong>
+                                    Bulan Berjalan: <strong class="text-gov-navy-900">{{ NAMA_BULAN[activeMonth - 1] || `Bulan ${activeMonth}` }} (Bulan {{ activeMonth }})</strong>
                                 </span>
                             </div>
 
@@ -238,7 +241,7 @@ function handleConfirm() {
                                         // Selected state
                                         selectedMonth === (index + 1)
                                             ? 'bg-gov-navy-900 text-white font-bold ring-2 ring-gov-gold-500 shadow-sm'
-                                            : index + 1 > 6
+                                            : index + 1 > activeMonth
                                                 ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60'
                                                 : 'bg-white text-slate-700 border border-slate-200 hover:border-gov-navy-800 hover:bg-slate-50'
                                     ]"
@@ -247,7 +250,7 @@ function handleConfirm() {
                                     <div class="text-[10px] uppercase font-mono opacity-75">Bln {{ index + 1 }}</div>
                                     <div class="font-medium truncate">{{ bulan.slice(0, 3) }}</div>
                                     <span
-                                        v-if="index + 1 > 6"
+                                        v-if="index + 1 > activeMonth"
                                         class="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-slate-300 text-slate-600 flex items-center justify-center text-[8px]"
                                         title="Bulan mendatang terkunci"
                                     >
@@ -320,7 +323,7 @@ function handleConfirm() {
                                             {{ formatRupiah(rakContext.sisa_dapat_digunakan) }}
                                         </div>
                                         <p v-if="rakContext.is_future_month" class="text-[10px] text-rose-600 mt-1 leading-tight">
-                                            Aturan Sistem: Pagu alokasi bulan mendatang (Juli–Desember) belum dapat ditarik untuk pencairan saat ini.
+                                            Aturan Sistem: Pagu alokasi bulan mendatang (di atas {{ NAMA_BULAN[activeMonth - 1] || `Bulan ${activeMonth}` }}) belum dapat ditarik untuk pencairan saat ini.
                                         </p>
                                         <p v-else class="text-[10px] text-emerald-700 mt-1 leading-tight">
                                             Pagu mencukupi untuk pembuatan kuitansi belanja baru.

@@ -211,7 +211,7 @@ async function handleSubmitDraft() {
 
         const formData = new FormData();
         formData.append('anggaran_rekening_id', budgetContext.value.account.id);
-        formData.append('bulan_anggaran', budgetContext.value.month || 6);
+        formData.append('bulan_anggaran', budgetContext.value.month || (new Date().getMonth() + 1));
         formData.append('nomor_bukti_toko', form.value.nomor_bukti);
         formData.append('tanggal_transaksi', form.value.tanggal_bukti);
         formData.append('nama_penerima', form.value.nama_penerima);
