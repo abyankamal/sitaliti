@@ -451,7 +451,7 @@ class VerificationActionTest extends TestCase
         $this->assertEquals('MENUNGGU_VERIFIKASI', $kuitansi->fresh()->status);
     }
 
-    public function test_process_action_rejects_invalid_source_status_and_skips_double_release_on_sla_breach(): void
+    public function test_process_action_rejects_invalid_source_status_and_releases_budget_on_sla_breach(): void
     {
         // 1. Kuitansi sudah REVISI_MAYOR tidak dapat diproses ulang (anti double-release)
         $revisiMayor = Kuitansi::create([
@@ -476,7 +476,12 @@ class VerificationActionTest extends TestCase
             ]);
         $repeatRes->assertStatus(422);
 
-        // 2. Kuitansi REVISI_MINOR yang sudah melewati SLA (is_sla_breached) tidak memanggil releaseBudget() lagi
+        // 2. Kuitansi REVISI_MINOR yang melewati SLA tetap harus melepaskan terkunci_bulan saat dieskalasi ke REVISION_MAJOR
+        $kasBulan4 = AnggaranKasBulanan::where('anggaran_rekening_id', $this->rekening->id)
+            ->where('bulan', 4)
+            ->firstOrFail();
+        $kasBulan4->update(['terkunci_bulan' => 1000000.00]);
+
         $slaBreached = Kuitansi::create([
             'nomor_kuitansi' => 'KW-SLA-BREACH-001',
             'unit_kerja_id' => $this->unit->id,
@@ -484,7 +489,7 @@ class VerificationActionTest extends TestCase
             'user_id' => $this->verifier->id,
             'bulan_anggaran' => 4,
             'tanggal_transaksi' => '2026-04-10',
-            'uraian' => 'SLA sudah lewat dan pagu sudah dilepas',
+            'uraian' => 'SLA sudah lewat dan pagu masih terkunci',
             'nama_penerima' => 'Toko Mitra',
             'nominal_bruto' => 1000000.00,
             'total_pajak' => 0.00,
@@ -500,5 +505,7 @@ class VerificationActionTest extends TestCase
             ]);
         $breachRes->assertStatus(200)
             ->assertJsonPath('data.new_status', 'REVISI_MAYOR');
+
+        $this->assertEquals(0.00, (float) $kasBulan4->fresh()->terkunci_bulan);
     }
 }

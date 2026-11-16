@@ -353,14 +353,12 @@ class VerificationService implements VerificationServiceInterface
                 case 'DITOLAK':
                     $newStatus = 'REVISI_MAYOR';
 
-                    // Lepaskan pagu anggaran hanya jika belum pernah dilepaskan oleh SLA breach
-                    if (! $kuitansi->is_sla_breached) {
-                        $this->budgetService->releaseBudget(
-                            (string) $kuitansi->anggaran_rekening_id,
-                            $kuitansi->bulan_anggaran,
-                            (float) $kuitansi->nominal_bruto
-                        );
-                    }
+                    // CheckSlaBreachCommand hanya mencatat riwayat tanpa melepas pagu, jadi penolakan mayor wajib selalu melepas terkunci_bulan.
+                    $this->budgetService->releaseBudget(
+                        (string) $kuitansi->anggaran_rekening_id,
+                        $kuitansi->bulan_anggaran,
+                        (float) $kuitansi->nominal_bruto
+                    );
 
                     $kuitansi->update([
                         'status' => $newStatus,
