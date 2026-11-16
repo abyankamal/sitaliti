@@ -97,12 +97,12 @@ class ReceiptExportService
                 $nomorSp2d = $kuitansi->activeSpjItem?->pengajuanSpj?->nomor_sp2d_sipd ?? '-';
 
                 fputcsv($handle, [
-                    $kuitansi->nomor_kuitansi,
+                    $this->sanitizeCsvCell($kuitansi->nomor_kuitansi),
                     $kuitansi->tanggal_transaksi ? $kuitansi->tanggal_transaksi->format('Y-m-d') : '',
-                    $kuitansi->rekening?->unitKerja?->nama_unit ?? '-',
-                    $kuitansi->rekening?->kode_rekening ?? '-',
-                    $kuitansi->rekening?->nama_rekening ?? '-',
-                    $kuitansi->uraian,
+                    $this->sanitizeCsvCell($kuitansi->rekening?->unitKerja?->nama_unit ?? '-'),
+                    $this->sanitizeCsvCell($kuitansi->rekening?->kode_rekening ?? '-'),
+                    $this->sanitizeCsvCell($kuitansi->rekening?->nama_rekening ?? '-'),
+                    $this->sanitizeCsvCell($kuitansi->uraian),
                     number_format((float) $kuitansi->nominal_bruto, 2, '.', ''),
                     number_format($pajakMap['dpp'], 2, '.', ''),
                     number_format($pajakMap['ppn'], 2, '.', ''),
@@ -112,14 +112,27 @@ class ReceiptExportService
                     number_format($pajakMap['pbjt'], 2, '.', ''),
                     number_format($pajakMap['meterai'], 2, '.', ''),
                     number_format((float) $kuitansi->nominal_neto, 2, '.', ''),
-                    $kuitansi->nama_penerima ?? '-',
-                    $kuitansi->npwp_penerima ?? '-',
-                    $kuitansi->status,
-                    $nomorSp2d,
+                    $this->sanitizeCsvCell($kuitansi->nama_penerima ?? '-'),
+                    $this->sanitizeCsvCell($kuitansi->npwp_penerima ?? '-'),
+                    $this->sanitizeCsvCell($kuitansi->status),
+                    $this->sanitizeCsvCell($nomorSp2d),
                 ]);
             }
 
             fclose($handle);
         }, 200, $headers);
+    }
+
+    /**
+     * Mencegah CSV Formula Injection di Excel dengan tetap mempertahankan placeholder '-'.
+     */
+    private function sanitizeCsvCell(mixed $value): string
+    {
+        $str = (string) ($value ?? '');
+        if ($str !== '' && $str !== '-' && in_array($str[0], ['=', '+', '-', '@', "\t", "\r"], true)) {
+            return "'".$str;
+        }
+
+        return $str;
     }
 }
