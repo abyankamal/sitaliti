@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\BudgetApiController;
 use App\Http\Controllers\Api\MasterDataApiController;
 use App\Http\Controllers\Api\ReceiptApiController;
 use App\Http\Controllers\Api\ReceiptWorkflowApiController;
+use App\Http\Controllers\Api\RekeningManagementApiController;
 use App\Http\Controllers\Api\SettlementApiController;
 use App\Http\Controllers\Api\UserManagementApiController;
 use App\Http\Controllers\Api\VerificationApiController;
@@ -112,6 +113,13 @@ Route::prefix('v1')->group(function () {
             Route::post('/', [UserManagementApiController::class, 'store']);
             Route::put('{id}', [UserManagementApiController::class, 'update']);
             Route::delete('{id}', [UserManagementApiController::class, 'destroy']);
+        });
+
+        // Budget & Rekening Management Endpoints (Administrator Anggaran SKPD)
+        Route::prefix('budget-management')->middleware('permission:user.manage')->group(function () {
+            Route::get('rekening', [RekeningManagementApiController::class, 'index']);
+            Route::get('sub-activities', [RekeningManagementApiController::class, 'subActivities']);
+            Route::post('rekening', [RekeningManagementApiController::class, 'store']);
         });
     });
 });

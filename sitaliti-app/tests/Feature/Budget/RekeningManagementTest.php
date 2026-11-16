@@ -5,6 +5,7 @@ namespace Tests\Feature\Budget;
 use App\Models\AnggaranKasBulanan;
 use App\Models\AnggaranRekening;
 use App\Models\UnitKerja;
+use App\Models\User;
 use App\Services\BudgetManagementService;
 use App\Services\BudgetReservationService;
 use Database\Seeders\UnitKerjaSeeder;
@@ -176,5 +177,117 @@ class RekeningManagementTest extends TestCase
             'kode_rekening' => '5.1.02.01.01.0077',
         ]);
         $this->assertSame(0, AnggaranKasBulanan::count());
+    }
+
+    public function test_api_skpd_admin_can_create_list_and_search_rekening(): void
+    {
+        $kecamatan = UnitKerja::where('tipe', 'KECAMATAN')->firstOrFail();
+        $verifikator = User::factory()->create([
+            'unit_kerja_id' => $kecamatan->id,
+            'role' => 'VERIFIKATOR',
+        ]);
+
+        $payload = [
+            'unit_kerja_id' => $this->unit->id,
+            'kode_sub_kegiatan' => '7.01.01.2.01.0005',
+            'nama_sub_kegiatan' => 'Koordinasi Tata Pemerintahan',
+            'kode_rekening' => '5.1.02.01.01.0088',
+            'nama_rekening' => 'Belanja Cetak Surat',
+            'kategori_belanja' => 'B.1',
+            'alokasi' => array_fill(0, 12, 250000),
+        ];
+
+        $storeRes = $this->actingAs($verifikator)
+            ->postJson('/api/v1/budget-management/rekening', $payload);
+
+        $storeRes->assertStatus(201)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.kode_rekening', '5.1.02.01.01.0088')
+            ->assertJsonPath('data.total_alokasi', 3000000);
+
+        $this->assertIsFloat($storeRes->json('data.pagu_perubahan') + 0.0);
+        $this->assertCount(12, $storeRes->json('data.kas_bulanan'));
+
+        $listRes = $this->actingAs($verifikator)
+            ->getJson('/api/v1/budget-management/rekening?q=Cetak Surat');
+
+        $listRes->assertOk()
+            ->assertJsonPath('data.total', 1)
+            ->assertJsonPath('data.data.0.kode_rekening', '5.1.02.01.01.0088');
+
+        $subRes = $this->actingAs($verifikator)
+            ->getJson('/api/v1/budget-management/sub-activities?unit_kerja_id='.$this->unit->id);
+
+        $subRes->assertOk()
+            ->assertJsonPath('data.0.kode_sub_kegiatan', '7.01.01.2.01.0005');
+    }
+
+    public function test_api_validation_rejects_bad_formats_inactive_unit_and_overflow(): void
+    {
+        $kecamatan = UnitKerja::where('tipe', 'KECAMATAN')->firstOrFail();
+        $kpa = User::factory()->create([
+            'unit_kerja_id' => $kecamatan->id,
+            'role' => 'KPA',
+        ]);
+
+        $inactiveUnit = UnitKerja::create([
+            'kode_unit' => '7.01.0.00.0.00.41.9999',
+            'nama_unit' => 'Unit Nonaktif',
+            'tipe' => 'KELURAHAN',
+            'is_active' => false,
+        ]);
+
+        // Format kode salah, panjang > 50, kategori di luar B.1-B.6, unit nonaktif
+        $this->actingAs($kpa)->postJson('/api/v1/budget-management/rekening', [
+            'unit_kerja_id' => $inactiveUnit->id,
+            'kode_sub_kegiatan' => '9.99.01.2.01.0001',
+            'nama_sub_kegiatan' => 'Salah',
+            'kode_rekening' => '5.1.02.01.01.'.str_repeat('9', 45),
+            'nama_rekening' => 'Terlalu Panjang',
+            'kategori_belanja' => 'B.9',
+            'alokasi' => array_fill(0, 12, -100),
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors([
+                'unit_kerja_id',
+                'kode_sub_kegiatan',
+                'kode_rekening',
+                'kategori_belanja',
+                'alokasi.0',
+            ]);
+    }
+
+    public function test_api_rbac_and_kelurahan_scope_enforcement(): void
+    {
+        $kecamatan = UnitKerja::where('tipe', 'KECAMATAN')->firstOrFail();
+        $kelurahan = UnitKerja::where('tipe', 'KELURAHAN')->firstOrFail();
+
+        $validPayload = [
+            'unit_kerja_id' => $this->unit->id,
+            'kode_sub_kegiatan' => '7.01.01.2.01.0006',
+            'nama_sub_kegiatan' => 'Subkegiatan RBAC',
+            'kode_rekening' => '5.1.02.01.01.0066',
+            'nama_rekening' => 'Belanja RBAC',
+            'kategori_belanja' => 'B.1',
+            'alokasi' => array_fill(0, 12, 100000),
+        ];
+
+        // 1. Unauthenticated -> 401
+        $this->postJson('/api/v1/budget-management/rekening', $validPayload)->assertStatus(401);
+
+        // 2. Operator / PPTK / BPP -> 403
+        foreach (['OPERATOR', 'PPTK', 'BPP'] as $role) {
+            $user = User::factory()->create(['unit_kerja_id' => $kecamatan->id, 'role' => $role]);
+            $this->actingAs($user)->getJson('/api/v1/budget-management/rekening')->assertStatus(403);
+            $this->actingAs($user)->postJson('/api/v1/budget-management/rekening', $validPayload)->assertStatus(403);
+        }
+
+        // 3. Kelurahan-scoped user bahkan dengan role VERIFIKATOR/KPA -> 403 di seluruh endpoint
+        $kelurahanAdmin = User::factory()->create([
+            'unit_kerja_id' => $kelurahan->id,
+            'role' => 'VERIFIKATOR',
+        ]);
+        $this->actingAs($kelurahanAdmin)->getJson('/api/v1/budget-management/rekening')->assertStatus(403);
+        $this->actingAs($kelurahanAdmin)->getJson('/api/v1/budget-management/sub-activities')->assertStatus(403);
+        $this->actingAs($kelurahanAdmin)->postJson('/api/v1/budget-management/rekening', $validPayload)->assertStatus(403);
     }
 }
