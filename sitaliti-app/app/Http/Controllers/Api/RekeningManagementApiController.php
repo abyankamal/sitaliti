@@ -107,6 +107,26 @@ class RekeningManagementApiController extends Controller
         );
     }
 
+    /**
+     * Memperbarui alokasi kas 12 bulan pada rekening yang sudah ada.
+     */
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $this->authorizeSkpdAdmin($request);
+
+        $validated = $request->validate([
+            'alokasi' => ['required', 'array', 'size:12'],
+            'alokasi.*' => ['required', 'numeric', 'min:0', 'max:9999999999999.99'],
+        ]);
+
+        $rekening = $this->budgetManagementService->updateAllocations($id, $validated, $request->user());
+
+        return $this->successResponse(
+            $this->serializeRekening($rekening),
+            'Alokasi pagu bulanan berhasil diperbarui.'
+        );
+    }
+
     private function authorizeSkpdAdmin(Request $request): void
     {
         abort_if(

@@ -289,5 +289,67 @@ class RekeningManagementTest extends TestCase
         $this->actingAs($kelurahanAdmin)->getJson('/api/v1/budget-management/rekening')->assertStatus(403);
         $this->actingAs($kelurahanAdmin)->getJson('/api/v1/budget-management/sub-activities')->assertStatus(403);
         $this->actingAs($kelurahanAdmin)->postJson('/api/v1/budget-management/rekening', $validPayload)->assertStatus(403);
+        $this->actingAs($kelurahanAdmin)->putJson('/api/v1/budget-management/rekening/1', [
+            'alokasi' => array_fill(0, 12, 100000),
+        ])->assertStatus(403);
+    }
+
+    public function test_api_update_allocations_updates_pagu_perubahan_and_enforces_minimum_locked_realized(): void
+    {
+        $kecamatan = UnitKerja::where('tipe', 'KECAMATAN')->firstOrFail();
+        $verifikator = User::factory()->create([
+            'unit_kerja_id' => $kecamatan->id,
+            'role' => 'VERIFIKATOR',
+        ]);
+
+        $rekening = $this->service->createRekening([
+            'unit_kerja_id' => $this->unit->id,
+            'kode_sub_kegiatan' => '7.01.01.2.01.0010',
+            'nama_sub_kegiatan' => 'Subkegiatan Update Pagu',
+            'kode_rekening' => '5.1.02.01.01.0100',
+            'nama_rekening' => 'Belanja Update Pagu',
+            'kategori_belanja' => 'B.1',
+            'alokasi' => array_fill(0, 12, 1000000),
+        ]);
+
+        // Bulan 3 punya terkunci 400.000 + realisasi 200.000 = minimum 600.000
+        AnggaranKasBulanan::where('anggaran_rekening_id', $rekening->id)
+            ->where('bulan', 3)
+            ->update([
+                'terkunci_bulan' => 400000.00,
+                'realisasi_bulan' => 200000.00,
+            ]);
+
+        // Coba turunkan bulan 3 menjadi 500.000 (< 600.000) -> harus ditolak 422
+        $tooLow = array_fill(0, 12, 1000000);
+        $tooLow[2] = 500000; // index 2 = Bulan 3
+
+        $this->actingAs($verifikator)
+            ->putJson("/api/v1/budget-management/rekening/{$rekening->id}", [
+                'alokasi' => $tooLow,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['alokasi']);
+
+        // Pastikan pagu_perubahan dan bulan 3 tidak berubah
+        $this->assertEquals(12000000.00, (float) $rekening->fresh()->pagu_perubahan);
+
+        // Naikkan bulan 3 menjadi 1.500.000 dan bulan 4 menjadi 2.000.000 -> sukses 200
+        $validUpdate = array_fill(0, 12, 1000000);
+        $validUpdate[2] = 1500000;
+        $validUpdate[3] = 2000000;
+
+        $res = $this->actingAs($verifikator)
+            ->putJson("/api/v1/budget-management/rekening/{$rekening->id}", [
+                'alokasi' => $validUpdate,
+            ]);
+
+        $res->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.total_alokasi', 13500000);
+
+        $rekening->refresh();
+        $this->assertEquals(12000000.00, (float) $rekening->pagu_murni);
+        $this->assertEquals(13500000.00, (float) $rekening->pagu_perubahan);
     }
 }

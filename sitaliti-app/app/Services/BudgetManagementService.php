@@ -4,8 +4,10 @@ namespace App\Services;
 
 use App\Models\AnggaranKasBulanan;
 use App\Models\AnggaranRekening;
+use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class BudgetManagementService
@@ -125,6 +127,72 @@ class BudgetManagementService
                 'kode_rekening' => ["Kode rekening {$kodeRekening} sudah terdaftar pada subkegiatan {$kodeSubkegiatan}."],
             ]);
         }
+    }
+
+    /**
+     * Memperbarui alokasi kas 12 bulan dengan proteksi terhadap saldo terkunci + realisasi,
+     * serta memperbarui pagu_perubahan tanpa mengubah pagu_murni awal.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function updateAllocations(int $rekeningId, array $data, ?User $actor = null): AnggaranRekening
+    {
+        $alokasi = $this->normalizeAllocations($data['alokasi'] ?? []);
+        $newTotal = round(array_sum($alokasi), 2);
+
+        return DB::transaction(function () use ($rekeningId, $alokasi, $newTotal, $actor) {
+            $rekening = AnggaranRekening::where('id', $rekeningId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $kasRows = AnggaranKasBulanan::where('anggaran_rekening_id', $rekening->id)
+                ->orderBy('bulan', 'asc')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('bulan');
+
+            for ($bulan = 1; $bulan <= 12; $bulan++) {
+                $existing = $kasRows->get($bulan);
+                if ($existing) {
+                    $minRequired = round((float) $existing->terkunci_bulan + (float) $existing->realisasi_bulan, 2);
+                    if ($alokasi[$bulan] < $minRequired) {
+                        throw ValidationException::withMessages([
+                            'alokasi' => [
+                                sprintf(
+                                    'Alokasi bulan %d tidak boleh kurang dari dana terkunci + realisasi (minimum Rp %s).',
+                                    $bulan,
+                                    number_format($minRequired, 0, ',', '.')
+                                ),
+                            ],
+                        ]);
+                    }
+
+                    $existing->update(['alokasi_pagu' => $alokasi[$bulan]]);
+                } else {
+                    AnggaranKasBulanan::create([
+                        'anggaran_rekening_id' => $rekening->id,
+                        'bulan' => $bulan,
+                        'alokasi_pagu' => $alokasi[$bulan],
+                        'terkunci_bulan' => 0.00,
+                        'realisasi_bulan' => 0.00,
+                    ]);
+                }
+            }
+
+            $oldPaguPerubahan = (float) $rekening->pagu_perubahan;
+            $rekening->update(['pagu_perubahan' => $newTotal]);
+
+            Log::info('BUDGET_ALLOCATION_UPDATED', [
+                'actor_id' => $actor?->id,
+                'actor_email' => $actor?->email,
+                'rekening_id' => $rekening->id,
+                'kode_rekening' => $rekening->kode_rekening,
+                'old_pagu_perubahan' => $oldPaguPerubahan,
+                'new_pagu_perubahan' => $newTotal,
+            ]);
+
+            return $rekening->load(['unitKerja', 'kasBulanan' => fn ($q) => $q->orderBy('bulan', 'asc')]);
+        });
     }
 
     private function parseMonthlyAmount(mixed $value, int $bulan): float

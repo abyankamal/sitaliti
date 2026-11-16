@@ -120,6 +120,7 @@ Route::prefix('v1')->group(function () {
             Route::get('rekening', [RekeningManagementApiController::class, 'index']);
             Route::get('sub-activities', [RekeningManagementApiController::class, 'subActivities']);
             Route::post('rekening', [RekeningManagementApiController::class, 'store']);
+            Route::put('rekening/{id}', [RekeningManagementApiController::class, 'update']);
         });
     });
 });
