@@ -114,9 +114,11 @@ async function loadReceiptData() {
             nama_penerima: data.nama_penerima || '',
             npwp_penerima: data.npwp_penerima || '',
             has_npwp: Boolean(data.npwp_penerima && String(data.npwp_penerima).trim().length > 0),
-            golongan_asn: 'GOLONGAN_III',
-            is_sewa_kendaraan: false,
-            is_pkp: true,
+            golongan_asn: ['GOLONGAN_I', 'GOLONGAN_II'].includes(data.golongan_asn)
+                ? 'GOLONGAN_I_II'
+                : (data.golongan_asn || 'GOLONGAN_III'),
+            is_sewa_kendaraan: Boolean(data.is_sewa_kendaraan ?? false),
+            is_pkp: Boolean(data.is_pkp ?? true),
             metode_pembayaran: data.metode_pembayaran || 'NON_TUNAI_IBC',
             uraian_belanja: data.uraian || '',
             items: (data.items || []).map((item) => ({
@@ -492,8 +494,7 @@ async function confirmDeleteAttachment() {
                         <div v-if="normalizedCategory === 'B.3'">
                             <label class="block text-xs font-semibold text-slate-600 mb-1">Golongan ASN / Penerima Honor</label>
                             <select v-model="form.golongan_asn" class="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm">
-                                <option value="GOLONGAN_I">Golongan I (0%)</option>
-                                <option value="GOLONGAN_II">Golongan II (0%)</option>
+                                <option value="GOLONGAN_I_II">PNS Golongan I / II (0%)</option>
                                 <option value="GOLONGAN_III">Golongan III (5%)</option>
                                 <option value="GOLONGAN_IV">Golongan IV (15%)</option>
                                 <option value="NON_ASN">Non-ASN / Eksternal (2.5%)</option>
@@ -591,10 +592,10 @@ async function confirmDeleteAttachment() {
                         >
                             <div>
                                 <p class="text-sm font-semibold text-slate-900">
-                                    {{ att.nama_dokumen || att.nama_file_asli }}
+                                    {{ att.nama_dokumen || att.file_name || att.nama_file_asli }}
                                 </p>
                                 <p class="text-xs text-slate-500">
-                                    Kode: <span class="font-mono">{{ att.checklist_code || '-' }}</span> • {{ att.nama_file_asli }}
+                                    Kode: <span class="font-mono">{{ att.checklist_code || '-' }}</span> • {{ att.file_name || att.nama_file_asli }}
                                 </p>
                             </div>
                             <div class="flex items-center gap-2">
@@ -620,7 +621,11 @@ async function confirmDeleteAttachment() {
 
                 <!-- Unggah Berkas Pengganti / Tambahan per Checklist -->
                 <GovCard title="Unggah Berkas Pengganti / Tambahan (Checklist)">
-                    <DynamicChecklistTable v-model="checklistItems" :category-code="normalizedCategory" />
+                    <DynamicChecklistTable
+                        v-model:items="checklistItems"
+                        :category-code="normalizedCategory"
+                        :category-name="receipt?.rekening?.nama_rekening || ''"
+                    />
                 </GovCard>
 
                 <!-- Action Bar -->
@@ -649,7 +654,7 @@ async function confirmDeleteAttachment() {
             <div class="bg-white rounded-xl max-w-md w-full p-6 shadow-xl space-y-4">
                 <h3 class="text-base font-bold text-slate-900">Hapus Berkas Lampiran?</h3>
                 <p class="text-sm text-slate-600">
-                    Anda yakin ingin menghapus lampiran <strong>{{ deleteTarget.nama_dokumen || deleteTarget.nama_file_asli }}</strong>? Anda dapat mengunggah berkas pengganti setelahnya.
+                    Anda yakin ingin menghapus lampiran <strong>{{ deleteTarget.nama_dokumen || deleteTarget.file_name || deleteTarget.nama_file_asli }}</strong>? Anda dapat mengunggah berkas pengganti setelahnya.
                 </p>
                 <div class="flex justify-end gap-2 pt-2">
                     <GovButton variant="outline" :disabled="isDeletingAttachment" @click="deleteTarget = null">

@@ -212,6 +212,24 @@ class ReceiptService
             $processedAttachments = $this->prepareAttachments($attachments, $rekening->id);
             $statusLama = $kuitansi->status;
 
+            if ((int) $rekening->id !== (int) $kuitansi->anggaran_rekening_id) {
+                $existingHashes = KuitansiLampiran::where('kuitansi_id', $kuitansi->id)->pluck('file_hash');
+                if ($existingHashes->isNotEmpty()) {
+                    $collision = KuitansiLampiran::where('anggaran_rekening_id', $rekening->id)
+                        ->whereIn('file_hash', $existingHashes)
+                        ->exists();
+
+                    if ($collision) {
+                        throw ValidationException::withMessages([
+                            'anggaran_rekening_id' => ['Lampiran kuitansi ini bentrok dengan bukti identik yang sudah ada pada rekening tujuan.'],
+                        ]);
+                    }
+
+                    KuitansiLampiran::where('kuitansi_id', $kuitansi->id)
+                        ->update(['anggaran_rekening_id' => $rekening->id]);
+                }
+            }
+
             $kuitansi->update([
                 'unit_kerja_id' => $rekening->unit_kerja_id,
                 'anggaran_rekening_id' => $rekening->id,
@@ -270,10 +288,7 @@ class ReceiptService
                 ->where('id', $attachmentId)
                 ->firstOrFail();
 
-            if ($lampiran->file_path && Storage::disk('local')->exists($lampiran->file_path)) {
-                Storage::disk('local')->delete($lampiran->file_path);
-            }
-
+            $filePath = $lampiran->file_path;
             $fileName = $lampiran->file_name;
             $lampiran->delete();
 
@@ -285,6 +300,13 @@ class ReceiptService
                 "Menghapus lampiran '{$fileName}'",
                 $actor
             );
+
+            // Hapus file fisik hanya setelah transaksi DB commit agar rollback tidak menghilangkan bukti asli.
+            DB::afterCommit(function () use ($filePath) {
+                if ($filePath && Storage::disk('local')->exists($filePath)) {
+                    Storage::disk('local')->delete($filePath);
+                }
+            });
         });
     }
 
@@ -355,6 +377,7 @@ class ReceiptService
     private function prepareAttachments(array $attachments, int $rekeningId): array
     {
         $processed = [];
+        $seenHashes = [];
 
         foreach ($attachments as $att) {
             $file = ($att instanceof UploadedFile) ? $att : ($att['file'] ?? null);
@@ -363,6 +386,17 @@ class ReceiptService
             }
 
             $fileHash = hash_file('sha256', $file->getRealPath());
+
+            if (isset($seenHashes[$fileHash])) {
+                throw ValidationException::withMessages([
+                    'lampiran' => [
+                        sprintf(
+                            "Berkas '%s' duplikat dengan berkas lain dalam unggahan yang sama.",
+                            $file->getClientOriginalName()
+                        ),
+                    ],
+                ]);
+            }
 
             $exists = KuitansiLampiran::where('anggaran_rekening_id', $rekeningId)
                 ->where('file_hash', $fileHash)
@@ -378,6 +412,8 @@ class ReceiptService
                     ],
                 ]);
             }
+
+            $seenHashes[$fileHash] = true;
 
             $processed[] = [
                 'file' => $file,
