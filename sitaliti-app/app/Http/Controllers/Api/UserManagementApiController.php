@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\AnggaranRekening;
 use App\Models\Kuitansi;
+use App\Models\KuitansiRiwayat;
+use App\Models\KuitansiVerifikasiChecklist;
+use App\Models\PengajuanSpj;
 use App\Models\PptkSubkegiatanAssignment;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -194,7 +197,12 @@ class UserManagementApiController extends Controller
             ->orWhere('pptk_user_id', $user->id)
             ->orWhere('lurah_user_id', $user->id)
             ->orWhere('verifikator_id', $user->id)
-            ->exists();
+            ->exists()
+            || PengajuanSpj::where('user_id', $user->id)
+                ->orWhere('ppk_skpd_id', $user->id)
+                ->exists()
+            || KuitansiRiwayat::where('user_id', $user->id)->exists()
+            || KuitansiVerifikasiChecklist::where('verified_by', $user->id)->exists();
 
         if ($hasTransactions) {
             return response()->json([

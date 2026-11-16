@@ -202,12 +202,12 @@ function handlePrint() {
                             <td class="py-2 px-3 text-center font-mono text-[11px] text-slate-600">{{ item.kode_item || '-' }}</td>
                             <td class="py-2 px-3 text-center font-bold">
                                 <span
-                                    :class="item.status_kesesuaian === 'VALID'
+                                    :class="['SESUAI', 'VALID'].includes(item.status_kesesuaian)
                                         ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
                                         : 'text-amber-700 bg-amber-50 border-amber-200'"
                                     class="px-2 py-0.5 rounded text-[10px] border"
                                 >
-                                    {{ item.status_kesesuaian === 'VALID' ? '✓ MEMENUHI' : (item.status_kesesuaian || 'DIPERIKSA') }}
+                                    {{ ['SESUAI', 'VALID'].includes(item.status_kesesuaian) ? '✓ MEMENUHI' : (item.status_kesesuaian || 'DIPERIKSA') }}
                                 </span>
                             </td>
                             <td class="py-2 px-3 text-[11px] text-slate-600">

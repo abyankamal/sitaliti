@@ -381,25 +381,16 @@ const BUNDLE_STATUS_LABELS = {
                         </h4>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                             <div
-                                v-for="(status, docName) in (bundle.checklist_dokumen || {
-                                    '1. Nota Pencairan Dana (NPD)': 'LENGKAP',
-                                    '2. Lembar Pengantar SPJ': 'LENGKAP',
-                                    '3. BAP Kas & Register Penutupan': 'LENGKAP',
-                                    '4. Laporan Pengeluaran Kas': 'LENGKAP',
-                                    '5. SPJ Fungsional': 'LENGKAP',
-                                    '6. Buku Kas Umum (BKU)': 'LENGKAP',
-                                    '7. Buku Pembantu Pajak': 'LENGKAP',
-                                    '8. Rekening Koran Bank BJB': 'LENGKAP'
-                                })"
-                                :key="docName"
+                                v-for="(doc, idx) in (bundle.checklist_bagian_a || [])"
+                                :key="doc.id || doc.name || idx"
                                 class="p-2 rounded border border-slate-200 bg-slate-50 flex items-center justify-between"
                             >
-                                <span class="truncate pr-2 text-slate-700 text-[11px]">{{ docName }}</span>
+                                <span class="truncate pr-2 text-slate-700 text-[11px]">{{ doc.name }}</span>
                                 <span
                                     class="px-1.5 py-0.5 rounded text-[10px] font-bold font-mono"
-                                    :class="status === 'LENGKAP' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'"
+                                    :class="doc.checked ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'"
                                 >
-                                    {{ status }}
+                                    {{ doc.checked ? 'LENGKAP' : 'BELUM' }}
                                 </span>
                             </div>
                         </div>
