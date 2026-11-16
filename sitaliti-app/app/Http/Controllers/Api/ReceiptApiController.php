@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -129,7 +130,7 @@ class ReceiptApiController extends Controller
             'nama_penerima' => ['required', 'string', 'max:200'],
             'npwp_penerima' => ['nullable', 'string', 'max:30'],
             'has_npwp' => ['nullable', 'boolean'],
-            'golongan_asn' => ['nullable', 'string', 'max:50'],
+            'golongan_asn' => ['nullable', 'string', Rule::in(['GOLONGAN_I', 'GOLONGAN_II', 'GOLONGAN_I_II', 'GOLONGAN_III', 'GOLONGAN_IV', 'NON_ASN'])],
             'is_sewa_kendaraan' => ['nullable', 'boolean'],
             'is_pkp' => ['nullable', 'boolean'],
             'metode_pembayaran' => ['nullable', 'string', 'in:NON_TUNAI_IBC,TUNAI_UP'],
@@ -288,7 +289,7 @@ class ReceiptApiController extends Controller
             'nama_penerima' => ['nullable', 'string', 'max:200'],
             'npwp_penerima' => ['nullable', 'string', 'max:30'],
             'has_npwp' => ['nullable', 'boolean'],
-            'golongan_asn' => ['nullable', 'string', 'max:50'],
+            'golongan_asn' => ['nullable', 'string', Rule::in(['GOLONGAN_I', 'GOLONGAN_II', 'GOLONGAN_I_II', 'GOLONGAN_III', 'GOLONGAN_IV', 'NON_ASN'])],
             'is_sewa_kendaraan' => ['nullable', 'boolean'],
             'is_pkp' => ['nullable', 'boolean'],
             'metode_pembayaran' => ['nullable', 'string', 'in:NON_TUNAI_IBC,TUNAI_UP'],

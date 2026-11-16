@@ -34,6 +34,9 @@ class Kuitansi extends Model
         'nama_penerima',
         'npwp_penerima',
         'metode_pembayaran',
+        'golongan_asn',
+        'is_sewa_kendaraan',
+        'is_pkp',
         'nominal_bruto',
         'total_pajak',
         'nominal_neto',
@@ -56,6 +59,8 @@ class Kuitansi extends Model
     {
         return [
             'bulan_anggaran' => 'integer',
+            'is_sewa_kendaraan' => 'boolean',
+            'is_pkp' => 'boolean',
             'tanggal_transaksi' => 'date',
             'nominal_bruto' => 'decimal:2',
             'total_pajak' => 'decimal:2',

@@ -91,7 +91,11 @@ class ReceiptService
         $userId = $user?->id ?? (int) ($data['user_id'] ?? 1);
 
         $processedAttachments = $this->prepareAttachments($attachments, $rekening->id);
-        [$itemsToSave, $totalBruto, $taxCalc, $totalPajak, $nominalNeto] = $this->calculateItemsAndTaxes($rekening, $data);
+        $taxOptions = $this->resolveTaxOptions($data);
+        [$itemsToSave, $totalBruto, $taxCalc, $totalPajak, $nominalNeto] = $this->calculateItemsAndTaxes(
+            $rekening,
+            array_merge($data, $taxOptions)
+        );
 
         $tahun = date('Y');
         $bulanStr = str_pad((string) $bulan, 2, '0', STR_PAD_LEFT);
@@ -106,6 +110,7 @@ class ReceiptService
             $tahun,
             $bulanStr,
             $data,
+            $taxOptions,
             $totalBruto,
             $totalPajak,
             $nominalNeto,
@@ -127,6 +132,9 @@ class ReceiptService
                 'nama_penerima' => $data['nama_penerima'],
                 'npwp_penerima' => $data['npwp_penerima'] ?? null,
                 'metode_pembayaran' => $data['metode_pembayaran'] ?? 'NON_TUNAI_IBC',
+                'golongan_asn' => $taxOptions['golongan_asn'],
+                'is_sewa_kendaraan' => $taxOptions['is_sewa_kendaraan'],
+                'is_pkp' => $taxOptions['is_pkp'],
                 'nominal_bruto' => $totalBruto,
                 'total_pajak' => $totalPajak,
                 'nominal_neto' => $nominalNeto,
@@ -189,7 +197,11 @@ class ReceiptService
             }
 
             $rekening = AnggaranRekening::findOrFail($targetRekeningId);
-            [$itemsToSave, $totalBruto, $taxCalc, $totalPajak, $nominalNeto] = $this->calculateItemsAndTaxes($rekening, $data);
+            $taxOptions = $this->resolveTaxOptions($data, $kuitansi);
+            $calcPayload = array_merge($data, $taxOptions, [
+                'npwp_penerima' => array_key_exists('npwp_penerima', $data) ? $data['npwp_penerima'] : $kuitansi->npwp_penerima,
+            ]);
+            [$itemsToSave, $totalBruto, $taxCalc, $totalPajak, $nominalNeto] = $this->calculateItemsAndTaxes($rekening, $calcPayload);
 
             if ($isMinorRevision && round($totalBruto, 2) !== round((float) $kuitansi->nominal_bruto, 2)) {
                 throw ValidationException::withMessages([
@@ -210,6 +222,9 @@ class ReceiptService
                 'nama_penerima' => $data['nama_penerima'] ?? $kuitansi->nama_penerima,
                 'npwp_penerima' => array_key_exists('npwp_penerima', $data) ? $data['npwp_penerima'] : $kuitansi->npwp_penerima,
                 'metode_pembayaran' => $data['metode_pembayaran'] ?? $kuitansi->metode_pembayaran,
+                'golongan_asn' => $taxOptions['golongan_asn'],
+                'is_sewa_kendaraan' => $taxOptions['is_sewa_kendaraan'],
+                'is_pkp' => $taxOptions['is_pkp'],
                 'nominal_bruto' => $totalBruto,
                 'total_pajak' => $totalPajak,
                 'nominal_neto' => $nominalNeto,
@@ -420,6 +435,27 @@ class ReceiptService
         $nominalNeto = $totalBruto - $totalPajak;
 
         return [$itemsToSave, $totalBruto, $taxCalc, $totalPajak, $nominalNeto];
+    }
+
+    /**
+     * Menentukan opsi pajak yang persisten dengan mempertahankan nilai lama pada pembaruan parsial.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array{golongan_asn: string, is_sewa_kendaraan: bool, is_pkp: bool}
+     */
+    private function resolveTaxOptions(array $data, ?Kuitansi $existing = null): array
+    {
+        return [
+            'golongan_asn' => isset($data['golongan_asn']) && $data['golongan_asn'] !== ''
+                ? (string) $data['golongan_asn']
+                : ($existing?->golongan_asn ?? 'GOLONGAN_III'),
+            'is_sewa_kendaraan' => array_key_exists('is_sewa_kendaraan', $data) && $data['is_sewa_kendaraan'] !== null
+                ? (bool) $data['is_sewa_kendaraan']
+                : (bool) ($existing?->is_sewa_kendaraan ?? false),
+            'is_pkp' => array_key_exists('is_pkp', $data) && $data['is_pkp'] !== null
+                ? (bool) $data['is_pkp']
+                : (bool) ($existing?->is_pkp ?? true),
+        ];
     }
 
     /**
