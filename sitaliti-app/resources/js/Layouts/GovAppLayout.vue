@@ -69,6 +69,13 @@ const allNavItems = [
         roles: ['VERIFIKATOR', 'KPA'],
         skpdOnly: true,
     },
+    {
+        name: 'Kelola Anggaran (RAK)',
+        route: 'budget-management.index',
+        icon: 'table',
+        roles: ['VERIFIKATOR', 'KPA'],
+        skpdOnly: true,
+    },
 ];
 
 // Filter navigasi berdasarkan peran aktif pengguna

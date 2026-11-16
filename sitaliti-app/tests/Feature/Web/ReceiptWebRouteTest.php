@@ -170,6 +170,28 @@ class ReceiptWebRouteTest extends TestCase
         $response->assertStatus(403);
     }
 
+    public function test_skpd_admin_can_access_budget_management_but_operator_and_kelurahan_are_forbidden(): void
+    {
+        $this->actingAs($this->verifikator)
+            ->get('/budget-management')
+            ->assertStatus(200)
+            ->assertInertia(fn (Assert $page) => $page->component('Budget/Manage'));
+
+        $this->actingAs($this->operator)
+            ->get('/budget-management')
+            ->assertStatus(403);
+
+        $kelurahan = UnitKerja::where('tipe', 'KELURAHAN')->firstOrFail();
+        $kelurahanAdmin = User::factory()->create([
+            'unit_kerja_id' => $kelurahan->id,
+            'role' => 'VERIFIKATOR',
+        ]);
+
+        $this->actingAs($kelurahanAdmin)
+            ->get('/budget-management')
+            ->assertStatus(403);
+    }
+
     public function test_operator_can_access_edit_page_for_editable_statuses(): void
     {
         foreach (['DRAFT', 'REVISI_MINOR', 'REVISI_MAYOR'] as $status) {

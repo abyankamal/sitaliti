@@ -5,6 +5,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Public\QrVerificationPublicController;
 use App\Http\Controllers\ReceiptAttachmentController;
 use App\Http\Controllers\Web\ReceiptWebController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -67,6 +68,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/users', function () {
         return Inertia::render('Users/Index');
     })->middleware('permission:user.manage')->name('users.index');
+
+    // Routes Manajemen Kode Rekening & Alokasi Pagu (Administrator Anggaran SKPD)
+    Route::get('/budget-management', function (Request $request) {
+        abort_if($request->user()?->isKelurahanScoped(), 403, 'Hanya administrator tingkat SKPD yang dapat mengakses halaman ini.');
+
+        return Inertia::render('Budget/Manage');
+    })->middleware('permission:user.manage')->name('budget-management.index');
 
     // Profile Routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
