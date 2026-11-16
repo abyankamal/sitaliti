@@ -187,6 +187,58 @@ async function submitCreate() {
 onMounted(async () => {
     await Promise.all([fetchUnits(), fetchRekenings()]);
 });
+
+// Edit Allocation Modal
+const showEditModal = ref(false);
+const editingRekening = ref(null);
+const editAlokasi = ref(Array.from({ length: 12 }, () => 0));
+const editMinRequired = ref(Array.from({ length: 12 }, () => 0));
+const savingEdit = ref(false);
+const editErrorGeneral = ref('');
+
+const totalEditAlokasi = computed(() =>
+    editAlokasi.value.reduce((sum, val) => sum + Number(val || 0), 0)
+);
+
+function openEditModal(row) {
+    editingRekening.value = row;
+    const byMonth = {};
+    (row.kas_bulanan || []).forEach((k) => {
+        byMonth[Number(k.bulan)] = k;
+    });
+
+    editAlokasi.value = Array.from({ length: 12 }, (_, idx) => Number(byMonth[idx + 1]?.alokasi_pagu || 0));
+    editMinRequired.value = Array.from(
+        { length: 12 },
+        (_, idx) => Number(byMonth[idx + 1]?.terkunci_bulan || 0) + Number(byMonth[idx + 1]?.realisasi_bulan || 0)
+    );
+    editErrorGeneral.value = '';
+    showEditModal.value = true;
+}
+
+async function submitEdit() {
+    if (!editingRekening.value) return;
+    savingEdit.value = true;
+    editErrorGeneral.value = '';
+
+    try {
+        await window.axios.put(`/api/v1/budget-management/rekening/${editingRekening.value.id}`, {
+            alokasi: editAlokasi.value.map((v) => Number(v || 0)),
+        });
+        showEditModal.value = false;
+        showToast('Alokasi pagu bulanan berhasil diperbarui.');
+        await fetchRekenings(pagination.value.current_page);
+    } catch (err) {
+        const errors = err.response?.data?.errors;
+        if (errors?.alokasi?.length) {
+            editErrorGeneral.value = errors.alokasi[0];
+        } else {
+            editErrorGeneral.value = err.response?.data?.message || 'Gagal memperbarui alokasi pagu.';
+        }
+    } finally {
+        savingEdit.value = false;
+    }
+}
 </script>
 
 <template>
@@ -260,14 +312,15 @@ onMounted(async () => {
                                 <th class="px-4 py-3 text-right">Total Pagu (12 Bln)</th>
                                 <th class="px-4 py-3 text-right">Terkunci</th>
                                 <th class="px-4 py-3 text-right">Realisasi</th>
+                                <th class="px-4 py-3 text-center">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
                             <tr v-if="loading">
-                                <td colspan="7" class="px-4 py-8 text-center text-slate-500">Memuat data rekening anggaran...</td>
+                                <td colspan="8" class="px-4 py-8 text-center text-slate-500">Memuat data rekening anggaran...</td>
                             </tr>
                             <tr v-else-if="rekenings.length === 0">
-                                <td colspan="7" class="px-4 py-8 text-center text-slate-500">Belum ada rekening yang sesuai filter.</td>
+                                <td colspan="8" class="px-4 py-8 text-center text-slate-500">Belum ada rekening yang sesuai filter.</td>
                             </tr>
                             <tr v-for="row in rekenings" :key="row.id" class="hover:bg-slate-50/70">
                                 <td class="px-4 py-3 text-xs font-medium text-slate-700">
@@ -292,6 +345,11 @@ onMounted(async () => {
                                 </td>
                                 <td class="px-4 py-3 text-right tabular-nums text-emerald-700">
                                     {{ formatRupiah(row.total_realisasi) }}
+                                </td>
+                                <td class="px-4 py-3 text-center">
+                                    <GovButton variant="secondary" size="sm" @click="openEditModal(row)">
+                                        Edit Pagu
+                                    </GovButton>
                                 </td>
                             </tr>
                         </tbody>
@@ -443,6 +501,55 @@ onMounted(async () => {
                         </GovButton>
                         <GovButton type="submit" variant="gold" :disabled="saving">
                             {{ saving ? 'Menyimpan...' : 'Simpan Kode Rekening' }}
+                        </GovButton>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal Edit Pagu Bulanan -->
+        <div v-if="showEditModal && editingRekening" class="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 overflow-y-auto">
+            <div class="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[92vh] overflow-y-auto p-6 space-y-5">
+                <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+                    <div>
+                        <h3 class="text-lg font-bold text-gov-navy-950">Edit Alokasi Pagu Bulanan</h3>
+                        <p class="text-xs text-slate-500 font-mono">
+                            {{ editingRekening.kode_rekening }} — {{ editingRekening.nama_rekening }}
+                        </p>
+                    </div>
+                    <button type="button" class="text-slate-400 hover:text-slate-600 text-xl leading-none" @click="showEditModal = false">&times;</button>
+                </div>
+
+                <div v-if="editErrorGeneral" class="p-3 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-700 font-medium">
+                    {{ editErrorGeneral }}
+                </div>
+
+                <form @submit.prevent="submitEdit" class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold uppercase text-gov-navy-900">Rincian Alokasi 12 Bulan</span>
+                        <span class="text-sm font-bold text-gov-navy-900">
+                            Total Pagu Baru: <span class="text-emerald-700 tabular-nums">{{ formatRupiah(totalEditAlokasi) }}</span>
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <div v-for="(bulan, idx) in NAMA_BULAN" :key="idx" class="space-y-1">
+                            <GovCurrencyInput
+                                v-model="editAlokasi[idx]"
+                                :label="`${idx + 1}. ${bulan}`"
+                            />
+                            <p class="text-[10px] text-slate-500">
+                                Min. terpakai: <span class="font-semibold">{{ formatRupiah(editMinRequired[idx]) }}</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
+                        <GovButton type="button" variant="secondary" :disabled="savingEdit" @click="showEditModal = false">
+                            Batal
+                        </GovButton>
+                        <GovButton type="submit" variant="gold" :disabled="savingEdit">
+                            {{ savingEdit ? 'Menyimpan...' : 'Simpan Perubahan Pagu' }}
                         </GovButton>
                     </div>
                 </form>
