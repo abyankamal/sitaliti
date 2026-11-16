@@ -22,9 +22,9 @@ const props = defineProps({
 const page = usePage();
 const currentUser = computed(() => page.props.auth?.user || {});
 const userRole = computed(() => currentUser.value.role || '');
-const isVerifikator = computed(() => userRole.value === 'VERIFIKATOR' || userRole.value === 'KPA');
-const isLurah = computed(() => userRole.value === 'LURAH' || userRole.value === 'KPA');
-const isPptk = computed(() => userRole.value === 'PPTK' || userRole.value === 'KPA');
+const isVerifikator = computed(() => userRole.value === 'VERIFIKATOR');
+const isLurah = computed(() => userRole.value === 'LURAH');
+const isPptk = computed(() => userRole.value === 'PPTK');
 
 const detail = ref(null);
 const loading = ref(true);

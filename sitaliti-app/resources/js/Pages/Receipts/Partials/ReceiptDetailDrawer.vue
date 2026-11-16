@@ -516,7 +516,7 @@ function getStatusBadge(status) {
                         <div class="flex flex-wrap items-center justify-end gap-2">
                             <!-- Aksi Operator: Edit / Revisi untuk DRAFT, REVISI_MINOR, REVISI_MAYOR -->
                             <Link
-                                v-if="(userRole === 'OPERATOR' || userRole === 'KPA') && ['DRAFT', 'REVISI_MINOR', 'REVISI_MAYOR'].includes(receipt.status)"
+                                v-if="userRole === 'OPERATOR' && ['DRAFT', 'REVISI_MINOR', 'REVISI_MAYOR'].includes(receipt.status)"
                                 :href="`/receipts/${receipt.id}/edit`"
                             >
                                 <GovButton variant="secondary" size="sm">
@@ -526,7 +526,7 @@ function getStatusBadge(status) {
 
                             <!-- Aksi Operator: Submit jika DRAFT -->
                             <GovButton
-                                v-if="(userRole === 'OPERATOR' || userRole === 'KPA') && receipt.status === 'DRAFT'"
+                                v-if="userRole === 'OPERATOR' && receipt.status === 'DRAFT'"
                                 @click="openActionModal('SUBMIT_PPTK')"
                                 variant="primary"
                                 size="sm"
@@ -537,7 +537,7 @@ function getStatusBadge(status) {
                             </GovButton>
 
                             <!-- Aksi PPTK: Quick Approve & Reject jika MENUNGGU_PPTK -->
-                            <template v-if="(userRole === 'PPTK' || userRole === 'KPA') && receipt.status === 'MENUNGGU_PPTK'">
+                            <template v-if="userRole === 'PPTK' && receipt.status === 'MENUNGGU_PPTK'">
                                 <GovButton
                                     @click="openRejectModal('PPTK')"
                                     variant="danger"
@@ -559,7 +559,7 @@ function getStatusBadge(status) {
                             </template>
 
                             <!-- Aksi Lurah: Otorisasi & Tolak jika MENUNGGU_LURAH -->
-                            <template v-if="(userRole === 'LURAH' || userRole === 'KPA') && receipt.status === 'MENUNGGU_LURAH'">
+                            <template v-if="userRole === 'LURAH' && receipt.status === 'MENUNGGU_LURAH'">
                                 <GovButton
                                     @click="openRejectModal('LURAH')"
                                     variant="danger"
@@ -582,7 +582,7 @@ function getStatusBadge(status) {
 
                         <!-- Aksi Verifikator: Tautan ke Workspace Verifikasi -->
                         <Link
-                            v-if="(userRole === 'VERIFIKATOR' || userRole === 'KPA') && ['MENUNGGU_VERIFIKASI', 'REVISI_MINOR'].includes(receipt.status)"
+                            v-if="userRole === 'VERIFIKATOR' && ['MENUNGGU_VERIFIKASI', 'REVISI_MINOR'].includes(receipt.status)"
                             :href="route('verification.workspace', receipt.id)"
                         >
                             <GovButton variant="primary" size="sm">

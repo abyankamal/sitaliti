@@ -323,7 +323,7 @@ async function handleAuthSubmit() {
                                     <!-- Aksi Spesifik PPTK jika status MENUNGGU_PPTK -->
                                     <div v-if="item.status === 'MENUNGGU_PPTK'" class="flex items-center justify-center gap-1.5">
                                         <button
-                                            v-if="userRole === 'PPTK' || userRole === 'KPA'"
+                                            v-if="userRole === 'PPTK'"
                                             @click="openAuthModal(item, 'PPTK', 'APPROVE')"
                                             class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
                                             title="Setujui dan teruskan ke tahapan berikutnya"
@@ -334,7 +334,7 @@ async function handleAuthSubmit() {
                                             Setujui
                                         </button>
                                         <button
-                                            v-if="userRole === 'PPTK' || userRole === 'KPA'"
+                                            v-if="userRole === 'PPTK'"
                                             @click="openAuthModal(item, 'PPTK', 'REJECT')"
                                             class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-600 text-white hover:bg-rose-700 shadow-sm"
                                             title="Tolak dan pulihkan pagu kas"
@@ -356,7 +356,7 @@ async function handleAuthSubmit() {
                                     <!-- Aksi Spesifik LURAH jika status MENUNGGU_LURAH -->
                                     <div v-else-if="item.status === 'MENUNGGU_LURAH'" class="flex items-center justify-center gap-1.5">
                                         <button
-                                            v-if="userRole === 'LURAH' || userRole === 'KPA'"
+                                            v-if="userRole === 'LURAH'"
                                             @click="openAuthModal(item, 'LURAH', 'APPROVE')"
                                             class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
                                             title="Otorisasi dan teruskan ke Verifikator Kecamatan"
@@ -367,7 +367,7 @@ async function handleAuthSubmit() {
                                             Otorisasi
                                         </button>
                                         <button
-                                            v-if="userRole === 'LURAH' || userRole === 'KPA'"
+                                            v-if="userRole === 'LURAH'"
                                             @click="openAuthModal(item, 'LURAH', 'REJECT')"
                                             class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-600 text-white hover:bg-rose-700 shadow-sm"
                                             title="Tolak dan pulihkan pagu kas"

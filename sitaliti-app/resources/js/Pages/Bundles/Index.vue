@@ -15,7 +15,7 @@ const isKelurahanScoped = computed(() => !!currentUser.value?.is_kelurahan_scope
 const isKelurahanBpp = computed(() => !!currentUser.value?.is_kelurahan_bpp || (userRole.value === 'BPP' && isKelurahanScoped.value));
 const isLurah = computed(() => userRole.value === 'LURAH');
 const isKpa = computed(() => userRole.value === 'KPA');
-const isVerifikator = computed(() => userRole.value === 'VERIFIKATOR' || isKpa.value);
+const isVerifikator = computed(() => userRole.value === 'VERIFIKATOR');
 const isBp = computed(() => userRole.value === 'BENDAHARA_PENGELUARAN' || (userRole.value === 'BPP' && !isKelurahanScoped.value));
 const isBpp = computed(() => userRole.value === 'BPP' && isKelurahanScoped.value);
 
