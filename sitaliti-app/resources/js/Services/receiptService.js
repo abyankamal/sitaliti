@@ -123,4 +123,25 @@ export const receiptService = {
         const response = await axios.get(`${API_BASE}/${receiptId}/history`);
         return response.data?.data || [];
     },
+
+    /**
+     * Bangun URL unduhan CSV rekapitulasi kuitansi.
+     */
+    getExportUrl(filters = {}) {
+        const params = new URLSearchParams();
+        Object.entries(filters).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== '') {
+                params.append(key, value);
+            }
+        });
+        const qs = params.toString();
+        return `${API_BASE}/export${qs ? `?${qs}` : ''}`;
+    },
+
+    /**
+     * Unduh laporan CSV rekapitulasi kuitansi.
+     */
+    exportReceipts(filters = {}) {
+        window.location.href = this.getExportUrl(filters);
+    },
 };

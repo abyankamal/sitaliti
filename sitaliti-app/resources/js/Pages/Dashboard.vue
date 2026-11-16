@@ -8,6 +8,7 @@ import { formatTanggalIndo } from '@/Utils/date';
 import { STATUS_LABELS, STATUS_VARIANTS } from '@/Constants/workflowStatus';
 import { ref, computed, onMounted } from 'vue';
 import { budgetService } from '@/Services/budgetService';
+import { receiptService } from '@/Services/receiptService';
 import { Head, router, usePage } from '@inertiajs/vue3';
 import RAKSelectorModal from '@/Modules/Gatekeeper/RAKSelectorModal.vue';
 
@@ -56,7 +57,7 @@ function handleGatekeeperSelected(context) {
                     </p>
                 </div>
                 <div class="flex items-center gap-2.5">
-                    <GovButton variant="secondary" size="sm">
+                    <GovButton variant="secondary" size="sm" @click="receiptService.exportReceipts()">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                         </svg>

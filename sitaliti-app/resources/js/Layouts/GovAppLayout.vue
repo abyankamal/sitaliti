@@ -122,9 +122,8 @@ const navItems = computed(() => {
                         <div class="hidden md:flex flex-col text-right">
                             <div class="flex items-center gap-1.5 justify-end">
                                 <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                                <span class="text-xs font-semibold text-slate-200">TA 2026 (RAK Perubahan)</span>
+                                <span class="text-xs font-semibold text-slate-200">TA {{ new Date().getFullYear() }} (RAK Perubahan)</span>
                             </div>
-                            <span class="text-[11px] text-slate-400">Total Pagu: Rp 14.252.126.458</span>
                         </div>
 
                         <div class="h-8 w-px bg-gov-navy-800 hidden md:block"></div>
@@ -207,14 +206,10 @@ const navItems = computed(() => {
 
                 <!-- Gatekeeper Status Footer in Sidebar -->
                 <div v-if="isSidebarOpen" class="p-4 m-3 rounded-lg bg-gov-navy-950/70 border border-gov-navy-800 text-xs">
-                    <div class="flex items-center justify-between text-slate-400 mb-1">
-                        <span>Status Anggaran</span>
-                        <span class="text-emerald-400 font-semibold">Tersedia</span>
+                    <div class="flex items-center justify-between text-slate-400">
+                        <span>Pre-Audit Gateway</span>
+                        <span class="text-emerald-400 font-semibold">Aktif</span>
                     </div>
-                    <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                        <div class="bg-gov-gold-500 h-full rounded-full" style="width: 42%"></div>
-                    </div>
-                    <p class="text-[10px] text-slate-400 mt-2">Realisasi: 42% dari RAK berjalan</p>
                 </div>
             </aside>
 
