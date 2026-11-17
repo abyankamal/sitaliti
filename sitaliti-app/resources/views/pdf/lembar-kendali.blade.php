@@ -205,7 +205,7 @@
     <table class="header-table">
         <tr>
             <td style="width: 70px; text-align: center;">
-                <img src="{{ public_path('Lambang_Kabupaten_Garut.svg.webp') }}" alt="Lambang Kabupaten Garut" style="width: 55px; height: 55px; object-fit: contain;" />
+                <img src="{{ public_path('Lambang_Kabupaten_Garut.jpg') }}" alt="Lambang Kabupaten Garut" style="width: 55px; height: 55px; object-fit: contain;" />
             </td>
             <td class="header-title">
                 <h1>Pemerintah Kabupaten Garut</h1>

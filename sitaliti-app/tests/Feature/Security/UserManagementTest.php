@@ -62,7 +62,8 @@ class UserManagementTest extends TestCase
     {
         $payload = [
             'name' => 'Lurah Jayawaras Baru',
-            'email' => 'lurah.jayawaras.baru@tarkid.garutkab.go.id',
+            'username' => 'lurah.jayawaras.baru',
+            'email' => null,
             'password' => 'password123',
             'role' => 'LURAH',
             'unit_kerja_id' => $this->pataruman->id,
@@ -76,10 +77,12 @@ class UserManagementTest extends TestCase
         $response->assertStatus(201)
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.name', 'Lurah Jayawaras Baru')
+            ->assertJsonPath('data.username', 'lurah.jayawaras.baru')
             ->assertJsonPath('data.role', 'LURAH');
 
         $this->assertDatabaseHas('users', [
-            'email' => 'lurah.jayawaras.baru@tarkid.garutkab.go.id',
+            'username' => 'lurah.jayawaras.baru',
+            'email' => null,
             'role' => 'LURAH',
         ]);
     }
@@ -88,6 +91,7 @@ class UserManagementTest extends TestCase
     {
         $payload = [
             'name' => 'PPTK Baru Pataruman',
+            'username' => 'pptk.baru.pataruman',
             'email' => 'pptk.baru.pataruman@tarkid.garutkab.go.id',
             'password' => 'password123',
             'role' => 'PPTK',
@@ -118,6 +122,7 @@ class UserManagementTest extends TestCase
 
         $payload = [
             'name' => 'PPTK Sarpras Pataruman Diperbarui',
+            'username' => $pptk->username,
             'email' => $pptk->email,
             'role' => 'PPTK',
             'unit_kerja_id' => $this->pataruman->id,
@@ -207,6 +212,7 @@ class UserManagementTest extends TestCase
         // Inactive unit ditolak 422
         $this->actingAs($this->adminUser)->postJson('/api/v1/users', [
             'name' => 'User Nonaktif',
+            'username' => 'user.nonaktif',
             'email' => 'inactive@tarkid.garutkab.go.id',
             'password' => 'password123',
             'role' => 'OPERATOR',
@@ -217,6 +223,7 @@ class UserManagementTest extends TestCase
         foreach (['VERIFIKATOR', 'KPA'] as $skpdRole) {
             $this->actingAs($this->adminUser)->postJson('/api/v1/users', [
                 'name' => "Salah {$skpdRole}",
+                'username' => 'salah.'.strtolower($skpdRole),
                 'email' => strtolower($skpdRole).'.kel@tarkid.garutkab.go.id',
                 'password' => 'password123',
                 'role' => $skpdRole,
@@ -227,6 +234,7 @@ class UserManagementTest extends TestCase
         // LURAH di KECAMATAN ditolak 422
         $this->actingAs($this->adminUser)->postJson('/api/v1/users', [
             'name' => 'Lurah Salah Unit',
+            'username' => 'lurah.salah.unit',
             'email' => 'lurah.kec@tarkid.garutkab.go.id',
             'password' => 'password123',
             'role' => 'LURAH',
@@ -236,6 +244,7 @@ class UserManagementTest extends TestCase
         // Update ke kombinasi tidak valid juga ditolak 422
         $this->actingAs($this->adminUser)->putJson('/api/v1/users/'.$this->operatorUser->id, [
             'name' => $this->operatorUser->name,
+            'username' => $this->operatorUser->username,
             'email' => $this->operatorUser->email,
             'role' => 'LURAH',
             'unit_kerja_id' => $this->kecamatan->id,

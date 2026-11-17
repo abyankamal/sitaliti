@@ -36,6 +36,7 @@ class UserManagementApiController extends Controller
             $query->where(function ($q) use ($keyword) {
                 $likeOperator = $q->getConnection()->getDriverName() === 'pgsql' ? 'ilike' : 'like';
                 $q->where('name', $likeOperator, $keyword)
+                    ->orWhere('username', $likeOperator, $keyword)
                     ->orWhere('email', $likeOperator, $keyword)
                     ->orWhere('nip', $likeOperator, $keyword)
                     ->orWhere('jabatan', $likeOperator, $keyword);
@@ -93,7 +94,8 @@ class UserManagementApiController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:users,email',
+            'username' => ['required', 'string', 'max:60', 'regex:/^[a-zA-Z0-9._-]+$/', 'unique:users,username'],
+            'email' => 'nullable|email|max:255|unique:users,email',
             'password' => 'required|string|min:8',
             'role' => ['required', 'string', Rule::in(['OPERATOR', 'BPP', 'PPTK', 'VERIFIKATOR', 'LURAH', 'KPA'])],
             'unit_kerja_id' => ['required', Rule::exists('master_unit_kerja', 'id')->where('is_active', true)],
@@ -108,7 +110,8 @@ class UserManagementApiController extends Controller
         return DB::transaction(function () use ($validated) {
             $user = User::create([
                 'name' => $validated['name'],
-                'email' => $validated['email'],
+                'username' => strtolower($validated['username']),
+                'email' => $validated['email'] ?? null,
                 'password' => Hash::make($validated['password']),
                 'role' => $validated['role'],
                 'unit_kerja_id' => $validated['unit_kerja_id'],
@@ -147,7 +150,8 @@ class UserManagementApiController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'username' => ['required', 'string', 'max:60', 'regex:/^[a-zA-Z0-9._-]+$/', Rule::unique('users', 'username')->ignore($user->id)],
+            'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'password' => 'nullable|string|min:8',
             'role' => ['required', 'string', Rule::in(['OPERATOR', 'BPP', 'PPTK', 'VERIFIKATOR', 'LURAH', 'KPA'])],
             'unit_kerja_id' => ['required', Rule::exists('master_unit_kerja', 'id')->where('is_active', true)],
@@ -162,7 +166,8 @@ class UserManagementApiController extends Controller
         return DB::transaction(function () use ($user, $validated) {
             $updateData = [
                 'name' => $validated['name'],
-                'email' => $validated['email'],
+                'username' => strtolower($validated['username']),
+                'email' => $validated['email'] ?? null,
                 'role' => $validated['role'],
                 'unit_kerja_id' => $validated['unit_kerja_id'],
                 'nip' => $validated['nip'] ?? null,

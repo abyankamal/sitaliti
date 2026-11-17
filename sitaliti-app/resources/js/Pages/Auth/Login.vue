@@ -5,7 +5,7 @@ import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, useForm } from '@inertiajs/vue3';
 
 defineProps({
     canResetPassword: {
@@ -17,7 +17,7 @@ defineProps({
 });
 
 const form = useForm({
-    email: '',
+    username: '',
     password: '',
     remember: false,
 });
@@ -39,19 +39,20 @@ const submit = () => {
 
         <form @submit.prevent="submit">
             <div>
-                <InputLabel for="email" value="Email" />
+                <InputLabel for="username" value="Username" />
 
                 <TextInput
-                    id="email"
-                    type="email"
+                    id="username"
+                    type="text"
                     class="mt-1 block w-full"
-                    v-model="form.email"
+                    v-model="form.username"
+                    placeholder="Contoh: operator.pataruman"
                     required
                     autofocus
                     autocomplete="username"
                 />
 
-                <InputError class="mt-2" :message="form.errors.email" />
+                <InputError class="mt-2" :message="form.errors.username" />
             </div>
 
             <div class="mt-4">
@@ -78,14 +79,10 @@ const submit = () => {
                 </label>
             </div>
 
-            <div class="mt-4 flex items-center justify-end">
-                <Link
-                    v-if="canResetPassword"
-                    :href="route('password.request')"
-                    class="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                >
-                    Lupa kata sandi?
-                </Link>
+            <div class="mt-4 flex items-center justify-between gap-3">
+                <span class="text-xs text-slate-500">
+                    Lupa kata sandi? Hubungi Admin SKPD.
+                </span>
 
                 <PrimaryButton
                     class="ms-4"

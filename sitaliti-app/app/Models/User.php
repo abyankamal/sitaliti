@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Traits\HasRoles;
@@ -24,6 +25,18 @@ class User extends Authenticatable
      */
     protected static function booted(): void
     {
+        static::creating(function (User $user) {
+            if (blank($user->username)) {
+                $base = ! blank($user->email)
+                    ? Str::lower(Str::before((string) $user->email, '@'))
+                    : Str::slug((string) ($user->name ?: 'user'), '.');
+
+                $user->username = $base !== '' ? $base : 'user_'.Str::lower(Str::random(6));
+            } else {
+                $user->username = Str::lower((string) $user->username);
+            }
+        });
+
         static::created(function (User $user) {
             $user->syncSpatieRole();
         });
@@ -149,6 +162,7 @@ class User extends Authenticatable
         'unit_kerja_id',
         'role',
         'name',
+        'username',
         'nip',
         'jabatan',
         'email',

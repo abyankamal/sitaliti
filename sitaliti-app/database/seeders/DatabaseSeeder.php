@@ -7,6 +7,7 @@ use App\Models\UnitKerja;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
@@ -165,17 +166,22 @@ class DatabaseSeeder extends Seeder
                 continue;
             }
 
-            $user = User::where('email', $userData['email'])->first();
+            $username = Str::before($userData['email'], '@');
+            $user = User::where('email', $userData['email'])
+                ->orWhere('username', $username)
+                ->first();
 
             if ($user) {
                 $user->update([
                     'name' => $userData['name'],
+                    'username' => $username,
                     'role' => $userData['role'],
                     'unit_kerja_id' => $userData['unit_kerja_id'] ?? null,
                 ]);
             } else {
                 $user = User::create([
                     'name' => $userData['name'],
+                    'username' => $username,
                     'email' => $userData['email'],
                     'role' => $userData['role'],
                     'unit_kerja_id' => $userData['unit_kerja_id'] ?? null,

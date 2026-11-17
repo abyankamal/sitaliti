@@ -60,6 +60,7 @@ const formErrorGeneral = ref('');
 
 const form = ref({
     name: '',
+    username: '',
     email: '',
     password: '',
     role: 'OPERATOR',
@@ -153,6 +154,7 @@ function openCreateModal() {
     formErrorGeneral.value = '';
     form.value = {
         name: '',
+        username: '',
         email: '',
         password: '',
         role: 'OPERATOR',
@@ -174,6 +176,7 @@ function openEditModal(user) {
     );
     form.value = {
         name: user.name ?? '',
+        username: user.username ?? '',
         email: user.email ?? '',
         password: '',
         role: user.role ?? 'OPERATOR',
@@ -208,7 +211,8 @@ async function submitForm() {
 
     const payload = {
         name: form.value.name,
-        email: form.value.email,
+        username: form.value.username,
+        email: form.value.email || null,
         role: form.value.role,
         unit_kerja_id: form.value.unit_kerja_id,
         nip: form.value.nip || null,
@@ -410,7 +414,7 @@ onMounted(async () => {
                             >
                                 <td class="px-4 py-2.5">
                                     <div class="font-semibold text-gov-text-main">{{ u.name }}</div>
-                                    <div class="text-[11px] text-gov-text-sub">{{ u.email }}</div>
+                                    <div class="font-mono text-[11px] text-gov-text-sub">@{{ u.username }}<span v-if="u.email"> · {{ u.email }}</span></div>
                                 </td>
                                 <td class="px-4 py-2.5">
                                     <div class="font-mono text-[11px] tabular-nums text-gov-text-main">
@@ -518,12 +522,27 @@ onMounted(async () => {
 
                         <div>
                             <label class="mb-1 block text-xs font-medium text-gov-text-sub">
-                                Email Dinas <span class="text-red-600">*</span>
+                                Username Login <span class="text-red-600">*</span>
+                            </label>
+                            <input
+                                v-model="form.username"
+                                type="text"
+                                required
+                                placeholder="Contoh: operator.pataruman"
+                                class="w-full rounded-md border border-gov-border px-3 py-1.5 font-mono text-xs focus:border-gov-navy-700 focus:outline-none"
+                            />
+                            <p v-if="formErrors.username" class="mt-1 text-[11px] text-red-600">
+                                {{ formErrors.username[0] }}
+                            </p>
+                        </div>
+
+                        <div>
+                            <label class="mb-1 block text-xs font-medium text-gov-text-sub">
+                                Email Dinas <span class="text-[10px] text-slate-400">(Opsional)</span>
                             </label>
                             <input
                                 v-model="form.email"
                                 type="email"
-                                required
                                 class="w-full rounded-md border border-gov-border px-3 py-1.5 text-xs focus:border-gov-navy-700 focus:outline-none"
                             />
                             <p v-if="formErrors.email" class="mt-1 text-[11px] text-red-600">
@@ -681,7 +700,7 @@ onMounted(async () => {
                     <p>
                         Apakah Anda yakin ingin menghapus akun
                         <span class="font-semibold">{{ userToDelete?.name }}</span>
-                        (<span class="font-mono">{{ userToDelete?.email }}</span>)?
+                        (<span class="font-mono">@{{ userToDelete?.username }}</span>)?
                     </p>
                     <p class="text-[11px] text-gov-text-sub">
                         Demi integritas jejak audit BPK, pengguna yang pernah tercatat dalam riwayat kuitansi tidak dapat dihapus.
