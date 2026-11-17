@@ -9,12 +9,14 @@ use App\Models\KuitansiRiwayat;
 use App\Models\KuitansiVerifikasiChecklist;
 use App\Models\PengajuanSpj;
 use App\Models\PptkSubkegiatanAssignment;
+use App\Models\UnitKerja;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class UserManagementApiController extends Controller
 {
@@ -23,6 +25,10 @@ class UserManagementApiController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        if ($forbidden = $this->ensureSkpdAdmin($request)) {
+            return $forbidden;
+        }
+
         $query = User::with(['unitKerja', 'pptkSubkegiatanAssignments']);
 
         if ($request->filled('q')) {
@@ -57,6 +63,10 @@ class UserManagementApiController extends Controller
      */
     public function subActivitiesOptions(Request $request): JsonResponse
     {
+        if ($forbidden = $this->ensureSkpdAdmin($request)) {
+            return $forbidden;
+        }
+
         $query = AnggaranRekening::select('unit_kerja_id', 'kode_sub_kegiatan', 'nama_sub_kegiatan')
             ->distinct();
 
@@ -77,17 +87,23 @@ class UserManagementApiController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        if ($forbidden = $this->ensureSkpdAdmin($request)) {
+            return $forbidden;
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email',
             'password' => 'required|string|min:8',
             'role' => ['required', 'string', Rule::in(['OPERATOR', 'BPP', 'PPTK', 'VERIFIKATOR', 'LURAH', 'KPA'])],
-            'unit_kerja_id' => 'required|exists:master_unit_kerja,id',
+            'unit_kerja_id' => ['required', Rule::exists('master_unit_kerja', 'id')->where('is_active', true)],
             'nip' => 'nullable|string|max:50',
             'jabatan' => 'nullable|string|max:100',
             'sub_kegiatan_codes' => 'nullable|array',
             'sub_kegiatan_codes.*' => 'string',
         ]);
+
+        $this->validateRoleUnitCompatibility($validated['role'], (int) $validated['unit_kerja_id']);
 
         return DB::transaction(function () use ($validated) {
             $user = User::create([
@@ -123,6 +139,10 @@ class UserManagementApiController extends Controller
      */
     public function update(Request $request, int|string $id): JsonResponse
     {
+        if ($forbidden = $this->ensureSkpdAdmin($request)) {
+            return $forbidden;
+        }
+
         $user = User::findOrFail($id);
 
         $validated = $request->validate([
@@ -130,12 +150,14 @@ class UserManagementApiController extends Controller
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'password' => 'nullable|string|min:8',
             'role' => ['required', 'string', Rule::in(['OPERATOR', 'BPP', 'PPTK', 'VERIFIKATOR', 'LURAH', 'KPA'])],
-            'unit_kerja_id' => 'required|exists:master_unit_kerja,id',
+            'unit_kerja_id' => ['required', Rule::exists('master_unit_kerja', 'id')->where('is_active', true)],
             'nip' => 'nullable|string|max:50',
             'jabatan' => 'nullable|string|max:100',
             'sub_kegiatan_codes' => 'nullable|array',
             'sub_kegiatan_codes.*' => 'string',
         ]);
+
+        $this->validateRoleUnitCompatibility($validated['role'], (int) $validated['unit_kerja_id']);
 
         return DB::transaction(function () use ($user, $validated) {
             $updateData = [
@@ -182,6 +204,10 @@ class UserManagementApiController extends Controller
      */
     public function destroy(Request $request, int|string $id): JsonResponse
     {
+        if ($forbidden = $this->ensureSkpdAdmin($request)) {
+            return $forbidden;
+        }
+
         $user = User::findOrFail($id);
 
         if ($user->id === $request->user()->id) {
@@ -222,5 +248,38 @@ class UserManagementApiController extends Controller
             'success' => true,
             'message' => 'Pengguna berhasil dihapus.',
         ]);
+    }
+
+    private function ensureSkpdAdmin(Request $request): ?JsonResponse
+    {
+        $user = $request->user();
+        if (! $user || $user->isKelurahanScoped() || ! $user->isSkpdWide()) {
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'code' => 'FORBIDDEN',
+                    'message' => 'Hanya administrator tingkat SKPD yang berwenang mengelola pengguna.',
+                ],
+            ], 403);
+        }
+
+        return null;
+    }
+
+    private function validateRoleUnitCompatibility(string $role, int $unitKerjaId): void
+    {
+        $unit = UnitKerja::findOrFail($unitKerjaId);
+
+        if (in_array($role, ['VERIFIKATOR', 'KPA'], true) && $unit->tipe === 'KELURAHAN') {
+            throw ValidationException::withMessages([
+                'role' => ['Peran VERIFIKATOR atau KPA hanya dapat ditetapkan pada unit kerja tipe KECAMATAN.'],
+            ]);
+        }
+
+        if ($role === 'LURAH' && $unit->tipe === 'KECAMATAN') {
+            throw ValidationException::withMessages([
+                'role' => ['Peran LURAH hanya dapat ditetapkan pada unit kerja tipe KELURAHAN.'],
+            ]);
+        }
     }
 }

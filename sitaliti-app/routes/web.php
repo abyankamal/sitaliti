@@ -65,7 +65,10 @@ Route::middleware('auth')->group(function () {
     })->middleware('permission:bundle.view')->name('bundles.index');
 
     // Routes Manajemen Pengguna & Penugasan PPTK (Kecamatan Administrator / Kepegawaian)
-    Route::get('/users', function () {
+    Route::get('/users', function (Request $request) {
+        $user = $request->user();
+        abort_if(! $user || $user->isKelurahanScoped() || ! $user->isSkpdWide(), 403, 'Hanya administrator tingkat SKPD yang dapat mengakses halaman ini.');
+
         return Inertia::render('Users/Index');
     })->middleware('permission:user.manage')->name('users.index');
 

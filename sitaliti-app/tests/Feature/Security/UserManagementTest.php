@@ -166,4 +166,79 @@ class UserManagementTest extends TestCase
             'id' => $newUser->id,
         ]);
     }
+
+    public function test_kelurahan_scoped_user_is_forbidden_from_users_web_and_api(): void
+    {
+        $kelurahanAdmin = User::factory()->create([
+            'unit_kerja_id' => $this->pataruman->id,
+            'role' => 'VERIFIKATOR',
+        ]);
+
+        $this->actingAs($kelurahanAdmin)->get('/users')->assertStatus(403);
+        $this->actingAs($kelurahanAdmin)->getJson('/api/v1/users')
+            ->assertStatus(403)
+            ->assertJsonPath('error.code', 'FORBIDDEN');
+        $this->actingAs($kelurahanAdmin)->getJson('/api/v1/users/sub-activities-options')->assertStatus(403);
+        $this->actingAs($kelurahanAdmin)->postJson('/api/v1/users', [
+            'name' => 'Test',
+            'email' => 'blocked@tarkid.garutkab.go.id',
+            'password' => 'password123',
+            'role' => 'OPERATOR',
+            'unit_kerja_id' => $this->pataruman->id,
+        ])->assertStatus(403);
+        $this->actingAs($kelurahanAdmin)->putJson('/api/v1/users/'.$this->operatorUser->id, [
+            'name' => 'Test',
+            'email' => $this->operatorUser->email,
+            'role' => 'OPERATOR',
+            'unit_kerja_id' => $this->pataruman->id,
+        ])->assertStatus(403);
+        $this->actingAs($kelurahanAdmin)->deleteJson('/api/v1/users/'.$this->operatorUser->id)->assertStatus(403);
+    }
+
+    public function test_role_unit_compatibility_and_active_unit_validation(): void
+    {
+        $inactiveUnit = UnitKerja::create([
+            'kode_unit' => '7.01.0.00.0.00.41.9998',
+            'nama_unit' => 'Unit Nonaktif',
+            'tipe' => 'KELURAHAN',
+            'is_active' => false,
+        ]);
+
+        // Inactive unit ditolak 422
+        $this->actingAs($this->adminUser)->postJson('/api/v1/users', [
+            'name' => 'User Nonaktif',
+            'email' => 'inactive@tarkid.garutkab.go.id',
+            'password' => 'password123',
+            'role' => 'OPERATOR',
+            'unit_kerja_id' => $inactiveUnit->id,
+        ])->assertStatus(422)->assertJsonValidationErrors(['unit_kerja_id']);
+
+        // VERIFIKATOR/KPA di KELURAHAN ditolak 422
+        foreach (['VERIFIKATOR', 'KPA'] as $skpdRole) {
+            $this->actingAs($this->adminUser)->postJson('/api/v1/users', [
+                'name' => "Salah {$skpdRole}",
+                'email' => strtolower($skpdRole).'.kel@tarkid.garutkab.go.id',
+                'password' => 'password123',
+                'role' => $skpdRole,
+                'unit_kerja_id' => $this->pataruman->id,
+            ])->assertStatus(422)->assertJsonValidationErrors(['role']);
+        }
+
+        // LURAH di KECAMATAN ditolak 422
+        $this->actingAs($this->adminUser)->postJson('/api/v1/users', [
+            'name' => 'Lurah Salah Unit',
+            'email' => 'lurah.kec@tarkid.garutkab.go.id',
+            'password' => 'password123',
+            'role' => 'LURAH',
+            'unit_kerja_id' => $this->kecamatan->id,
+        ])->assertStatus(422)->assertJsonValidationErrors(['role']);
+
+        // Update ke kombinasi tidak valid juga ditolak 422
+        $this->actingAs($this->adminUser)->putJson('/api/v1/users/'.$this->operatorUser->id, [
+            'name' => $this->operatorUser->name,
+            'email' => $this->operatorUser->email,
+            'role' => 'LURAH',
+            'unit_kerja_id' => $this->kecamatan->id,
+        ])->assertStatus(422)->assertJsonValidationErrors(['role']);
+    }
 }

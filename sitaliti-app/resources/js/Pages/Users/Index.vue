@@ -233,7 +233,8 @@ async function submitForm() {
         const resData = err.response?.data;
         if (err.response?.status === 422 && resData?.errors) {
             formErrors.value = resData.errors;
-            formErrorGeneral.value = resData.message || 'Periksa kembali isian formulir.';
+            formErrorGeneral.value =
+                resData?.error?.message || resData?.message || 'Periksa kembali isian formulir.';
         } else {
             formErrorGeneral.value =
                 resData?.error?.message || resData?.message || 'Terjadi kesalahan saat menyimpan pengguna.';
