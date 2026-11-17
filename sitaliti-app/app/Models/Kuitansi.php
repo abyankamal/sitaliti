@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ResolvesByIdOrNumber;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -13,6 +13,12 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class Kuitansi extends Model
 {
     use HasFactory;
+    use ResolvesByIdOrNumber;
+
+    protected static function numberColumn(): string
+    {
+        return 'nomor_kuitansi';
+    }
 
     protected $table = 'kuitansi';
 
@@ -160,48 +166,5 @@ class Kuitansi extends Model
     public function riwayat(): HasMany
     {
         return $this->hasMany(KuitansiRiwayat::class, 'kuitansi_id');
-    }
-
-    /**
-     * Mencari kuitansi berdasarkan ID numerik (diprioritaskan) atau nomor_kuitansi
-     * secara aman di PostgreSQL maupun SQLite tanpa risiko SQLSTATE[22P02].
-     *
-     * @param  array<int, string>  $with
-     */
-    public static function resolveByIdOrNumber(string|int $identifier, array $with = [], bool $lockForUpdate = false): ?self
-    {
-        $key = (string) $identifier;
-
-        if (preg_match('/^[1-9][0-9]*$/', $key) === 1 && filter_var($key, FILTER_VALIDATE_INT) !== false) {
-            $byIdQuery = static::query()->with($with)->where('id', (int) $key);
-            if ($lockForUpdate) {
-                $byIdQuery->lockForUpdate();
-            }
-
-            $byId = $byIdQuery->first();
-            if ($byId) {
-                return $byId;
-            }
-        }
-
-        $byNumberQuery = static::query()->with($with)->where('nomor_kuitansi', $key);
-        if ($lockForUpdate) {
-            $byNumberQuery->lockForUpdate();
-        }
-
-        return $byNumberQuery->first();
-    }
-
-    /**
-     * @param  array<int, string>  $with
-     */
-    public static function resolveOrFailByIdOrNumber(string|int $identifier, array $with = [], bool $lockForUpdate = false): self
-    {
-        $record = static::resolveByIdOrNumber($identifier, $with, $lockForUpdate);
-        if (! $record) {
-            throw (new ModelNotFoundException)->setModel(static::class, [$identifier]);
-        }
-
-        return $record;
     }
 }

@@ -490,6 +490,10 @@ class ReceiptService
             'is_pkp' => (bool) ($data['is_pkp'] ?? true),
         ]);
 
+        if (! $this->taxService->validateTaxCompliance($totalBruto, $taxCalc)) {
+            throw new InvalidArgumentException('Perhitungan pajak kuitansi tidak memenuhi validasi kepatuhan pajak (Bruto != Neto + Total Pajak).');
+        }
+
         $totalPajak = (float) $taxCalc['total_pajak'];
         $nominalNeto = $totalBruto - $totalPajak;
 

@@ -174,6 +174,8 @@ class ReceiptApiController extends Controller
                 $e->errors(),
                 422
             );
+        } catch (InvalidArgumentException $e) {
+            return $this->errorResponse('INVALID_TAX_CALCULATION', $e->getMessage(), null, 422);
         } catch (Throwable $e) {
             return $this->serverErrorResponse('STORE_RECEIPT_FAILED', $e);
         }
