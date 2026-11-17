@@ -45,7 +45,7 @@ class ReceiptApiController extends Controller
             'search',
         ]);
 
-        if ($user && $user->isKelurahanScoped()) {
+        if ($user && ! $user->isSkpdWide()) {
             $filters['unit_kerja_id'] = $user->unit_kerja_id;
         }
 
@@ -66,7 +66,7 @@ class ReceiptApiController extends Controller
             'search',
         ]);
 
-        if ($user && $user->isKelurahanScoped()) {
+        if ($user && ! $user->isSkpdWide()) {
             $filters['unit_kerja_id'] = $user->unit_kerja_id;
         }
 

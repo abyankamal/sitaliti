@@ -10,7 +10,7 @@ import { formatTanggalIndo, NAMA_BULAN } from '@/Utils/date';
 
 const page = usePage();
 const currentUser = computed(() => page.props.auth?.user);
-const isKelurahan = computed(() => currentUser.value?.is_kelurahan_scoped);
+const isUnitScoped = computed(() => !currentUser.value?.is_skpd_wide);
 const canCreate = computed(() => currentUser.value?.role === 'OPERATOR');
 
 const props = defineProps({
@@ -112,7 +112,7 @@ function handleSearchInput() {
 function resetFilter() {
     activeTab.value = '';
     searchQuery.value = '';
-    selectedUnit.value = isKelurahan.value ? (currentUser.value?.unit_kerja_id || '') : '';
+    selectedUnit.value = isUnitScoped.value ? (currentUser.value?.unit_kerja_id || '') : '';
     selectedKategori.value = '';
     selectedBulan.value = '';
     applyFilter();
@@ -266,10 +266,10 @@ function openReceiptDetail(receipt) {
                         <select
                             v-model="selectedUnit"
                             @change="applyFilter"
-                            :disabled="isKelurahan"
+                            :disabled="isUnitScoped"
                             class="w-full py-2 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gov-navy-600/20 focus:border-gov-navy-700 bg-white disabled:bg-slate-100 disabled:text-slate-500"
                         >
-                            <option v-if="!isKelurahan" value="">Semua Unit Kerja</option>
+                            <option v-if="!isUnitScoped" value="">Semua Unit Kerja</option>
                             <option v-for="unit in unitKerjaList" :key="unit.id" :value="unit.id">
                                 {{ unit.nama_unit }}
                             </option>

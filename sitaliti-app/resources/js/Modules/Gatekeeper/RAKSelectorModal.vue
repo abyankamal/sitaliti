@@ -19,7 +19,7 @@ const emit = defineEmits(['close', 'select']);
 
 const page = usePage();
 const currentUser = computed(() => page.props.auth?.user);
-const isKelurahan = computed(() => currentUser.value?.is_kelurahan_scoped);
+const isUnitScoped = computed(() => !currentUser.value?.is_skpd_wide);
 
 const units = ref([]);
 const subActivities = ref([]);
@@ -38,7 +38,7 @@ const activeMonth = computed(() => Number(rakContext.value?.active_system_month 
 
 onMounted(async () => {
     units.value = await budgetService.getUnits();
-    if (isKelurahan.value && currentUser.value?.unit_kerja_id) {
+    if (isUnitScoped.value && currentUser.value?.unit_kerja_id) {
         selectedUnitId.value = currentUser.value.unit_kerja_id;
     } else if (units.value.length === 1) {
         selectedUnitId.value = units.value[0].id;
@@ -175,7 +175,7 @@ function handleConfirm() {
                             </label>
                             <select
                                 v-model="selectedUnitId"
-                                :disabled="isKelurahan"
+                                :disabled="isUnitScoped"
                                 class="w-full text-xs rounded-lg border-gov-surface-border py-2 px-3 focus:border-gov-navy-800 focus:ring-1 focus:ring-gov-navy-800 text-gov-navy-950 font-medium disabled:bg-slate-100 disabled:text-slate-500"
                             >
                                 <option value="" disabled>-- Pilih Unit Organisasi --</option>

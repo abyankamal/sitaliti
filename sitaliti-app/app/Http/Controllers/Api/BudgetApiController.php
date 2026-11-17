@@ -322,8 +322,12 @@ class BudgetApiController extends Controller
         $user = $request->user();
         $query = AnggaranRekening::query();
 
-        if ($user && $user->isKelurahanScoped()) {
-            $query->where('unit_kerja_id', $user->unit_kerja_id);
+        if ($user && ! $user->isSkpdWide()) {
+            if ($user->unit_kerja_id) {
+                $query->where('unit_kerja_id', $user->unit_kerja_id);
+            } else {
+                $query->whereRaw('1 = 0');
+            }
         } elseif ($request->filled('unit_id')) {
             $query->where('unit_kerja_id', $request->input('unit_id'));
         }
@@ -376,7 +380,7 @@ class BudgetApiController extends Controller
             return $this->errorResponse('REKENING_NOT_FOUND', 'Rekening anggaran tidak ditemukan.', null, 404);
         }
 
-        if ($user && $user->isKelurahanScoped() && $rekening->unit_kerja_id !== $user->unit_kerja_id) {
+        if ($user && ! $user->isSkpdWide() && (! $user->unit_kerja_id || (int) $rekening->unit_kerja_id !== (int) $user->unit_kerja_id)) {
             return $this->errorResponse('FORBIDDEN', 'Anda tidak memiliki hak akses untuk melihat RAK rekening unit kerja lain.', null, 403);
         }
 

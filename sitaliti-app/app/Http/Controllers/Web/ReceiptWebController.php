@@ -31,7 +31,7 @@ class ReceiptWebController extends Controller
         ]);
         $perPage = (int) $request->input('per_page', 15);
 
-        if ($user && $user->isKelurahanScoped()) {
+        if ($user && ! $user->isSkpdWide()) {
             $filters['unit_kerja_id'] = $user->unit_kerja_id;
         }
 
@@ -42,8 +42,12 @@ class ReceiptWebController extends Controller
             ->select('id', 'kode_unit', 'nama_unit', 'tipe')
             ->orderBy('id', 'asc');
 
-        if ($user && $user->isKelurahanScoped()) {
-            $unitKerjaQuery->where('id', $user->unit_kerja_id);
+        if ($user && ! $user->isSkpdWide()) {
+            if ($user->unit_kerja_id) {
+                $unitKerjaQuery->where('id', $user->unit_kerja_id);
+            } else {
+                $unitKerjaQuery->whereRaw('1 = 0');
+            }
         }
 
         $unitKerjaList = $unitKerjaQuery->get();
