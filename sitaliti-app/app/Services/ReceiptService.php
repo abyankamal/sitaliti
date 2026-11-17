@@ -10,6 +10,7 @@ use App\Models\KuitansiItem;
 use App\Models\KuitansiLampiran;
 use App\Models\KuitansiPajak;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -101,65 +102,86 @@ class ReceiptService
         $bulanStr = str_pad((string) $bulan, 2, '0', STR_PAD_LEFT);
         $prefix = "KW-{$tahun}-{$bulanStr}-";
 
-        return DB::transaction(function () use (
-            $prefix,
-            $rekening,
-            $userId,
-            $user,
-            $bulan,
-            $tahun,
-            $bulanStr,
-            $data,
-            $taxOptions,
-            $totalBruto,
-            $totalPajak,
-            $nominalNeto,
-            $itemsToSave,
-            $taxCalc,
-            $processedAttachments
-        ) {
-            $nomorKuitansi = $data['nomor_kuitansi'] ?? $this->generateNextNomorKuitansi($prefix);
+        $isAutoNumber = blank($data['nomor_kuitansi'] ?? null);
+        $maxAttempts = $isAutoNumber ? 3 : 1;
 
-            $kuitansi = Kuitansi::create([
-                'nomor_kuitansi' => $nomorKuitansi,
-                'unit_kerja_id' => $rekening->unit_kerja_id,
-                'anggaran_rekening_id' => $rekening->id,
-                'user_id' => $userId,
-                'bulan_anggaran' => $bulan,
-                'nomor_bukti_toko' => $data['nomor_bukti_toko'] ?? null,
-                'tanggal_transaksi' => $data['tanggal_transaksi'] ?? date('Y-m-d'),
-                'uraian' => $data['uraian_belanja'] ?? $data['uraian'] ?? 'Belanja Kuitansi',
-                'nama_penerima' => $data['nama_penerima'],
-                'npwp_penerima' => $data['npwp_penerima'] ?? null,
-                'metode_pembayaran' => $data['metode_pembayaran'] ?? 'NON_TUNAI_IBC',
-                'golongan_asn' => $taxOptions['golongan_asn'],
-                'is_sewa_kendaraan' => $taxOptions['is_sewa_kendaraan'],
-                'is_pkp' => $taxOptions['is_pkp'],
-                'nominal_bruto' => $totalBruto,
-                'total_pajak' => $totalPajak,
-                'nominal_neto' => $nominalNeto,
-                'status' => 'DRAFT',
-            ]);
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            try {
+                return DB::transaction(function () use (
+                    $prefix,
+                    $rekening,
+                    $userId,
+                    $user,
+                    $bulan,
+                    $tahun,
+                    $bulanStr,
+                    $data,
+                    $taxOptions,
+                    $totalBruto,
+                    $totalPajak,
+                    $nominalNeto,
+                    $itemsToSave,
+                    $taxCalc,
+                    $processedAttachments,
+                    $isAutoNumber
+                ) {
+                    $nomorKuitansi = $isAutoNumber ? $this->generateNextNomorKuitansi($prefix) : (string) $data['nomor_kuitansi'];
 
-            $this->syncReceiptItemsAndTaxes($kuitansi, $itemsToSave, $taxCalc);
-            $this->storeAttachments($kuitansi, $rekening->id, $processedAttachments, $tahun, $bulanStr);
+                    $kuitansi = Kuitansi::create([
+                        'nomor_kuitansi' => $nomorKuitansi,
+                        'unit_kerja_id' => $rekening->unit_kerja_id,
+                        'anggaran_rekening_id' => $rekening->id,
+                        'user_id' => $userId,
+                        'bulan_anggaran' => $bulan,
+                        'nomor_bukti_toko' => $data['nomor_bukti_toko'] ?? null,
+                        'tanggal_transaksi' => $data['tanggal_transaksi'] ?? date('Y-m-d'),
+                        'uraian' => $data['uraian_belanja'] ?? $data['uraian'] ?? 'Belanja Kuitansi',
+                        'nama_penerima' => $data['nama_penerima'],
+                        'npwp_penerima' => $data['npwp_penerima'] ?? null,
+                        'metode_pembayaran' => $data['metode_pembayaran'] ?? 'NON_TUNAI_IBC',
+                        'golongan_asn' => $taxOptions['golongan_asn'],
+                        'is_sewa_kendaraan' => $taxOptions['is_sewa_kendaraan'],
+                        'is_pkp' => $taxOptions['is_pkp'],
+                        'nominal_bruto' => $totalBruto,
+                        'total_pajak' => $totalPajak,
+                        'nominal_neto' => $nominalNeto,
+                        'status' => 'DRAFT',
+                    ]);
 
-            $this->auditTrailService->log(
-                $kuitansi,
-                'DRAFT_CREATED',
-                null,
-                'DRAFT',
-                'Pembuatan draft kuitansi belanja',
-                $user,
-                [
-                    'nominal_bruto' => (float) $kuitansi->nominal_bruto,
-                    'nominal_neto' => (float) $kuitansi->nominal_neto,
-                    'bulan_anggaran' => $kuitansi->bulan_anggaran,
-                ]
-            );
+                    $this->syncReceiptItemsAndTaxes($kuitansi, $itemsToSave, $taxCalc);
+                    $this->storeAttachments($kuitansi, $rekening->id, $processedAttachments, $tahun, $bulanStr);
 
-            return $kuitansi->load(['items', 'pajak', 'lampiran', 'rekening', 'unitKerja']);
-        });
+                    $this->auditTrailService->log(
+                        $kuitansi,
+                        'DRAFT_CREATED',
+                        null,
+                        'DRAFT',
+                        'Pembuatan draft kuitansi belanja',
+                        $user,
+                        [
+                            'nominal_bruto' => (float) $kuitansi->nominal_bruto,
+                            'nominal_neto' => (float) $kuitansi->nominal_neto,
+                            'bulan_anggaran' => $kuitansi->bulan_anggaran,
+                        ]
+                    );
+
+                    return $kuitansi->load(['items', 'pajak', 'lampiran', 'rekening', 'unitKerja']);
+                });
+            } catch (QueryException $e) {
+                if (! $isAutoNumber || $attempt >= $maxAttempts || ! $this->isAutoNumberUniqueViolation($e, 'nomor_kuitansi')) {
+                    throw $e;
+                }
+            }
+        }
+
+        throw new \RuntimeException('Gagal membuat nomor kuitansi unik setelah beberapa percobaan.');
+    }
+
+    private function isAutoNumberUniqueViolation(QueryException $e, string $column): bool
+    {
+        $isUniqueCode = in_array((string) $e->getCode(), ['23000', '23505'], true);
+
+        return $isUniqueCode && str_contains($e->getMessage(), $column);
     }
 
     /**

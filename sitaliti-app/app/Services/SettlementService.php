@@ -75,117 +75,137 @@ class SettlementService implements SettlementServiceInterface
 
         $bulanStr = str_pad((string) $bulan, 2, '0', STR_PAD_LEFT);
         $prefix = "BND-{$jenis}/{$tahun}/{$bulanStr}/";
+        $isAutoNumber = blank($data['nomor_bundel'] ?? null);
+        $maxAttempts = $isAutoNumber ? 3 : 1;
 
-        return DB::transaction(function () use (
-            $prefix,
-            $unitId,
-            $user,
-            $jenis,
-            $tahun,
-            $bulan,
-            $kuitansiIds,
-            $data
-        ) {
-            $nomorBundel = $data['nomor_bundel'] ?? $this->generateNextNomorBundel($prefix);
-            // 1. Validasi seluruh kuitansi: harus LOLOS_VERIFIKASI dan belum aktif di bundel lain
-            $numericIds = [];
-            $nomorList = [];
-            foreach ($kuitansiIds as $identifier) {
-                $str = (string) $identifier;
-                if (preg_match('/^[1-9][0-9]*$/', $str) === 1 && filter_var($str, FILTER_VALIDATE_INT) !== false) {
-                    $numericIds[] = (int) $str;
-                } else {
-                    $nomorList[] = $str;
-                }
-            }
-
-            $receipts = ($numericIds === [] && $nomorList === [])
-                ? collect()
-                : Kuitansi::where(function ($q) use ($numericIds, $nomorList) {
-                    if ($numericIds !== []) {
-                        $q->whereIn('id', $numericIds);
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            try {
+                return DB::transaction(function () use (
+                    $prefix,
+                    $unitId,
+                    $user,
+                    $jenis,
+                    $tahun,
+                    $bulan,
+                    $kuitansiIds,
+                    $data,
+                    $isAutoNumber
+                ) {
+                    $nomorBundel = $isAutoNumber ? $this->generateNextNomorBundel($prefix) : (string) $data['nomor_bundel'];
+                    // 1. Validasi seluruh kuitansi: harus LOLOS_VERIFIKASI dan belum aktif di bundel lain
+                    $numericIds = [];
+                    $nomorList = [];
+                    foreach ($kuitansiIds as $identifier) {
+                        $str = (string) $identifier;
+                        if (preg_match('/^[1-9][0-9]*$/', $str) === 1 && filter_var($str, FILTER_VALIDATE_INT) !== false) {
+                            $numericIds[] = (int) $str;
+                        } else {
+                            $nomorList[] = $str;
+                        }
                     }
-                    if ($nomorList !== []) {
-                        $method = $numericIds !== [] ? 'orWhereIn' : 'whereIn';
-                        $q->{$method}('nomor_kuitansi', $nomorList);
+
+                    $receipts = ($numericIds === [] && $nomorList === [])
+                        ? collect()
+                        : Kuitansi::where(function ($q) use ($numericIds, $nomorList) {
+                            if ($numericIds !== []) {
+                                $q->whereIn('id', $numericIds);
+                            }
+                            if ($nomorList !== []) {
+                                $method = $numericIds !== [] ? 'orWhereIn' : 'whereIn';
+                                $q->{$method}('nomor_kuitansi', $nomorList);
+                            }
+                        })
+                            ->orderBy('id', 'asc')
+                            ->lockForUpdate()
+                            ->get();
+
+                    if ($receipts->count() !== count(array_unique($kuitansiIds))) {
+                        throw new InvalidArgumentException('Beberapa kuitansi yang dipilih tidak ditemukan dalam sistem.');
                     }
-                })
-                    ->orderBy('id', 'asc')
-                    ->lockForUpdate()
-                    ->get();
 
-            if ($receipts->count() !== count(array_unique($kuitansiIds))) {
-                throw new InvalidArgumentException('Beberapa kuitansi yang dipilih tidak ditemukan dalam sistem.');
-            }
+                    foreach ($receipts as $r) {
+                        if ($r->status !== 'LOLOS_VERIFIKASI') {
+                            throw new InvalidArgumentException(
+                                "Kuitansi {$r->nomor_kuitansi} berstatus '{$r->status}', hanya kuitansi LOLOS_VERIFIKASI yang dapat dibundel."
+                            );
+                        }
 
-            foreach ($receipts as $r) {
-                if ($r->status !== 'LOLOS_VERIFIKASI') {
-                    throw new InvalidArgumentException(
-                        "Kuitansi {$r->nomor_kuitansi} berstatus '{$r->status}', hanya kuitansi LOLOS_VERIFIKASI yang dapat dibundel."
-                    );
-                }
+                        if ($user->isKelurahanScoped() && (int) $r->unit_kerja_id !== (int) $user->unit_kerja_id) {
+                            throw new InvalidArgumentException(
+                                "Kuitansi {$r->nomor_kuitansi} berasal dari unit kerja lain. BPP Kelurahan hanya dapat membundel kuitansi kelurahannya sendiri."
+                            );
+                        }
+                    }
 
-                if ($user->isKelurahanScoped() && (int) $r->unit_kerja_id !== (int) $user->unit_kerja_id) {
-                    throw new InvalidArgumentException(
-                        "Kuitansi {$r->nomor_kuitansi} berasal dari unit kerja lain. BPP Kelurahan hanya dapat membundel kuitansi kelurahannya sendiri."
-                    );
-                }
-            }
-
-            // 2. Buat record Pengajuan SPJ
-            $bundle = PengajuanSpj::create([
-                'nomor_bundel' => $nomorBundel,
-                'unit_kerja_id' => $unitId,
-                'user_id' => $user->id,
-                'jenis_bundel' => $jenis,
-                'tahun_anggaran' => $tahun,
-                'bulan_periode' => $bulan,
-                'total_bruto' => 0.00,
-                'total_pajak' => 0.00,
-                'total_neto' => 0.00,
-                'status_bundel' => $data['status_bundel'] ?? 'DRAFT',
-                'nomor_spp_sipd' => $data['nomor_spp_sipd'] ?? null,
-                'checklist_bagian_a' => $data['checklist_bagian_a'] ?? $this->defaultChecklistBagianA,
-            ]);
-
-            // 3. Masukkan setiap kuitansi ke pengajuan_spj_item dengan no urut ordner
-            $order = 1;
-            foreach ($receipts as $receipt) {
-                try {
-                    PengajuanSpjItem::create([
-                        'pengajuan_spj_id' => $bundle->id,
-                        'kuitansi_id' => $receipt->id,
-                        'no_urut_ordner' => $order++,
-                        'status_item' => 'AKTIF',
+                    // 2. Buat record Pengajuan SPJ
+                    $bundle = PengajuanSpj::create([
+                        'nomor_bundel' => $nomorBundel,
+                        'unit_kerja_id' => $unitId,
+                        'user_id' => $user->id,
+                        'jenis_bundel' => $jenis,
+                        'tahun_anggaran' => $tahun,
+                        'bulan_periode' => $bulan,
+                        'total_bruto' => 0.00,
+                        'total_pajak' => 0.00,
+                        'total_neto' => 0.00,
+                        'status_bundel' => $data['status_bundel'] ?? 'DRAFT',
+                        'nomor_spp_sipd' => $data['nomor_spp_sipd'] ?? null,
+                        'checklist_bagian_a' => $data['checklist_bagian_a'] ?? $this->defaultChecklistBagianA,
                     ]);
-                } catch (QueryException $e) {
-                    if (str_contains($e->getMessage(), 'uq_satu_kuitansi_aktif') || in_array((string) $e->getCode(), ['23000', '23505'], true)) {
-                        throw new InvalidArgumentException(
-                            "Kuitansi {$receipt->nomor_kuitansi} gagal dibundel karena telah aktif pada pengajuan SPJ lain (Proteksi Anti-Klaim Ganda)."
+
+                    // 3. Masukkan setiap kuitansi ke pengajuan_spj_item dengan no urut ordner
+                    $order = 1;
+                    foreach ($receipts as $receipt) {
+                        try {
+                            PengajuanSpjItem::create([
+                                'pengajuan_spj_id' => $bundle->id,
+                                'kuitansi_id' => $receipt->id,
+                                'no_urut_ordner' => $order++,
+                                'status_item' => 'AKTIF',
+                            ]);
+                        } catch (QueryException $e) {
+                            if (str_contains($e->getMessage(), 'uq_satu_kuitansi_aktif') || in_array((string) $e->getCode(), ['23000', '23505'], true)) {
+                                throw new InvalidArgumentException(
+                                    "Kuitansi {$receipt->nomor_kuitansi} gagal dibundel karena telah aktif pada pengajuan SPJ lain (Proteksi Anti-Klaim Ganda)."
+                                );
+                            }
+                            throw $e;
+                        }
+
+                        // Update status kuitansi menjadi DIBUNDEL
+                        $receipt->update(['status' => 'DIBUNDEL']);
+
+                        $this->auditTrailService->log(
+                            $receipt,
+                            'BUNDLED',
+                            'LOLOS_VERIFIKASI',
+                            'DIBUNDEL',
+                            "Kuitansi dimasukkan ke dalam bundel SPJ {$nomorBundel}",
+                            $user,
+                            ['pengajuan_spj_id' => $bundle->id, 'nomor_bundel' => $nomorBundel]
                         );
                     }
+
+                    // 4. Hitung akumulasi total bruto, pajak, dan neto
+                    $bundle->recalculateTotals();
+
+                    return $bundle->fresh(['unitKerja', 'creator', 'activeItems.kuitansi.rekening']);
+                });
+            } catch (QueryException $e) {
+                if (! $isAutoNumber || $attempt >= $maxAttempts || ! $this->isAutoNumberUniqueViolation($e, 'nomor_bundel')) {
                     throw $e;
                 }
-
-                // Update status kuitansi menjadi DIBUNDEL
-                $receipt->update(['status' => 'DIBUNDEL']);
-
-                $this->auditTrailService->log(
-                    $receipt,
-                    'BUNDLED',
-                    'LOLOS_VERIFIKASI',
-                    'DIBUNDEL',
-                    "Kuitansi dimasukkan ke dalam bundel SPJ {$nomorBundel}",
-                    $user,
-                    ['pengajuan_spj_id' => $bundle->id, 'nomor_bundel' => $nomorBundel]
-                );
             }
+        }
 
-            // 4. Hitung akumulasi total bruto, pajak, dan neto
-            $bundle->recalculateTotals();
+        throw new \RuntimeException('Gagal membuat nomor bundel unik setelah beberapa percobaan.');
+    }
 
-            return $bundle->fresh(['unitKerja', 'creator', 'activeItems.kuitansi.rekening']);
-        });
+    private function isAutoNumberUniqueViolation(QueryException $e, string $column): bool
+    {
+        $isUniqueCode = in_array((string) $e->getCode(), ['23000', '23505'], true);
+
+        return $isUniqueCode && str_contains($e->getMessage(), $column);
     }
 
     /**

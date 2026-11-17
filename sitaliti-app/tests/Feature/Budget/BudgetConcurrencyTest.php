@@ -14,7 +14,9 @@ use App\Services\ReceiptService;
 use App\Services\SettlementService;
 use Database\Seeders\MasterChecklistSeeder;
 use Database\Seeders\UnitKerjaSeeder;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use Tests\TestCase;
 
@@ -270,5 +272,69 @@ class BudgetConcurrencyTest extends TestCase
         // Kunci kedua mencoba Rp 5.000.000 (melebihi sisa 2jt) -> Wajib dilempar PaguOverlimitException
         $this->expectException(PaguOverlimitException::class);
         $this->budgetService->reserveBudget((string) $this->rekening->id, 2, 5000000.00, 2);
+    }
+
+    public function test_auto_number_outer_transaction_retry_handles_collision_and_empty_string(): void
+    {
+        $receiptService = app(ReceiptService::class);
+
+        // String kosong '' pada nomor_kuitansi tetap memicu auto-generation & retry saat tabrakan pertama
+        $collidedOnce = false;
+        Kuitansi::creating(function (Kuitansi $k) use (&$collidedOnce) {
+            if (! $collidedOnce && str_starts_with($k->nomor_kuitansi, 'KW')) {
+                $collidedOnce = true;
+                DB::table('kuitansi')->insert([
+                    'nomor_kuitansi' => $k->nomor_kuitansi,
+                    'unit_kerja_id' => $k->unit_kerja_id,
+                    'anggaran_rekening_id' => $k->anggaran_rekening_id,
+                    'user_id' => $k->user_id,
+                    'bulan_anggaran' => $k->bulan_anggaran,
+                    'tanggal_transaksi' => $k->tanggal_transaksi,
+                    'uraian' => 'Tabrakan Konkuren',
+                    'nama_penerima' => 'Toko A',
+                    'nominal_bruto' => 100000,
+                    'total_pajak' => 0,
+                    'nominal_neto' => 100000,
+                    'status' => 'DRAFT',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        });
+
+        try {
+            $draft = $receiptService->createDraft([
+                'anggaran_rekening_id' => $this->rekening->id,
+                'bulan_anggaran' => 2,
+                'nomor_kuitansi' => '',
+                'tanggal_transaksi' => '2026-02-15',
+                'uraian' => 'Belanja Retry',
+                'nama_penerima' => 'Toko Retry',
+                'kategori_belanja' => 'B1_ATK',
+                'items' => [
+                    ['nama_barang' => 'Kertas', 'volume' => 1, 'satuan' => 'Rim', 'harga_satuan' => 50000],
+                ],
+            ], [], $this->operator);
+
+            $this->assertTrue($collidedOnce);
+            $this->assertStringStartsWith('KW-2026-02-', $draft->nomor_kuitansi);
+        } finally {
+            Kuitansi::flushEventListeners();
+        }
+
+        // Nomor eksplisit yang duplikat tidak boleh di-retry dan langsung melempar exception
+        $this->expectException(QueryException::class);
+        $receiptService->createDraft([
+            'anggaran_rekening_id' => $this->rekening->id,
+            'bulan_anggaran' => 2,
+            'nomor_kuitansi' => $draft->nomor_kuitansi,
+            'tanggal_transaksi' => '2026-02-15',
+            'uraian' => 'Duplikat Eksplisit',
+            'nama_penerima' => 'Toko Retry',
+            'kategori_belanja' => 'B1_ATK',
+            'items' => [
+                ['nama_barang' => 'Kertas', 'volume' => 1, 'satuan' => 'Rim', 'harga_satuan' => 50000],
+            ],
+        ], [], $this->operator);
     }
 }
