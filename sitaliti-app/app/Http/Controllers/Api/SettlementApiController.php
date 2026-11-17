@@ -41,7 +41,7 @@ class SettlementApiController extends Controller
             'jenis_bundel' => ['nullable', 'string', 'in:SPP_GU,SPP_TU,SPP_LS,LPJ_BPP'],
             'tahun_anggaran' => ['nullable', 'integer', 'min:2020'],
             'bulan_periode' => ['nullable', 'integer', 'between:1,12'],
-            'unit_kerja_id' => ['nullable', 'integer'],
+            'unit_kerja_id' => ['nullable', 'integer', 'exists:master_unit_kerja,id'],
             'nomor_bundel' => ['nullable', 'string', 'max:60'],
             'nomor_spp_sipd' => ['nullable', 'string', 'max:100'],
         ]);
@@ -99,6 +99,8 @@ class SettlementApiController extends Controller
             $this->settlementService->unbundleReceipt($id, $kuitansiId, $reason, $user);
 
             return $this->successResponse(null, 'Kuitansi berhasil dikeluarkan dari bundel SPJ');
+        } catch (ModelNotFoundException) {
+            return $this->errorResponse('BUNDLE_NOT_FOUND', 'Bundel SPJ tidak ditemukan.', null, 404);
         } catch (InvalidArgumentException $e) {
             $statusCode = str_contains($e->getMessage(), 'tidak berwenang') ? 403 : 422;
 

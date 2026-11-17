@@ -295,4 +295,44 @@ class SettlementBundlingTest extends TestCase
         $this->assertEquals(0.00, (float) $kasRefreshed->terkunci_bulan);
         $this->assertEquals(5000000.00, (float) $kasRefreshed->realisasi_bulan);
     }
+
+    /**
+     * Test unbundle ditolak (422) pada bundel non-DRAFT dan mengembalikan 404 bila bundel tidak ada.
+     */
+    public function test_unbundle_ditolak_jika_status_bukan_draft_dan_404_jika_bundel_tidak_ada(): void
+    {
+        $k = $this->createKuitansiLolos('KW-UNBUNDLE-GUARD', 2500000.00);
+
+        $resCreate = $this->actingAs($this->bppUser)->postJson('/api/v1/bundles', [
+            'kuitansi_ids' => [$k->id],
+            'jenis_bundel' => 'SPP_GU',
+        ]);
+        $resCreate->assertStatus(201);
+        $bundleId = $resCreate->json('data.id');
+
+        // Ajukan ke PPK -> status menjadi MENUNGGU_PPK
+        $this->actingAs($this->bppUser)->postJson("/api/v1/bundles/{$bundleId}/submit-ppk")
+            ->assertStatus(200);
+
+        $this->actingAs($this->bppUser)
+            ->postJson("/api/v1/bundles/{$bundleId}/unbundle/{$k->id}")
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'UNBUNDLE_FAILED');
+
+        $this->assertEquals('DIBUNDEL', $k->fresh()->status);
+
+        // Bundel tidak ditemukan -> 404
+        $this->actingAs($this->bppUser)
+            ->postJson("/api/v1/bundles/999999/unbundle/{$k->id}")
+            ->assertStatus(404)
+            ->assertJsonPath('error.code', 'BUNDLE_NOT_FOUND');
+
+        // Unit kerja tidak valid pada store -> 422
+        $k2 = $this->createKuitansiLolos('KW-UNIT-INVALID', 1000000.00);
+        $this->actingAs($this->bppUser)->postJson('/api/v1/bundles', [
+            'kuitansi_ids' => [$k2->id],
+            'jenis_bundel' => 'SPP_GU',
+            'unit_kerja_id' => 999999,
+        ])->assertStatus(422);
+    }
 }

@@ -109,7 +109,10 @@ class SettlementService implements SettlementServiceInterface
                         $method = $numericIds !== [] ? 'orWhereIn' : 'whereIn';
                         $q->{$method}('nomor_kuitansi', $nomorList);
                     }
-                })->get();
+                })
+                    ->orderBy('id', 'asc')
+                    ->lockForUpdate()
+                    ->get();
 
             if ($receipts->count() !== count(array_unique($kuitansiIds))) {
                 throw new InvalidArgumentException('Beberapa kuitansi yang dipilih tidak ditemukan dalam sistem.');
@@ -194,28 +197,30 @@ class SettlementService implements SettlementServiceInterface
             throw new InvalidArgumentException('Lurah hanya memiliki akses baca (read-only) dan tidak berwenang mengeluarkan kuitansi dari bundel.');
         }
 
-        $bundleRef = PengajuanSpj::resolveByIdOrNumber($bundleId);
-        $kuitansiRef = Kuitansi::resolveByIdOrNumber($kuitansiId);
+        return DB::transaction(function () use ($bundleId, $kuitansiId, $reason, $actor) {
+            $bundle = PengajuanSpj::resolveOrFailByIdOrNumber($bundleId, lockForUpdate: true);
 
-        $item = ($bundleRef && $kuitansiRef)
-            ? PengajuanSpjItem::where('pengajuan_spj_id', $bundleRef->id)
-                ->where('kuitansi_id', $kuitansiRef->id)
-                ->where('status_item', 'AKTIF')
-                ->first()
-            : null;
+            if ($actor && $actor->isKelurahanScoped() && (int) $bundle->unit_kerja_id !== (int) $actor->unit_kerja_id) {
+                throw new InvalidArgumentException('BPP Kelurahan tidak berwenang mengeluarkan kuitansi dari bundel unit lain.');
+            }
 
-        if (! $item) {
-            throw new InvalidArgumentException('Kuitansi tidak ditemukan dalam keadaan aktif pada bundel SPJ ini.');
-        }
+            if ($bundle->status_bundel !== 'DRAFT') {
+                throw new InvalidArgumentException("Kuitansi hanya dapat dikeluarkan saat bundel berstatus DRAFT. Status bundel {$bundle->nomor_bundel} saat ini: {$bundle->status_bundel}.");
+            }
 
-        $bundle = $item->pengajuanSpj;
-        if ($actor && $actor->isKelurahanScoped() && (int) $bundle->unit_kerja_id !== (int) $actor->unit_kerja_id) {
-            throw new InvalidArgumentException('BPP Kelurahan tidak berwenang mengeluarkan kuitansi dari bundel unit lain.');
-        }
+            $kuitansi = Kuitansi::resolveByIdOrNumber($kuitansiId, lockForUpdate: true);
 
-        return DB::transaction(function () use ($item, $reason, $actor) {
-            $bundle = $item->pengajuanSpj;
-            $kuitansi = $item->kuitansi;
+            $item = $kuitansi
+                ? PengajuanSpjItem::where('pengajuan_spj_id', $bundle->id)
+                    ->where('kuitansi_id', $kuitansi->id)
+                    ->where('status_item', 'AKTIF')
+                    ->lockForUpdate()
+                    ->first()
+                : null;
+
+            if (! $item) {
+                throw new InvalidArgumentException('Kuitansi tidak ditemukan dalam keadaan aktif pada bundel SPJ ini.');
+            }
 
             // 1. Ubah status item menjadi DIKELUARKAN (membebaskan active_kuitansi_id via stored column)
             $item->update(['status_item' => 'DIKELUARKAN']);

@@ -423,7 +423,7 @@ const BUNDLE_STATUS_LABELS = {
                                         <span class="text-[10px] text-emerald-700 font-medium">Lolos Verifikasi</span>
                                     </div>
                                     <button
-                                        v-if="canUnbundle && (bundle.status || bundle.status_bundel) !== 'SYNCED_SIPD'"
+                                        v-if="canUnbundle && (bundle.status || bundle.status_bundel) === 'DRAFT'"
                                         type="button"
                                         @click="handleUnbundle(bundle, kw)"
                                         :disabled="isProcessingAction"
