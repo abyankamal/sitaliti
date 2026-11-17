@@ -109,9 +109,11 @@ const navItems = computed(() => {
                         </button>
 
                         <div class="flex items-center gap-3">
-                            <div class="w-9 h-9 rounded-lg bg-gov-navy-800 border border-gov-gold-500/30 flex items-center justify-center font-bold text-gov-gold-400 tracking-wider text-sm shadow-inner">
-                                TLT
-                            </div>
+                            <img
+                                src="/Lambang_Kabupaten_Garut.svg.webp"
+                                alt="Lambang Kabupaten Garut"
+                                class="w-9 h-9 object-contain rounded-lg bg-white/95 p-1 border border-gov-gold-500/30 shadow-inner"
+                            />
                             <div>
                                 <div class="flex items-center gap-2">
                                     <span class="font-bold tracking-tight text-white text-base">SI-TALITI</span>

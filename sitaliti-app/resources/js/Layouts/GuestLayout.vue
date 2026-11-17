@@ -8,9 +8,11 @@ import { Link } from '@inertiajs/vue3';
     >
         <div class="text-center">
             <Link href="/" class="inline-flex flex-col items-center gap-2">
-                <div class="flex h-14 w-14 items-center justify-center rounded-xl bg-gov-navy-900 text-lg font-black tracking-tight text-gov-gold-400 shadow-md ring-2 ring-gov-gold-500/40">
-                    ST
-                </div>
+                <img
+                    src="/Lambang_Kabupaten_Garut.svg.webp"
+                    alt="Lambang Kabupaten Garut"
+                    class="h-14 w-14 object-contain rounded-xl bg-white p-1.5 shadow-md ring-2 ring-gov-gold-500/40"
+                />
                 <div>
                     <h1 class="text-lg font-extrabold tracking-wide text-gov-navy-950">
                         SI-TALITI
