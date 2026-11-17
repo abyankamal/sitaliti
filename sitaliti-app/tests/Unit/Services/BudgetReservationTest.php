@@ -368,4 +368,95 @@ class BudgetReservationTest extends TestCase
 
         $this->service->getPopupAllocationData('999999', 2, 2);
     }
+
+    /**
+     * Test 12: Carry-over kumulatif 3 bulan memotong selisih negatif bulan sebelumnya.
+     * Bulan 1–3 masing-masing Rp 10 jt; Bulan 2 mengunci Rp 18 jt -> sisa Bulan 3 tepat Rp 12 jt.
+     */
+    public function test_carry_over_kumulatif_tiga_bulan_memotong_defisit_bulan_sebelumnya(): void
+    {
+        $rekening = AnggaranRekening::create([
+            'unit_kerja_id' => $this->defaultRekening->unit_kerja_id,
+            'kode_sub_kegiatan' => '7.01.01.2.01.0098',
+            'nama_sub_kegiatan' => 'Uji Carry Over 3 Bulan',
+            'kode_rekening' => '5.1.02.01.01.0098',
+            'nama_rekening' => 'Belanja Uji Kumulatif',
+            'pagu_murni' => 120000000.00,
+            'pagu_perubahan' => 120000000.00,
+            'kategori_belanja' => 'B.2',
+            'is_leaf' => true,
+        ]);
+
+        for ($b = 1; $b <= 12; $b++) {
+            AnggaranKasBulanan::create([
+                'anggaran_rekening_id' => $rekening->id,
+                'bulan' => $b,
+                'alokasi_pagu' => 10000000.00,
+                'terkunci_bulan' => 0.00,
+                'realisasi_bulan' => 0.00,
+            ]);
+        }
+
+        $rekeningId = (string) $rekening->id;
+
+        $this->service->reserveBudget($rekeningId, 2, 18000000.00, 3);
+
+        $dataBulan3 = $this->service->getPopupAllocationData($rekeningId, 3, 3);
+        $this->assertEquals(2000000.0, $dataBulan3['carry_over_lalu']);
+        $this->assertEquals(12000000.0, $dataBulan3['total_tersedia']);
+        $this->assertEquals(12000000.0, $dataBulan3['sisa_dapat_digunakan']);
+
+        $this->expectException(PaguOverlimitException::class);
+        $this->service->reserveBudget($rekeningId, 3, 15000000.00, 3);
+    }
+
+    /**
+     * Test 13: Future borrow memotong carry-over bulan sebelumnya dan menjaga invarian DTO serta LOCKED_FUTURE.
+     */
+    public function test_future_borrow_memotong_carry_over_bulan_sebelumnya_dan_menjaga_invarian_dto(): void
+    {
+        $rekening = AnggaranRekening::create([
+            'unit_kerja_id' => $this->defaultRekening->unit_kerja_id,
+            'kode_sub_kegiatan' => '7.01.01.2.01.0099',
+            'nama_sub_kegiatan' => 'Uji Future Borrow',
+            'kode_rekening' => '5.1.02.01.01.0099',
+            'nama_rekening' => 'Belanja Uji Future Borrow',
+            'pagu_murni' => 120000000.00,
+            'pagu_perubahan' => 120000000.00,
+            'kategori_belanja' => 'B.2',
+            'is_leaf' => true,
+        ]);
+
+        for ($b = 1; $b <= 12; $b++) {
+            AnggaranKasBulanan::create([
+                'anggaran_rekening_id' => $rekening->id,
+                'bulan' => $b,
+                'alokasi_pagu' => 10000000.00,
+                'terkunci_bulan' => 0.00,
+                'realisasi_bulan' => 0.00,
+            ]);
+        }
+
+        $rekeningId = (string) $rekening->id;
+
+        // Bulan 3 mengunci Rp 15 jt lebih dulu
+        $this->service->reserveBudget($rekeningId, 3, 15000000.00, 3);
+
+        $dataBulan2 = $this->service->getPopupAllocationData($rekeningId, 2, 3);
+        $this->assertEquals(5000000.0, $dataBulan2['carry_over_lalu']);
+        $this->assertEquals(
+            $dataBulan2['pagu_murni_bulan'] + $dataBulan2['carry_over_lalu'],
+            $dataBulan2['total_tersedia']
+        );
+        $this->assertEquals(
+            $dataBulan2['total_tersedia'] - $dataBulan2['terkunci_komitmen'],
+            $dataBulan2['sisa_dapat_digunakan']
+        );
+        $this->assertEquals(15000000.0, $dataBulan2['sisa_dapat_digunakan']);
+
+        // Bulan 4 tetap LOCKED_FUTURE dengan sisa 0
+        $dataBulan4 = $this->service->getPopupAllocationData($rekeningId, 4, 3);
+        $this->assertEquals('LOCKED_FUTURE', $dataBulan4['status_lock']);
+        $this->assertEquals(0.0, $dataBulan4['sisa_dapat_digunakan']);
+    }
 }
