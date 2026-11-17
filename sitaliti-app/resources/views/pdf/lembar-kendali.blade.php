@@ -205,10 +205,7 @@
     <table class="header-table">
         <tr>
             <td style="width: 70px; text-align: center;">
-                <!-- Logo Pemkab Garut Placeholder / Text Box -->
-                <div style="width: 55px; height: 55px; border: 1.5px solid #0f172a; border-radius: 4px; text-align: center; line-height: 52px; font-weight: bold; font-size: 9pt; color: #0f172a; margin: 0 auto;">
-                    GARUT
-                </div>
+                <img src="{{ public_path('Lambang_Kabupaten_Garut.svg.webp') }}" alt="Lambang Kabupaten Garut" style="width: 55px; height: 55px; object-fit: contain;" />
             </td>
             <td class="header-title">
                 <h1>Pemerintah Kabupaten Garut</h1>
