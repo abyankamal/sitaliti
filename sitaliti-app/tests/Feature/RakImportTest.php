@@ -114,4 +114,36 @@ class RakImportTest extends TestCase
         $this->assertEquals(250000.00, (float) $kas->terkunci_bulan);
         $this->assertEquals(500000.00, (float) $kas->realisasi_bulan);
     }
+
+    public function test_reimport_rak_mempertahankan_pagu_murni_dan_menolak_jika_melanggar_kumulatif(): void
+    {
+        $this->seed(UnitKerjaSeeder::class);
+
+        $importer = app(RakImporterServiceInterface::class);
+        $importer->importFromFile($this->rakFilePath);
+
+        $kas = AnggaranKasBulanan::where('bulan', 1)
+            ->where('alokasi_pagu', '>', 0)
+            ->firstOrFail();
+
+        $rekening = $kas->rekening;
+        $rekening->update(['pagu_murni' => 999999999.00]);
+
+        // Re-impor sah tidak boleh menimpa pagu_murni eksisting
+        $importer->importFromFile($this->rakFilePath);
+        $this->assertEquals(999999999.00, (float) $rekening->fresh()->pagu_murni);
+
+        // Jika realisasi + terkunci bulan 1 melebihi akumulasi alokasi RAK bulan 1, re-impor wajib ditolak
+        $kas->update([
+            'terkunci_bulan' => (float) $kas->alokasi_pagu + 100000.00,
+        ]);
+
+        try {
+            $importer->importFromFile($this->rakFilePath);
+            $this->fail('Seharusnya menolak re-impor karena melanggar batas kumulatif.');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertStringContainsString($rekening->kode_rekening, $e->getMessage());
+            $this->assertStringContainsString('bulan 1', $e->getMessage());
+        }
+    }
 }

@@ -200,6 +200,22 @@ const totalEditAlokasi = computed(() =>
     editAlokasi.value.reduce((sum, val) => sum + Number(val || 0), 0)
 );
 
+const editCumulativeMin = computed(() => {
+    let running = 0;
+    return editMinRequired.value.map((val) => {
+        running += Number(val || 0);
+        return running;
+    });
+});
+
+const editCumulativeAlokasi = computed(() => {
+    let running = 0;
+    return editAlokasi.value.map((val) => {
+        running += Number(val || 0);
+        return running;
+    });
+});
+
 function openEditModal(row) {
     editingRekening.value = row;
     const byMonth = {};
@@ -525,8 +541,13 @@ async function submitEdit() {
                 </div>
 
                 <form @submit.prevent="submitEdit" class="space-y-4">
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs font-bold uppercase text-gov-navy-900">Rincian Alokasi 12 Bulan</span>
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                            <span class="text-xs font-bold uppercase text-gov-navy-900">Rincian Alokasi 12 Bulan</span>
+                            <p class="text-[11px] text-slate-500">
+                                Validasi minimum dihitung secara kumulatif dari Januari hingga bulan berjalan.
+                            </p>
+                        </div>
                         <span class="text-sm font-bold text-gov-navy-900">
                             Total Pagu Baru: <span class="text-emerald-700 tabular-nums">{{ formatRupiah(totalEditAlokasi) }}</span>
                         </span>
@@ -538,8 +559,12 @@ async function submitEdit() {
                                 v-model="editAlokasi[idx]"
                                 :label="`${idx + 1}. ${bulan}`"
                             />
-                            <p class="text-[10px] text-slate-500">
-                                Min. terpakai: <span class="font-semibold">{{ formatRupiah(editMinRequired[idx]) }}</span>
+                            <p
+                                class="text-[10px] tabular-nums"
+                                :class="Math.round(editCumulativeAlokasi[idx] * 100) < Math.round(editCumulativeMin[idx] * 100) ? 'text-rose-600 font-semibold' : 'text-slate-500'"
+                            >
+                                Terpakai bln ini: <span class="font-semibold">{{ formatRupiah(editMinRequired[idx]) }}</span>
+                                · Min. kumulatif: <span class="font-semibold">{{ formatRupiah(editCumulativeMin[idx]) }}</span>
                             </p>
                         </div>
                     </div>

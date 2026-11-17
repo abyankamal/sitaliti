@@ -151,22 +151,35 @@ class BudgetManagementService
                 ->get()
                 ->keyBy('bulan');
 
+            $cumAlokasiCents = 0;
+            $cumUsedCents = 0;
+
+            for ($bulan = 1; $bulan <= 12; $bulan++) {
+                $cumAlokasiCents += (int) round($alokasi[$bulan] * 100);
+                $existing = $kasRows->get($bulan);
+
+                if ($existing) {
+                    $cumUsedCents += (int) round((float) $existing->terkunci_bulan * 100)
+                        + (int) round((float) $existing->realisasi_bulan * 100);
+                }
+
+                if ($cumAlokasiCents < $cumUsedCents) {
+                    throw ValidationException::withMessages([
+                        'alokasi' => [
+                            sprintf(
+                                'Akumulasi alokasi s.d. bulan %d (Rp %s) tidak boleh kurang dari akumulasi dana terkunci + realisasi (minimum Rp %s).',
+                                $bulan,
+                                number_format($cumAlokasiCents / 100, 0, ',', '.'),
+                                number_format($cumUsedCents / 100, 0, ',', '.')
+                            ),
+                        ],
+                    ]);
+                }
+            }
+
             for ($bulan = 1; $bulan <= 12; $bulan++) {
                 $existing = $kasRows->get($bulan);
                 if ($existing) {
-                    $minRequired = round((float) $existing->terkunci_bulan + (float) $existing->realisasi_bulan, 2);
-                    if ($alokasi[$bulan] < $minRequired) {
-                        throw ValidationException::withMessages([
-                            'alokasi' => [
-                                sprintf(
-                                    'Alokasi bulan %d tidak boleh kurang dari dana terkunci + realisasi (minimum Rp %s).',
-                                    $bulan,
-                                    number_format($minRequired, 0, ',', '.')
-                                ),
-                            ],
-                        ]);
-                    }
-
                     $existing->update(['alokasi_pagu' => $alokasi[$bulan]]);
                 } else {
                     AnggaranKasBulanan::create([

@@ -68,47 +68,87 @@ class RakImporterService implements RakImporterServiceInterface
                         $paguTahunan = (float) $acc['total'];
                         $kategori = $this->determineCategory($kodeRekening, $namaRekening);
 
-                        $rekeningModel = AnggaranRekening::updateOrCreate(
-                            [
+                        $rekeningModel = AnggaranRekening::where('unit_kerja_id', $unitKerja->id)
+                            ->where('kode_sub_kegiatan', $kodeSubkeg)
+                            ->where('kode_rekening', $kodeRekening)
+                            ->lockForUpdate()
+                            ->first();
+
+                        if ($rekeningModel) {
+                            $rekeningModel->update([
+                                'nama_sub_kegiatan' => $namaSubkeg,
+                                'nama_rekening' => $namaRekening,
+                                'pagu_perubahan' => $paguTahunan,
+                                'kategori_belanja' => $kategori,
+                                'is_leaf' => true,
+                            ]);
+                        } else {
+                            $rekeningModel = AnggaranRekening::create([
                                 'unit_kerja_id' => $unitKerja->id,
                                 'kode_sub_kegiatan' => $kodeSubkeg,
                                 'kode_rekening' => $kodeRekening,
-                            ],
-                            [
                                 'nama_sub_kegiatan' => $namaSubkeg,
                                 'nama_rekening' => $namaRekening,
                                 'pagu_murni' => $paguTahunan,
                                 'pagu_perubahan' => $paguTahunan,
                                 'kategori_belanja' => $kategori,
                                 'is_leaf' => true,
-                            ]
-                        );
+                            ]);
+                        }
 
                         $totalRekening++;
                         $totalPaguTahunan += $paguTahunan;
 
-                        // Simpan / update alokasi kas 12 bulan tanpa mereset realisasi & kunci berjalan
+                        // Kunci baris kas bulanan secara deterministik & validasi kumulatif sebelum upsert
+                        $existingKas = AnggaranKasBulanan::where('anggaran_rekening_id', $rekeningModel->id)
+                            ->orderBy('bulan', 'asc')
+                            ->lockForUpdate()
+                            ->get()
+                            ->keyBy('bulan');
+
+                        $cumAlokasiCents = 0;
+                        $cumUsedCents = 0;
+                        $now = now();
+                        $upsertRows = [];
+
                         for ($m = 1; $m <= 12; $m++) {
-                            $alokasiBulan = (float) ($acc['months'][$m] ?? 0.0);
+                            $alokasiBulan = round((float) ($acc['months'][$m] ?? 0.0), 2);
+                            $cumAlokasiCents += (int) round($alokasiBulan * 100);
 
-                            $existingKas = AnggaranKasBulanan::where('anggaran_rekening_id', $rekeningModel->id)
-                                ->where('bulan', $m)
-                                ->first();
-
-                            if ($existingKas) {
-                                $existingKas->update([
-                                    'alokasi_pagu' => $alokasiBulan,
-                                ]);
-                            } else {
-                                AnggaranKasBulanan::create([
-                                    'anggaran_rekening_id' => $rekeningModel->id,
-                                    'bulan' => $m,
-                                    'alokasi_pagu' => $alokasiBulan,
-                                    'terkunci_bulan' => 0.0,
-                                    'realisasi_bulan' => 0.0,
-                                ]);
+                            $kasRow = $existingKas->get($m);
+                            if ($kasRow) {
+                                $cumUsedCents += (int) round((float) $kasRow->terkunci_bulan * 100)
+                                    + (int) round((float) $kasRow->realisasi_bulan * 100);
                             }
+
+                            if ($cumAlokasiCents < $cumUsedCents) {
+                                throw new InvalidArgumentException(
+                                    sprintf(
+                                        'Re-impor RAK ditolak untuk rekening %s pada bulan %d: akumulasi alokasi (Rp %s) kurang dari akumulasi dana terkunci + realisasi (Rp %s).',
+                                        $kodeRekening,
+                                        $m,
+                                        number_format($cumAlokasiCents / 100, 0, ',', '.'),
+                                        number_format($cumUsedCents / 100, 0, ',', '.')
+                                    )
+                                );
+                            }
+
+                            $upsertRows[] = [
+                                'anggaran_rekening_id' => $rekeningModel->id,
+                                'bulan' => $m,
+                                'alokasi_pagu' => $alokasiBulan,
+                                'terkunci_bulan' => $kasRow ? (float) $kasRow->terkunci_bulan : 0.0,
+                                'realisasi_bulan' => $kasRow ? (float) $kasRow->realisasi_bulan : 0.0,
+                                'created_at' => $now,
+                                'updated_at' => $now,
+                            ];
                         }
+
+                        AnggaranKasBulanan::upsert(
+                            $upsertRows,
+                            ['anggaran_rekening_id', 'bulan'],
+                            ['alokasi_pagu', 'updated_at']
+                        );
                     }
                 }
             }

@@ -320,9 +320,11 @@ class RekeningManagementTest extends TestCase
                 'realisasi_bulan' => 200000.00,
             ]);
 
-        // Coba turunkan bulan 3 menjadi 500.000 (< 600.000) -> harus ditolak 422
+        // Coba turunkan akumulasi bulan 1..3 menjadi 500.000 (< akumulasi terpakai 600.000) -> harus ditolak 422
         $tooLow = array_fill(0, 12, 1000000);
-        $tooLow[2] = 500000; // index 2 = Bulan 3
+        $tooLow[0] = 0; // Bulan 1
+        $tooLow[1] = 0; // Bulan 2
+        $tooLow[2] = 500000; // Bulan 3 -> akumulasi 500.000 < 600.000
 
         $this->actingAs($verifikator)
             ->putJson("/api/v1/budget-management/rekening/{$rekening->id}", [
@@ -351,5 +353,45 @@ class RekeningManagementTest extends TestCase
         $rekening->refresh();
         $this->assertEquals(12000000.00, (float) $rekening->pagu_murni);
         $this->assertEquals(13500000.00, (float) $rekening->pagu_perubahan);
+    }
+
+    public function test_api_update_allocations_allows_editing_when_month_uses_carry_over(): void
+    {
+        $kecamatan = UnitKerja::where('tipe', 'KECAMATAN')->firstOrFail();
+        $verifikator = User::factory()->create([
+            'unit_kerja_id' => $kecamatan->id,
+            'role' => 'VERIFIKATOR',
+        ]);
+
+        // Bulan 1 = 1jt, Bulan 2 = 0 (sah memakai carry-over dari Bulan 1)
+        $alokasi = array_fill(0, 12, 100000);
+        $alokasi[0] = 1000000;
+        $alokasi[1] = 0;
+
+        $rekening = $this->service->createRekening([
+            'unit_kerja_id' => $this->unit->id,
+            'kode_sub_kegiatan' => '7.01.01.2.01.0011',
+            'nama_sub_kegiatan' => 'Subkegiatan Carry Over',
+            'kode_rekening' => '5.1.02.01.01.0101',
+            'nama_rekening' => 'Belanja Carry Over',
+            'kategori_belanja' => 'B.1',
+            'alokasi' => $alokasi,
+        ]);
+
+        // Bulan 2 mengunci 800.000 via carry-over dari Bulan 1
+        AnggaranKasBulanan::where('anggaran_rekening_id', $rekening->id)
+            ->where('bulan', 2)
+            ->update(['terkunci_bulan' => 800000.00]);
+
+        // Edit Bulan 12 tanpa menyentuh Bulan 1 & 2 harus tetap berhasil (200)
+        $updated = $alokasi;
+        $updated[11] = 500000;
+
+        $this->actingAs($verifikator)
+            ->putJson("/api/v1/budget-management/rekening/{$rekening->id}", [
+                'alokasi' => $updated,
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true);
     }
 }
