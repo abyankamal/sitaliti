@@ -37,14 +37,19 @@ class ReceiptQueryService
 
         $baseQuery = $this->buildFilteredQuery($user, $filtersWithoutStatus);
 
+        $countsByStatus = (clone $baseQuery)
+            ->selectRaw('status, COUNT(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+
         return [
-            'semua' => (clone $baseQuery)->count(),
-            'draft' => (clone $baseQuery)->where('status', 'DRAFT')->count(),
-            'menunggu_pptk' => (clone $baseQuery)->where('status', 'MENUNGGU_PPTK')->count(),
-            'menunggu_lurah' => (clone $baseQuery)->where('status', 'MENUNGGU_LURAH')->count(),
-            'menunggu_verifikasi' => (clone $baseQuery)->where('status', 'MENUNGGU_VERIFIKASI')->count(),
-            'revisi_minor' => (clone $baseQuery)->where('status', 'REVISI_MINOR')->count(),
-            'siap_bundel' => (clone $baseQuery)->whereIn('status', ['LOLOS_VERIFIKASI', 'TERVERIFIKASI'])->count(),
+            'semua' => (int) $countsByStatus->sum(),
+            'draft' => (int) ($countsByStatus['DRAFT'] ?? 0),
+            'menunggu_pptk' => (int) ($countsByStatus['MENUNGGU_PPTK'] ?? 0),
+            'menunggu_lurah' => (int) ($countsByStatus['MENUNGGU_LURAH'] ?? 0),
+            'menunggu_verifikasi' => (int) ($countsByStatus['MENUNGGU_VERIFIKASI'] ?? 0),
+            'revisi_minor' => (int) ($countsByStatus['REVISI_MINOR'] ?? 0),
+            'siap_bundel' => (int) ($countsByStatus['LOLOS_VERIFIKASI'] ?? 0) + (int) ($countsByStatus['TERVERIFIKASI'] ?? 0),
         ];
     }
 

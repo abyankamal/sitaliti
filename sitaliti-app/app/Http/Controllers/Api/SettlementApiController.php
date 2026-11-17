@@ -24,7 +24,7 @@ class SettlementApiController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $filters = $request->only(['unit_id', 'status']);
+        $filters = $request->only(['unit_id', 'status', 'tahun_anggaran', 'limit']);
         $bundles = $this->settlementService->getBundles($filters, $request->user());
 
         return $this->successResponse($bundles, 'Daftar bundel SPJ berhasil dimuat');

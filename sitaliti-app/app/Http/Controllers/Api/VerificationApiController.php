@@ -27,7 +27,7 @@ class VerificationApiController extends Controller
     {
         $userId = (string) ($request->user()?->id ?? 1);
         $role = (string) ($request->user()?->role ?? 'VERIFIKATOR');
-        $filters = $request->only(['status', 'unit_id']);
+        $filters = $request->only(['status', 'unit_id', 'limit']);
 
         $queue = $this->verificationService->getQueue($userId, $role, $filters);
 

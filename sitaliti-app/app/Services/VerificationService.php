@@ -35,7 +35,9 @@ class VerificationService implements VerificationServiceInterface
     {
         $user = User::find($userId);
 
-        $query = Kuitansi::with(['unitKerja', 'rekening', 'creator', 'lampiran'])
+        $query = Kuitansi::with(['unitKerja', 'rekening', 'creator'])
+            ->withCount('lampiran')
+            ->orderByRaw("CASE WHEN status IN ('MENUNGGU_PPTK', 'MENUNGGU_LURAH', 'MENUNGGU_VERIFIKASI', 'REVISI_MINOR') THEN 0 ELSE 1 END ASC")
             ->orderBy('created_at', 'desc');
 
         if (! empty($filters['status'])) {
@@ -96,7 +98,8 @@ class VerificationService implements VerificationServiceInterface
             }
         }
 
-        $receipts = $query->get();
+        $limit = min(max((int) ($filters['limit'] ?? 200), 1), 500);
+        $receipts = $query->limit($limit)->get();
 
         return $receipts->map(function (Kuitansi $k) {
             return [
@@ -120,7 +123,7 @@ class VerificationService implements VerificationServiceInterface
                 'sla_remaining_hours' => $k->sla_remaining_hours,
                 'qr_token' => $k->qr_token,
                 'catatan' => $k->catatan_verifikasi,
-                'attachments_count' => $k->lampiran->count(),
+                'attachments_count' => (int) $k->lampiran_count,
             ];
         })->toArray();
     }

@@ -421,7 +421,12 @@ class SettlementService implements SettlementServiceInterface
             $query->where('status_bundel', $filters['status']);
         }
 
-        $bundles = $query->get();
+        if (! empty($filters['tahun_anggaran'])) {
+            $query->where('tahun_anggaran', (int) $filters['tahun_anggaran']);
+        }
+
+        $limit = min(max((int) ($filters['limit'] ?? 100), 1), 250);
+        $bundles = $query->limit($limit)->get();
 
         return $bundles->map(function (PengajuanSpj $b) {
             return [
