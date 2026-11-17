@@ -27,3 +27,15 @@ export function parseRupiah(value) {
     return cleanStr ? parseInt(cleanStr, 10) : 0;
 }
 
+/**
+ * Parse string nominal desimal dari API (e.g. "1000000.00") menjadi number murni.
+ * @param {string|number|null|undefined} value
+ * @returns {number}
+ */
+export function parseDecimalAmount(value) {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+    if (value === null || value === undefined || value === '') return 0;
+    const num = Number(value);
+    return Number.isFinite(num) ? num : 0;
+}
+

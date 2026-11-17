@@ -13,6 +13,7 @@ import { receiptService } from '@/Services/receiptService';
 const budgetContext = ref(null);
 const checklistItems = ref([]);
 const isSubmitting = ref(false);
+const savedReceiptId = ref(null);
 const isValidatingTax = ref(false);
 const validationResult = ref(null);
 const feedbackBanner = ref(null);
@@ -232,19 +233,31 @@ async function handleSubmitDraft() {
         });
 
         checklistItems.value.forEach((item) => {
-            if (item.file) {
+            if (item.file && !item.persisted) {
                 formData.append('files[]', item.file);
                 formData.append('checklist_codes[]', item.code || 'B.1.4');
                 formData.append('nama_dokumen[]', item.name || item.file.name);
             }
         });
 
-        const saveRes = await receiptService.storeReceipt(formData);
-        const receiptId = saveRes.data?.id || saveRes.data?.receipt_id;
+        let receiptId = savedReceiptId.value;
         if (!receiptId) {
-            showFeedback('error', 'Gagal Menyimpan Draft', 'Respons penyimpanan kuitansi tidak mengembalikan ID.');
-            return;
+            const saveRes = await receiptService.storeReceipt(formData);
+            receiptId = saveRes.data?.id || saveRes.data?.receipt_id;
+            if (!receiptId) {
+                showFeedback('error', 'Gagal Menyimpan Draft', 'Respons penyimpanan kuitansi tidak mengembalikan ID.');
+                return;
+            }
+            savedReceiptId.value = receiptId;
+        } else {
+            await receiptService.updateReceipt(receiptId, formData);
         }
+
+        checklistItems.value.forEach((item) => {
+            if (item.file) {
+                item.persisted = true;
+            }
+        });
 
         await receiptService.submitReceipt(receiptId);
         router.visit(route('receipts.index'));

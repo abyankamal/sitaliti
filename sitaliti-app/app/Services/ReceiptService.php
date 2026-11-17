@@ -209,7 +209,7 @@ class ReceiptService
                 ]);
             }
 
-            $processedAttachments = $this->prepareAttachments($attachments, $rekening->id);
+            $processedAttachments = $this->prepareAttachments($attachments, $rekening->id, $kuitansi->id);
             $statusLama = $kuitansi->status;
 
             if ((int) $rekening->id !== (int) $kuitansi->anggaran_rekening_id) {
@@ -374,7 +374,7 @@ class ReceiptService
      * @param  array<int, array{file: UploadedFile, checklist_code?: string, nama_dokumen?: string}>|array<int, UploadedFile>  $attachments
      * @return array<int, array{file: UploadedFile, hash: string, checklist_code: string, nama_dokumen: string}>
      */
-    private function prepareAttachments(array $attachments, int $rekeningId): array
+    private function prepareAttachments(array $attachments, int $rekeningId, ?int $ignoreKuitansiId = null): array
     {
         $processed = [];
         $seenHashes = [];
@@ -400,6 +400,7 @@ class ReceiptService
 
             $exists = KuitansiLampiran::where('anggaran_rekening_id', $rekeningId)
                 ->where('file_hash', $fileHash)
+                ->when($ignoreKuitansiId !== null, fn ($q) => $q->where('kuitansi_id', '!=', $ignoreKuitansiId))
                 ->exists();
 
             if ($exists) {
