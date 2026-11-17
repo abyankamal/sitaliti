@@ -13,6 +13,7 @@ use App\Models\MasterChecklistItem;
 use App\Models\UnitKerja;
 use App\Models\User;
 use App\Services\ReceiptService;
+use App\Services\ReceiptWorkflowService;
 use Database\Seeders\MasterChecklistSeeder;
 use Database\Seeders\UnitKerjaSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -37,6 +38,8 @@ class AuditTrailTest extends TestCase
     private User $kpa;
 
     private ReceiptService $receiptService;
+
+    private ReceiptWorkflowService $workflowService;
 
     private VerificationServiceInterface $verificationService;
 
@@ -98,6 +101,7 @@ class AuditTrailTest extends TestCase
         }
 
         $this->receiptService = app(ReceiptService::class);
+        $this->workflowService = app(ReceiptWorkflowService::class);
         $this->verificationService = app(VerificationServiceInterface::class);
         $this->settlementService = app(SettlementServiceInterface::class);
     }
@@ -139,14 +143,14 @@ class AuditTrailTest extends TestCase
             'mime_type' => 'application/pdf',
             'file_hash' => hash('sha256', 'nota-audit-pre-submit-001'),
         ]);
-        $this->receiptService->submitToPptk($kuitansi->id, $this->operator);
+        $this->workflowService->submitToPptk($kuitansi->id, $this->operator);
         $riwayat2 = KuitansiRiwayat::where('kuitansi_id', $kuitansi->id)->latest('id')->first();
         $this->assertEquals('SUBMITTED_TO_PPTK', $riwayat2->action);
         $this->assertEquals('DRAFT', $riwayat2->status_lama);
         $this->assertEquals('MENUNGGU_PPTK', $riwayat2->status_baru);
 
         // 3. PPTK_APPROVED
-        $this->receiptService->approveByPptk($kuitansi->id, 'Disetujui PPTK untuk verifikasi.', $this->pptk);
+        $this->workflowService->approveByPptk($kuitansi->id, 'Disetujui PPTK untuk verifikasi.', $this->pptk);
         $riwayat3 = KuitansiRiwayat::where('kuitansi_id', $kuitansi->id)->latest('id')->first();
         $this->assertEquals('PPTK_APPROVED', $riwayat3->action);
         $this->assertEquals('MENUNGGU_PPTK', $riwayat3->status_lama);
@@ -265,8 +269,8 @@ class AuditTrailTest extends TestCase
             'file_hash' => hash('sha256', 'nota-audit-reject-01'),
         ]);
 
-        $this->receiptService->submitToPptk($kuitansi1->id, $this->operator);
-        $this->receiptService->rejectByPptk($kuitansi1->id, 'Spesifikasi teknis tidak sesuai RKA.', $this->pptk);
+        $this->workflowService->submitToPptk($kuitansi1->id, $this->operator);
+        $this->workflowService->rejectByPptk($kuitansi1->id, 'Spesifikasi teknis tidak sesuai RKA.', $this->pptk);
 
         $logReject = KuitansiRiwayat::where('kuitansi_id', $kuitansi1->id)->latest('id')->first();
         $this->assertEquals('PPTK_REJECTED', $logReject->action);
@@ -359,8 +363,8 @@ class AuditTrailTest extends TestCase
             'file_hash' => hash('sha256', 'nota-audit-api-01'),
         ]);
 
-        $this->receiptService->submitToPptk($kuitansi->id, $this->operator);
-        $this->receiptService->approveByPptk($kuitansi->id, 'Disetujui PPTK.', $this->pptk);
+        $this->workflowService->submitToPptk($kuitansi->id, $this->operator);
+        $this->workflowService->approveByPptk($kuitansi->id, 'Disetujui PPTK.', $this->pptk);
 
         // 1. Unauthenticated -> 401
         $resUnauth = $this->getJson("/api/v1/receipts/{$kuitansi->id}/history");

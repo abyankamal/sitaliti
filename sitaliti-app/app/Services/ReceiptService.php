@@ -21,16 +21,12 @@ class ReceiptService
 {
     protected AuditTrailService $auditTrailService;
 
-    protected ReceiptWorkflowService $workflowService;
-
     public function __construct(
         protected TaxCalculationServiceInterface $taxService,
         protected BudgetReservationServiceInterface $budgetService,
-        ?AuditTrailService $auditTrailService = null,
-        ?ReceiptWorkflowService $workflowService = null
+        ?AuditTrailService $auditTrailService = null
     ) {
         $this->auditTrailService = $auditTrailService ?? app(AuditTrailService::class);
-        $this->workflowService = $workflowService ?? app(ReceiptWorkflowService::class);
     }
 
     /**
@@ -330,36 +326,6 @@ class ReceiptService
                 }
             });
         });
-    }
-
-    public function resubmitMinorRevision(int|string $kuitansiId, ?User $actor = null): Kuitansi
-    {
-        return $this->workflowService->resubmitMinorRevision($kuitansiId, $actor);
-    }
-
-    public function submitToPptk(int|string $kuitansiId, ?User $actor = null): Kuitansi
-    {
-        return $this->workflowService->submitToPptk($kuitansiId, $actor);
-    }
-
-    public function approveByPptk(int|string $kuitansiId, ?string $catatan = null, ?User $actor = null): Kuitansi
-    {
-        return $this->workflowService->approveByPptk($kuitansiId, $catatan, $actor);
-    }
-
-    public function rejectByPptk(int|string $kuitansiId, string $alasan, ?User $actor = null): Kuitansi
-    {
-        return $this->workflowService->rejectByPptk($kuitansiId, $alasan, $actor);
-    }
-
-    public function approveByLurah(int|string $kuitansiId, ?string $catatan = null, ?User $actor = null): Kuitansi
-    {
-        return $this->workflowService->approveByLurah($kuitansiId, $catatan, $actor);
-    }
-
-    public function rejectByLurah(int|string $kuitansiId, string $alasan, ?User $actor = null): Kuitansi
-    {
-        return $this->workflowService->rejectByLurah($kuitansiId, $alasan, $actor);
     }
 
     /**

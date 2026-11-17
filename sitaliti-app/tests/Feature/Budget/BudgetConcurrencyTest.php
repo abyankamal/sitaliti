@@ -11,6 +11,7 @@ use App\Models\UnitKerja;
 use App\Models\User;
 use App\Services\BudgetReservationService;
 use App\Services\ReceiptService;
+use App\Services\ReceiptWorkflowService;
 use App\Services\SettlementService;
 use Database\Seeders\MasterChecklistSeeder;
 use Database\Seeders\UnitKerjaSeeder;
@@ -32,7 +33,7 @@ class BudgetConcurrencyTest extends TestCase
 
     private AnggaranRekening $rekening;
 
-    private ReceiptService $receiptService;
+    private ReceiptWorkflowService $workflowService;
 
     private SettlementService $settlementService;
 
@@ -79,7 +80,7 @@ class BudgetConcurrencyTest extends TestCase
             ]);
         }
 
-        $this->receiptService = app(ReceiptService::class);
+        $this->workflowService = app(ReceiptWorkflowService::class);
         $this->settlementService = app(SettlementService::class);
         $this->budgetService = app(BudgetReservationService::class);
     }
@@ -116,7 +117,7 @@ class BudgetConcurrencyTest extends TestCase
         ]);
 
         // Submit pertama kali berhasil
-        $submitted = $this->receiptService->submitToPptk($kuitansi->id, $this->operator);
+        $submitted = $this->workflowService->submitToPptk($kuitansi->id, $this->operator);
         $this->assertEquals('MENUNGGU_PPTK', $submitted->status);
 
         // Periksa bahwa pagu terkunci di database
@@ -129,7 +130,7 @@ class BudgetConcurrencyTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Hanya kuitansi berstatus DRAFT atau REVISI_MAYOR');
 
-        $this->receiptService->submitToPptk($kuitansi->id, $this->operator);
+        $this->workflowService->submitToPptk($kuitansi->id, $this->operator);
     }
 
     /**
