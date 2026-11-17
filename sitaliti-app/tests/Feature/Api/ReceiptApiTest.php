@@ -5,8 +5,10 @@ namespace Tests\Feature\Api;
 use App\Models\AnggaranKasBulanan;
 use App\Models\AnggaranRekening;
 use App\Models\Kuitansi;
+use App\Models\KuitansiLampiran;
 use App\Models\UnitKerja;
 use App\Models\User;
+use App\Services\ReceiptWorkflowService;
 use Database\Seeders\UnitKerjaSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -223,6 +225,17 @@ class ReceiptApiTest extends TestCase
             'status' => 'DRAFT',
         ]);
 
+        KuitansiLampiran::create([
+            'kuitansi_id' => $kuitansi->id,
+            'anggaran_rekening_id' => $this->rekening->id,
+            'nama_dokumen' => 'Nota Pembelian',
+            'file_name' => 'nota_submit.pdf',
+            'file_path' => 'lampiran/nota_submit.pdf',
+            'file_size' => 1024,
+            'mime_type' => 'application/pdf',
+            'file_hash' => hash('sha256', 'nota-submit-fixture'),
+        ]);
+
         $response = $this->actingAs($this->user)
             ->postJson("/api/v1/receipts/{$kuitansi->id}/submit");
 
@@ -237,6 +250,41 @@ class ReceiptApiTest extends TestCase
 
         $this->assertEquals('MENUNGGU_PPTK', $kuitansi->fresh()->status);
         $this->assertNotNull($kuitansi->fresh()->tanggal_submit);
+    }
+
+    public function test_submit_kuitansi_tanpa_lampiran_ditolak_sebelum_kunci_pagu(): void
+    {
+        $kuitansi = Kuitansi::create([
+            'nomor_kuitansi' => 'KW-2026-02-0100',
+            'unit_kerja_id' => $this->unit->id,
+            'anggaran_rekening_id' => $this->rekening->id,
+            'user_id' => $this->user->id,
+            'bulan_anggaran' => 2,
+            'tanggal_transaksi' => '2026-02-15',
+            'uraian' => 'Draft Tanpa Lampiran',
+            'nama_penerima' => 'Toko Mitra',
+            'nominal_bruto' => 1500000.00,
+            'total_pajak' => 0.00,
+            'nominal_neto' => 1500000.00,
+            'status' => 'DRAFT',
+        ]);
+
+        try {
+            app(ReceiptWorkflowService::class)->submitToPptk($kuitansi->id, $this->user);
+            $this->fail('Seharusnya menolak submit tanpa lampiran.');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertStringContainsString('minimal 1 lampiran', $e->getMessage());
+        }
+
+        $this->actingAs($this->user)
+            ->postJson("/api/v1/receipts/{$kuitansi->id}/submit")
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'INVALID_RECEIPT_STATE');
+
+        $kas = AnggaranKasBulanan::where('anggaran_rekening_id', $this->rekening->id)
+            ->where('bulan', 2)
+            ->firstOrFail();
+        $this->assertEquals(0.0, (float) $kas->terkunci_bulan);
     }
 
     /**

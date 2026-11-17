@@ -294,7 +294,7 @@ function formatApiError(error) {
     if (data?.errors) {
         return Object.values(data.errors).flat().join(' ');
     }
-    return data?.message || 'Terjadi kesalahan saat menyimpan perubahan kuitansi.';
+    return data?.error?.message || data?.message || 'Terjadi kesalahan saat menyimpan perubahan kuitansi.';
 }
 
 async function handleSaveChanges(andResubmit = false) {

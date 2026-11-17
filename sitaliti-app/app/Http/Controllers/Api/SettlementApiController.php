@@ -62,7 +62,7 @@ class SettlementApiController extends Controller
 
             return $this->errorResponse('BUNDLE_CREATION_FAILED', $e->getMessage(), null, $statusCode);
         } catch (Throwable $e) {
-            return $this->errorResponse('STORE_BUNDLE_ERROR', $e->getMessage(), null, 500);
+            return $this->serverErrorResponse('STORE_BUNDLE_ERROR', $e);
         }
     }
 
@@ -80,7 +80,7 @@ class SettlementApiController extends Controller
         } catch (InvalidArgumentException $e) {
             return $this->errorResponse('FORBIDDEN', $e->getMessage(), null, 403);
         } catch (Throwable $e) {
-            return $this->errorResponse('SHOW_BUNDLE_ERROR', $e->getMessage(), null, 500);
+            return $this->serverErrorResponse('SHOW_BUNDLE_ERROR', $e);
         }
     }
 
@@ -106,7 +106,7 @@ class SettlementApiController extends Controller
 
             return $this->errorResponse('UNBUNDLE_FAILED', $e->getMessage(), null, $statusCode);
         } catch (Throwable $e) {
-            return $this->errorResponse('UNBUNDLE_ERROR', $e->getMessage(), null, 500);
+            return $this->serverErrorResponse('UNBUNDLE_ERROR', $e);
         }
     }
 
@@ -131,7 +131,7 @@ class SettlementApiController extends Controller
 
             return $this->errorResponse('SUBMIT_PPK_FAILED', $e->getMessage(), null, $statusCode);
         } catch (Throwable $e) {
-            return $this->errorResponse('SUBMIT_PPK_ERROR', $e->getMessage(), null, 500);
+            return $this->serverErrorResponse('SUBMIT_PPK_ERROR', $e);
         }
     }
 
@@ -162,7 +162,7 @@ class SettlementApiController extends Controller
 
             return $this->errorResponse('APPROVE_PPK_FAILED', $e->getMessage(), null, $statusCode);
         } catch (Throwable $e) {
-            return $this->errorResponse('APPROVE_PPK_ERROR', $e->getMessage(), null, 500);
+            return $this->serverErrorResponse('APPROVE_PPK_ERROR', $e);
         }
     }
 
@@ -201,7 +201,7 @@ class SettlementApiController extends Controller
 
             return $this->errorResponse($errorCode, $e->getMessage(), null, $statusCode);
         } catch (Throwable $e) {
-            return $this->errorResponse('RECORD_SP2D_ERROR', $e->getMessage(), null, 500);
+            return $this->serverErrorResponse('RECORD_SP2D_ERROR', $e);
         }
     }
 }

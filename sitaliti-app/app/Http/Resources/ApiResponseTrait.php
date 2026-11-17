@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use Illuminate\Http\JsonResponse;
+use Throwable;
 
 /**
  * Trait untuk standardisasi respon API JSON (Consistent Error & Success Semantics).
@@ -36,5 +37,20 @@ trait ApiResponseTrait
                 'details' => $details,
             ],
         ], $status);
+    }
+
+    /**
+     * Melaporkan exception tak terduga dan mengembalikan HTTP 500 dengan pesan aman saat !app.debug.
+     */
+    public function serverErrorResponse(
+        string $code,
+        Throwable $e,
+        string $fallbackMessage = 'Terjadi kesalahan internal pada server.'
+    ): JsonResponse {
+        report($e);
+
+        $message = config('app.debug') ? $e->getMessage() : $fallbackMessage;
+
+        return $this->errorResponse($code, $message, null, 500);
     }
 }

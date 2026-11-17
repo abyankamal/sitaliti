@@ -129,6 +129,16 @@ class AuditTrailTest extends TestCase
         $this->assertEquals($this->operator->id, $riwayat1->user_id);
 
         // 2. SUBMITTED_TO_PPTK
+        KuitansiLampiran::create([
+            'kuitansi_id' => $kuitansi->id,
+            'anggaran_rekening_id' => $this->rekening->id,
+            'nama_dokumen' => 'Nota Audit 001',
+            'file_name' => 'nota_audit_001.pdf',
+            'file_path' => 'lampiran/nota_audit_001.pdf',
+            'file_size' => 1024,
+            'mime_type' => 'application/pdf',
+            'file_hash' => hash('sha256', 'nota-audit-pre-submit-001'),
+        ]);
         $this->receiptService->submitToPptk($kuitansi->id, $this->operator);
         $riwayat2 = KuitansiRiwayat::where('kuitansi_id', $kuitansi->id)->latest('id')->first();
         $this->assertEquals('SUBMITTED_TO_PPTK', $riwayat2->action);
@@ -244,6 +254,17 @@ class AuditTrailTest extends TestCase
             'status' => 'DRAFT',
         ]);
 
+        KuitansiLampiran::create([
+            'kuitansi_id' => $kuitansi1->id,
+            'anggaran_rekening_id' => $this->rekening->id,
+            'nama_dokumen' => 'Nota Audit Reject 01',
+            'file_name' => 'nota_audit_reject_01.pdf',
+            'file_path' => 'lampiran/nota_audit_reject_01.pdf',
+            'file_size' => 1024,
+            'mime_type' => 'application/pdf',
+            'file_hash' => hash('sha256', 'nota-audit-reject-01'),
+        ]);
+
         $this->receiptService->submitToPptk($kuitansi1->id, $this->operator);
         $this->receiptService->rejectByPptk($kuitansi1->id, 'Spesifikasi teknis tidak sesuai RKA.', $this->pptk);
 
@@ -326,6 +347,17 @@ class AuditTrailTest extends TestCase
                 ['nama_barang' => 'Kertas F4', 'volume' => 10, 'satuan' => 'Rim', 'harga_satuan' => 50000],
             ],
         ], [], $this->operator);
+
+        KuitansiLampiran::create([
+            'kuitansi_id' => $kuitansi->id,
+            'anggaran_rekening_id' => $this->rekening->id,
+            'nama_dokumen' => 'Nota Audit API 01',
+            'file_name' => 'nota_audit_api_01.pdf',
+            'file_path' => 'lampiran/nota_audit_api_01.pdf',
+            'file_size' => 1024,
+            'mime_type' => 'application/pdf',
+            'file_hash' => hash('sha256', 'nota-audit-api-01'),
+        ]);
 
         $this->receiptService->submitToPptk($kuitansi->id, $this->operator);
         $this->receiptService->approveByPptk($kuitansi->id, 'Disetujui PPTK.', $this->pptk);

@@ -97,6 +97,17 @@ class PptkApprovalWorkflowTest extends TestCase
             'status' => 'DRAFT',
         ]);
 
+        KuitansiLampiran::create([
+            'kuitansi_id' => $kuitansi->id,
+            'anggaran_rekening_id' => $this->rekening->id,
+            'nama_dokumen' => 'Nota Pembelian',
+            'file_name' => 'nota_pptk_flow.pdf',
+            'file_path' => 'lampiran/nota_pptk_flow.pdf',
+            'file_size' => 1024,
+            'mime_type' => 'application/pdf',
+            'file_hash' => hash('sha256', 'nota-pptk-flow-01'),
+        ]);
+
         // 2. Operator mengajukan kuitansi ke PPTK (POST /submit)
         $resSubmit = $this->actingAs($this->operator)
             ->postJson("/api/v1/receipts/{$kuitansi->id}/submit");
@@ -204,6 +215,17 @@ class PptkApprovalWorkflowTest extends TestCase
             'total_pajak' => 0.00,
             'nominal_neto' => $nominal,
             'status' => 'DRAFT',
+        ]);
+
+        KuitansiLampiran::create([
+            'kuitansi_id' => $kuitansi->id,
+            'anggaran_rekening_id' => $this->rekening->id,
+            'nama_dokumen' => 'Nota Konsumsi',
+            'file_name' => 'nota_pptk_rej.pdf',
+            'file_path' => 'lampiran/nota_pptk_rej.pdf',
+            'file_size' => 1024,
+            'mime_type' => 'application/pdf',
+            'file_hash' => hash('sha256', 'nota-pptk-rej-01'),
         ]);
 
         $this->actingAs($this->operator)

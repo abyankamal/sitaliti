@@ -72,12 +72,7 @@ class VerificationApiController extends Controller
                 404
             );
         } catch (Throwable $e) {
-            return $this->errorResponse(
-                'LOAD_DETAIL_FAILED',
-                $e->getMessage(),
-                null,
-                500
-            );
+            return $this->serverErrorResponse('LOAD_DETAIL_FAILED', $e);
         }
     }
 
@@ -132,12 +127,7 @@ class VerificationApiController extends Controller
                 422
             );
         } catch (Throwable $e) {
-            return $this->errorResponse(
-                'VERIFICATION_ACTION_FAILED',
-                $e->getMessage(),
-                null,
-                500
-            );
+            return $this->serverErrorResponse('VERIFICATION_ACTION_FAILED', $e);
         }
     }
 }

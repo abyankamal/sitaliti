@@ -6,6 +6,7 @@ use App\Exceptions\PaguOverlimitException;
 use App\Models\AnggaranKasBulanan;
 use App\Models\AnggaranRekening;
 use App\Models\Kuitansi;
+use App\Models\KuitansiLampiran;
 use App\Models\UnitKerja;
 use App\Models\User;
 use App\Services\BudgetReservationService;
@@ -99,6 +100,17 @@ class BudgetConcurrencyTest extends TestCase
             'total_pajak' => 0.00,
             'nominal_neto' => 3000000.00,
             'status' => 'DRAFT',
+        ]);
+
+        KuitansiLampiran::create([
+            'kuitansi_id' => $kuitansi->id,
+            'anggaran_rekening_id' => $this->rekening->id,
+            'nama_dokumen' => 'Nota Concur Submit',
+            'file_name' => 'nota_concur_submit.pdf',
+            'file_path' => 'lampiran/nota_concur_submit.pdf',
+            'file_size' => 1024,
+            'mime_type' => 'application/pdf',
+            'file_hash' => hash('sha256', 'nota-concur-submit-1'),
         ]);
 
         // Submit pertama kali berhasil

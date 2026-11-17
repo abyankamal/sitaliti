@@ -31,6 +31,10 @@ class ReceiptWorkflowService
                 throw new InvalidArgumentException('Hanya kuitansi berstatus REVISI_MINOR yang dapat dikirim ulang ke Verifikator.');
             }
 
+            if ($kuitansi->lampiran()->count() === 0) {
+                throw new InvalidArgumentException('Kuitansi wajib memiliki minimal 1 lampiran bukti sebelum dikirim ulang ke Verifikator.');
+            }
+
             $kuitansi->update([
                 'status' => 'MENUNGGU_VERIFIKASI',
             ]);
@@ -62,6 +66,10 @@ class ReceiptWorkflowService
 
             if (! in_array($kuitansi->status, ['DRAFT', 'REVISI_MAYOR'])) {
                 throw new InvalidArgumentException('Hanya kuitansi berstatus DRAFT atau REVISI_MAYOR yang dapat diajukan ke PPTK.');
+            }
+
+            if ($kuitansi->lampiran()->count() === 0) {
+                throw new InvalidArgumentException('Kuitansi wajib memiliki minimal 1 lampiran bukti sebelum diajukan ke PPTK.');
             }
 
             $statusLama = $kuitansi->status;

@@ -175,12 +175,7 @@ class ReceiptApiController extends Controller
                 422
             );
         } catch (Throwable $e) {
-            return $this->errorResponse(
-                'STORE_RECEIPT_FAILED',
-                $e->getMessage(),
-                null,
-                500
-            );
+            return $this->serverErrorResponse('STORE_RECEIPT_FAILED', $e);
         }
     }
 
@@ -326,7 +321,7 @@ class ReceiptApiController extends Controller
         } catch (InvalidArgumentException $e) {
             return $this->errorResponse('INVALID_RECEIPT_STATE', $e->getMessage(), null, 422);
         } catch (Throwable $e) {
-            return $this->errorResponse('UPDATE_RECEIPT_FAILED', $e->getMessage(), null, 500);
+            return $this->serverErrorResponse('UPDATE_RECEIPT_FAILED', $e);
         }
     }
 
@@ -350,7 +345,7 @@ class ReceiptApiController extends Controller
         } catch (InvalidArgumentException $e) {
             return $this->errorResponse('INVALID_RECEIPT_STATE', $e->getMessage(), null, 422);
         } catch (Throwable $e) {
-            return $this->errorResponse('DELETE_ATTACHMENT_FAILED', $e->getMessage(), null, 500);
+            return $this->serverErrorResponse('DELETE_ATTACHMENT_FAILED', $e);
         }
     }
 

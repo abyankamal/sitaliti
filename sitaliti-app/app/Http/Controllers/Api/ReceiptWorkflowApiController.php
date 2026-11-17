@@ -45,7 +45,7 @@ class ReceiptWorkflowApiController extends Controller
         } catch (InvalidArgumentException $e) {
             return $this->errorResponse('INVALID_RECEIPT_STATE', $e->getMessage(), null, 422);
         } catch (Throwable $e) {
-            return $this->errorResponse('RESUBMIT_REVISION_FAILED', $e->getMessage(), null, 500);
+            return $this->serverErrorResponse('RESUBMIT_REVISION_FAILED', $e);
         }
     }
 
@@ -80,8 +80,10 @@ class ReceiptWorkflowApiController extends Controller
             ], 'Kuitansi berhasil diajukan ke PPTK dan pagu anggaran telah dikunci');
         } catch (PaguOverlimitException $e) {
             return $this->errorResponse('PAGU_OVERLIMIT', $e->getMessage(), null, 422);
+        } catch (InvalidArgumentException $e) {
+            return $this->errorResponse('INVALID_RECEIPT_STATE', $e->getMessage(), null, 422);
         } catch (Throwable $e) {
-            return $this->errorResponse('SUBMIT_RECEIPT_FAILED', $e->getMessage(), null, 400);
+            return $this->serverErrorResponse('SUBMIT_RECEIPT_FAILED', $e);
         }
     }
 
@@ -128,7 +130,7 @@ class ReceiptWorkflowApiController extends Controller
         } catch (InvalidArgumentException $e) {
             return $this->errorResponse('INVALID_STATE', $e->getMessage(), null, 422);
         } catch (Throwable $e) {
-            return $this->errorResponse('PPTK_APPROVE_FAILED', $e->getMessage(), null, 400);
+            return $this->serverErrorResponse('PPTK_APPROVE_FAILED', $e);
         }
     }
 
@@ -169,7 +171,7 @@ class ReceiptWorkflowApiController extends Controller
         } catch (InvalidArgumentException $e) {
             return $this->errorResponse('INVALID_STATE', $e->getMessage(), null, 422);
         } catch (Throwable $e) {
-            return $this->errorResponse('PPTK_REJECT_FAILED', $e->getMessage(), null, 400);
+            return $this->serverErrorResponse('PPTK_REJECT_FAILED', $e);
         }
     }
 
@@ -217,7 +219,7 @@ class ReceiptWorkflowApiController extends Controller
         } catch (InvalidArgumentException $e) {
             return $this->errorResponse('INVALID_STATE', $e->getMessage(), null, 422);
         } catch (Throwable $e) {
-            return $this->errorResponse('LURAH_APPROVE_FAILED', $e->getMessage(), null, 400);
+            return $this->serverErrorResponse('LURAH_APPROVE_FAILED', $e);
         }
     }
 
@@ -263,7 +265,7 @@ class ReceiptWorkflowApiController extends Controller
         } catch (InvalidArgumentException $e) {
             return $this->errorResponse('INVALID_STATE', $e->getMessage(), null, 422);
         } catch (Throwable $e) {
-            return $this->errorResponse('LURAH_REJECT_FAILED', $e->getMessage(), null, 400);
+            return $this->serverErrorResponse('LURAH_REJECT_FAILED', $e);
         }
     }
 }

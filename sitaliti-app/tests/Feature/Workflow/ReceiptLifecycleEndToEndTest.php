@@ -156,6 +156,17 @@ class ReceiptLifecycleEndToEndTest extends TestCase
             'nominal' => $pph,
         ]);
 
+        KuitansiLampiran::create([
+            'kuitansi_id' => $kuitansi->id,
+            'anggaran_rekening_id' => $this->rekening->id,
+            'nama_dokumen' => 'Nota E2E Full',
+            'file_name' => 'nota_e2e_full.pdf',
+            'file_path' => 'lampiran/nota_e2e_full.pdf',
+            'file_size' => 1024,
+            'mime_type' => 'application/pdf',
+            'file_hash' => hash('sha256', 'nota-e2e-full-001'),
+        ]);
+
         // Langkah 2: Kuitansi tampil di Web Index dan API Index
         $webRes = $this->actingAs($this->operator)->get('/receipts?tab=DRAFT');
         $webRes->assertStatus(200);
@@ -297,6 +308,17 @@ class ReceiptLifecycleEndToEndTest extends TestCase
             'total_pajak' => 0.00,
             'nominal_neto' => $bruto,
             'status' => 'DRAFT',
+        ]);
+
+        KuitansiLampiran::create([
+            'kuitansi_id' => $kuitansi->id,
+            'anggaran_rekening_id' => $this->rekening->id,
+            'nama_dokumen' => 'Nota E2E Reject',
+            'file_name' => 'nota_e2e_reject.pdf',
+            'file_path' => 'lampiran/nota_e2e_reject.pdf',
+            'file_size' => 1024,
+            'mime_type' => 'application/pdf',
+            'file_hash' => hash('sha256', 'nota-e2e-reject-001'),
         ]);
 
         // Submit ke PPTK -> Kunci pagu
