@@ -277,7 +277,15 @@ class User extends Authenticatable
             return $this->canAccessPptkSubkegiatan($unitId, $kodeSubKegiatan);
         }
 
-        return (int) $this->unit_kerja_id === $unitId;
+        if ((int) $this->unit_kerja_id !== $unitId) {
+            return false;
+        }
+
+        if (($this->hasRole('OPERATOR') || $this->role === 'OPERATOR') && $kuitansi->status === 'DRAFT') {
+            return (int) $kuitansi->user_id === (int) $this->id;
+        }
+
+        return true;
     }
 
     /**

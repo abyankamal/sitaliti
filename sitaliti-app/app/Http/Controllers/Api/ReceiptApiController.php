@@ -209,13 +209,8 @@ class ReceiptApiController extends Controller
         }
 
         $user = $request->user();
-        if ($user) {
-            if (! $user->canAccessReceipt($kuitansi)) {
-                return $this->errorResponse('FORBIDDEN', 'Anda tidak memiliki hak akses untuk kuitansi ini.', null, 403);
-            }
-            if (($user->hasRole('OPERATOR') || $user->role === 'OPERATOR') && $kuitansi->status === 'DRAFT' && $kuitansi->user_id !== $user->id) {
-                return $this->errorResponse('FORBIDDEN', 'Draft kuitansi ini hanya dapat diakses oleh pembuatnya.', null, 403);
-            }
+        if ($user && ! $user->canAccessReceipt($kuitansi)) {
+            return $this->errorResponse('FORBIDDEN', 'Anda tidak memiliki hak akses untuk kuitansi ini.', null, 403);
         }
 
         return $this->successResponse($kuitansi, 'Detail kuitansi berhasil diambil');

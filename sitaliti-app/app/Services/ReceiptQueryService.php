@@ -110,6 +110,13 @@ class ReceiptQueryService
             return;
         }
 
+        // Fail-closed: user non-SKPD-wide tanpa unit kerja tidak boleh melihat kuitansi mana pun
+        if ($user->unit_kerja_id === null) {
+            $query->whereRaw('1 = 0');
+
+            return;
+        }
+
         // 2. Operator: hanya unit kerja sendiri dan hanya DRAFT miliknya sendiri
         if ($user->hasRole('OPERATOR') || $user->role === 'OPERATOR') {
             if ($user->unit_kerja_id) {

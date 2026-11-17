@@ -452,5 +452,58 @@ class CrossUnitIdorIsolationTest extends TestCase
         ]);
         $this->assertFalse($orphanOperator->canAccessReceipt($this->kuitansiSarprasPataruman));
         $this->assertFalse($orphanOperator->canAccessRekening($this->rekeningSarprasPataruman));
+
+        // Fail-closed pada daftar kuitansi GET /api/v1/receipts
+        $this->actingAs($orphanOperator)
+            ->getJson('/api/v1/receipts')
+            ->assertOk()
+            ->assertJsonCount(0, 'data.data');
+    }
+
+    public function test_same_unit_operator_and_transferred_operator_cannot_access_foreign_draft(): void
+    {
+        $draftMilikPataruman = Kuitansi::create([
+            'nomor_kuitansi' => 'KW-DRAFT-PATARUMAN-001',
+            'unit_kerja_id' => $this->kelurahanPataruman->id,
+            'anggaran_rekening_id' => $this->rekeningSarprasPataruman->id,
+            'user_id' => $this->operatorPataruman->id,
+            'bulan_anggaran' => 1,
+            'tanggal_transaksi' => '2026-01-15',
+            'uraian' => 'Draft pribadi operator pertama',
+            'nama_penerima' => 'Toko A',
+            'nominal_bruto' => 500000.00,
+            'total_pajak' => 0.00,
+            'nominal_neto' => 500000.00,
+            'status' => 'DRAFT',
+        ]);
+
+        $att = KuitansiLampiran::create([
+            'kuitansi_id' => $draftMilikPataruman->id,
+            'anggaran_rekening_id' => $this->rekeningSarprasPataruman->id,
+            'nama_dokumen' => 'Nota Pembelian',
+            'file_name' => 'nota.pdf',
+            'file_path' => 'lampiran/nota.pdf',
+            'file_size' => 1024,
+            'mime_type' => 'application/pdf',
+            'file_hash' => hash('sha256', 'nota-draft-1'),
+        ]);
+
+        // Operator lain di unit yang sama (Kelurahan Pataruman) ditolak 403 di seluruh endpoint detail/edit/preview/history
+        $operatorLainPataruman = User::factory()->create([
+            'role' => 'OPERATOR',
+            'unit_kerja_id' => $this->kelurahanPataruman->id,
+        ]);
+
+        $this->actingAs($operatorLainPataruman)->get("/receipts/{$draftMilikPataruman->id}/edit")->assertStatus(403);
+        $this->actingAs($operatorLainPataruman)->get("/receipts/{$draftMilikPataruman->id}/attachments/{$att->id}/preview")->assertStatus(403);
+        $this->actingAs($operatorLainPataruman)->getJson("/api/v1/receipts/{$draftMilikPataruman->id}")->assertStatus(403);
+        $this->actingAs($operatorLainPataruman)->getJson("/api/v1/receipts/{$draftMilikPataruman->id}/history")->assertStatus(403);
+
+        // Operator pembuat yang dipindah ke unit lain juga ditolak 403 mengakses DRAFT di unit lama
+        $this->operatorPataruman->update(['unit_kerja_id' => $this->kelurahanSukagalih->id]);
+        $this->assertFalse($this->operatorPataruman->fresh()->canAccessReceipt($draftMilikPataruman));
+        $this->actingAs($this->operatorPataruman->fresh())
+            ->getJson("/api/v1/receipts/{$draftMilikPataruman->id}")
+            ->assertStatus(403);
     }
 }
