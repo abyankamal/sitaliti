@@ -1,0 +1,50 @@
+services:
+    sitaliti.app:
+        image: 'sail-8.3/app:latest'
+        restart: unless-stopped
+        ports:
+            - '${APP_PORT:-80}:80'
+        environment:
+            WWWUSER: '${WWWUSER:-1000}'
+            WWWGROUP: '${WWWGROUP:-1000}'
+            LARAVEL_SAIL: 1
+            SUPERVISOR_PHP_USER: 'sail'
+        volumes:
+            - '.:/var/www/html'
+        networks:
+            - sitaliti
+        depends_on:
+            pgsql:
+                condition: service_healthy
+
+    pgsql:
+        image: 'postgres:16-alpine'
+        restart: unless-stopped
+        environment:
+            PGPASSWORD: '${DB_PASSWORD:?DB_PASSWORD wajib diisi di .env}'
+            POSTGRES_DB: '${DB_DATABASE:-sitaliti}'
+            POSTGRES_USER: '${DB_USERNAME:-sitaliti}'
+            POSTGRES_PASSWORD: '${DB_PASSWORD:?DB_PASSWORD wajib diisi di .env}'
+        volumes:
+            - 'sitaliti-pgsql:/var/lib/postgresql/data'
+        networks:
+            - sitaliti
+        healthcheck:
+            test:
+                - CMD
+                - pg_isready
+                - '-q'
+                - '-d'
+                - '${DB_DATABASE:-sitaliti}'
+                - '-U'
+                - '${DB_USERNAME:-sitaliti}'
+            retries: 5
+            timeout: 5s
+
+networks:
+    sitaliti:
+        driver: bridge
+
+volumes:
+    sitaliti-pgsql:
+        driver: local
