@@ -1,5 +1,23 @@
 <script setup>
 import { computed } from 'vue';
+import {
+    FileText,
+    Pencil,
+    Send,
+    CheckCircle2,
+    XCircle,
+    ShieldCheck,
+    Search,
+    BadgeCheck,
+    RotateCcw,
+    Ban,
+    RefreshCw,
+    Package,
+    PackageOpen,
+    Banknote,
+    Clock,
+    CircleDot,
+} from 'lucide-vue-next';
 import GovBadge from '@/Components/UI/GovBadge.vue';
 import { formatTanggalIndo } from '@/Utils/date';
 
@@ -11,32 +29,37 @@ const props = defineProps({
 });
 
 /**
- * Mapping action → ikon, warna, dan label
+ * Mapping action -> ikon Lucide, warna tenang, dan label
  */
 const ACTION_CONFIG = {
-    CREATED:              { icon: '📝', label: 'Dibuat',                variant: 'neutral',  color: 'bg-slate-400' },
-    DRAFT_CREATED:        { icon: '📝', label: 'Draft Dibuat',          variant: 'neutral',  color: 'bg-slate-400' },
-    RECEIPT_UPDATED:      { icon: '✏️', label: 'Kuitansi Diperbarui',   variant: 'info',     color: 'bg-sky-500' },
-    SUBMITTED:            { icon: '📤', label: 'Diajukan',              variant: 'info',     color: 'bg-sky-500' },
-    SUBMITTED_TO_PPTK:    { icon: '📤', label: 'Diajukan ke PPTK',      variant: 'info',     color: 'bg-sky-500' },
-    PPTK_APPROVED:        { icon: '✅', label: 'Disetujui PPTK',        variant: 'success',  color: 'bg-emerald-500' },
-    PPTK_REJECTED:        { icon: '❌', label: 'Ditolak PPTK',          variant: 'danger',   color: 'bg-rose-500' },
-    LURAH_APPROVED:       { icon: '🛡️', label: 'Diotorisasi Lurah',     variant: 'success',  color: 'bg-emerald-600' },
-    LURAH_REJECTED:       { icon: '❌', label: 'Ditolak Lurah',         variant: 'danger',   color: 'bg-rose-500' },
-    UNDER_REVIEW:         { icon: '🔍', label: 'Sedang Diverifikasi',   variant: 'warning',  color: 'bg-amber-500' },
-    VERIFIED:             { icon: '🏆', label: 'Lolos Verifikasi',      variant: 'success',  color: 'bg-emerald-600' },
-    REVISION_MINOR:       { icon: '🔄', label: 'Revisi Minor',          variant: 'warning',  color: 'bg-amber-500' },
-    REVISION_MAJOR:       { icon: '⛔', label: 'Revisi Mayor',          variant: 'danger',   color: 'bg-rose-600' },
-    REVISION_RESUBMITTED: { icon: '🔁', label: 'Revisi Dikirim Ulang',  variant: 'info',     color: 'bg-indigo-500' },
-    BUNDLED:              { icon: '📦', label: 'Masuk Bundel SPP',      variant: 'primary',  color: 'bg-gov-navy-600' },
-    UNBUNDLED:            { icon: '📤', label: 'Dikeluarkan dari Bundel', variant: 'warning', color: 'bg-amber-600' },
-    SP2D_SETTLED:         { icon: '💰', label: 'SP2D Cair / Lunas',     variant: 'success',  color: 'bg-emerald-700' },
-    SLA_BREACH:           { icon: '⏰', label: 'SLA Breach',            variant: 'danger',   color: 'bg-rose-500' },
-    SLA_BREACHED:         { icon: '⏰', label: 'SLA Terlewati',         variant: 'danger',   color: 'bg-rose-600' },
+    CREATED:              { icon: FileText,     label: 'Dibuat',                  variant: 'neutral', dotClass: 'bg-raised text-ink-secondary border-hairline' },
+    DRAFT_CREATED:        { icon: FileText,     label: 'Draft Dibuat',            variant: 'neutral', dotClass: 'bg-raised text-ink-secondary border-hairline' },
+    RECEIPT_UPDATED:      { icon: Pencil,       label: 'Kuitansi Diperbarui',     variant: 'info',    dotClass: 'bg-sky-50 text-semantic-info border-sky-200' },
+    SUBMITTED:            { icon: Send,         label: 'Diajukan',                variant: 'info',    dotClass: 'bg-sky-50 text-semantic-info border-sky-200' },
+    SUBMITTED_TO_PPTK:    { icon: Send,         label: 'Diajukan ke PPTK',        variant: 'info',    dotClass: 'bg-sky-50 text-semantic-info border-sky-200' },
+    PPTK_APPROVED:        { icon: CheckCircle2, label: 'Disetujui PPTK',          variant: 'success', dotClass: 'bg-emerald-50 text-semantic-success border-emerald-200' },
+    PPTK_REJECTED:        { icon: XCircle,      label: 'Ditolak PPTK',            variant: 'danger',  dotClass: 'bg-red-50 text-semantic-danger border-red-200' },
+    LURAH_APPROVED:       { icon: ShieldCheck,  label: 'Diotorisasi Lurah',       variant: 'success', dotClass: 'bg-emerald-50 text-semantic-success border-emerald-200' },
+    LURAH_REJECTED:       { icon: XCircle,      label: 'Ditolak Lurah',           variant: 'danger',  dotClass: 'bg-red-50 text-semantic-danger border-red-200' },
+    UNDER_REVIEW:         { icon: Search,       label: 'Sedang Diverifikasi',     variant: 'warning', dotClass: 'bg-amber-50 text-semantic-warning border-amber-200' },
+    VERIFIED:             { icon: BadgeCheck,   label: 'Lolos Verifikasi',        variant: 'success', dotClass: 'bg-emerald-50 text-semantic-success border-emerald-200' },
+    REVISION_MINOR:       { icon: RotateCcw,    label: 'Revisi Minor',            variant: 'warning', dotClass: 'bg-amber-50 text-semantic-warning border-amber-200' },
+    REVISION_MAJOR:       { icon: Ban,          label: 'Revisi Mayor',            variant: 'danger',  dotClass: 'bg-red-50 text-semantic-danger border-red-200' },
+    REVISION_RESUBMITTED: { icon: RefreshCw,    label: 'Revisi Dikirim Ulang',    variant: 'info',    dotClass: 'bg-accent-soft text-accent border-accent-border' },
+    BUNDLED:              { icon: Package,      label: 'Masuk Bundel SPP',        variant: 'primary', dotClass: 'bg-accent-soft text-accent border-accent-border' },
+    UNBUNDLED:            { icon: PackageOpen,  label: 'Dikeluarkan dari Bundel', variant: 'warning', dotClass: 'bg-amber-50 text-semantic-warning border-amber-200' },
+    SP2D_SETTLED:         { icon: Banknote,     label: 'SP2D Cair / Lunas',       variant: 'success', dotClass: 'bg-emerald-50 text-semantic-success border-emerald-200' },
+    SLA_BREACH:           { icon: Clock,        label: 'SLA Breach',              variant: 'danger',  dotClass: 'bg-red-50 text-semantic-danger border-red-200' },
+    SLA_BREACHED:         { icon: Clock,        label: 'SLA Terlewati',           variant: 'danger',  dotClass: 'bg-red-50 text-semantic-danger border-red-200' },
 };
 
 function getConfig(action) {
-    return ACTION_CONFIG[action] || { icon: '📌', label: action, variant: 'neutral', color: 'bg-slate-400' };
+    return ACTION_CONFIG[action] || {
+        icon: CircleDot,
+        label: action,
+        variant: 'neutral',
+        dotClass: 'bg-raised text-ink-secondary border-hairline',
+    };
 }
 
 function formatWaktu(dateStr) {
@@ -52,26 +75,26 @@ const sortedEvents = computed(() => {
     <div class="relative">
         <!-- Empty state -->
         <div v-if="sortedEvents.length === 0" class="text-center py-6">
-            <div class="text-slate-400 text-sm">Belum ada riwayat aktivitas</div>
+            <div class="text-ink-muted text-sm">Belum ada riwayat aktivitas</div>
         </div>
 
         <!-- Timeline -->
         <div v-else class="relative">
             <!-- Vertical line -->
-            <div class="absolute left-[15px] top-3 bottom-3 w-0.5 bg-slate-200"></div>
+            <div class="absolute left-4 top-4 bottom-4 w-px bg-hairline"></div>
 
             <div class="space-y-0">
                 <div
                     v-for="(event, idx) in sortedEvents"
                     :key="event.id || idx"
-                    class="relative flex items-start gap-3 py-2.5 group"
+                    class="relative flex items-start gap-3 py-2.5"
                 >
-                    <!-- Dot -->
+                    <!-- Icon Dot -->
                     <div
-                        class="w-[31px] h-[31px] shrink-0 rounded-full flex items-center justify-center text-sm z-10 ring-2 ring-white shadow-sm"
-                        :class="getConfig(event.action).color"
+                        class="w-8 h-8 shrink-0 rounded-[50%] border flex items-center justify-center z-10 ring-2 ring-surface"
+                        :class="getConfig(event.action).dotClass"
                     >
-                        <span class="text-xs leading-none">{{ getConfig(event.action).icon }}</span>
+                        <component :is="getConfig(event.action).icon" class="w-4 h-4" :stroke-width="1.5" />
                     </div>
 
                     <!-- Content -->
@@ -84,37 +107,37 @@ const sortedEvents = computed(() => {
                             <!-- Status transition -->
                             <span
                                 v-if="event.status_lama && event.status_baru"
-                                class="text-[10px] text-slate-400 font-mono"
+                                class="text-xs text-ink-muted font-mono"
                             >
                                 {{ event.status_lama }} → {{ event.status_baru }}
                             </span>
                         </div>
 
                         <!-- Actor & Time -->
-                        <div class="flex items-center gap-2 mt-1 text-[11px] text-slate-500">
-                            <span v-if="event.actor_name" class="font-semibold text-slate-700">
+                        <div class="flex items-center gap-2 mt-1 text-xs text-ink-secondary flex-wrap">
+                            <span v-if="event.actor_name" class="font-medium text-ink">
                                 {{ event.actor_name }}
                             </span>
-                            <span v-if="event.actor_role" class="text-slate-400">
+                            <span v-if="event.actor_role" class="text-ink-muted">
                                 ({{ event.actor_role }})
                             </span>
-                            <span class="text-slate-300">·</span>
-                            <span>{{ formatWaktu(event.created_at) }}</span>
+                            <span class="text-hairline">·</span>
+                            <span class="text-ink-muted tabular-nums">{{ formatWaktu(event.created_at) }}</span>
                         </div>
 
                         <!-- Note -->
                         <div
                             v-if="event.catatan"
-                            class="mt-1.5 p-2 bg-slate-50 rounded-lg border border-slate-100 text-[11px] text-slate-600 leading-relaxed"
+                            class="mt-2 p-2.5 bg-canvas rounded-lg border border-hairline text-xs text-ink-secondary leading-relaxed"
                         >
-                            <span class="font-semibold text-slate-500">Catatan:</span>
+                            <span class="font-medium text-ink">Catatan:</span>
                             {{ event.catatan }}
                         </div>
 
-                        <!-- IP Address (subtle) -->
+                        <!-- IP Address -->
                         <div
                             v-if="event.ip_address"
-                            class="mt-1 text-[9px] text-slate-300 font-mono"
+                            class="mt-1 text-xs text-ink-muted font-mono tabular-nums"
                         >
                             IP: {{ event.ip_address }}
                         </div>
