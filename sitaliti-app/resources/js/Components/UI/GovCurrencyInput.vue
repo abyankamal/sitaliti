@@ -45,12 +45,12 @@ function handleInput(event) {
 
 <template>
     <div class="w-full">
-        <label v-if="label" class="block text-xs font-semibold text-gov-navy-900 uppercase tracking-wider mb-1.5">
-            {{ label }} <span v-if="required" class="text-rose-500">*</span>
+        <label v-if="label" class="block text-xs font-medium text-ink-secondary mb-1.5">
+            {{ label }} <span v-if="required" class="text-semantic-danger">*</span>
         </label>
-        <div class="relative rounded-lg shadow-sm">
-            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                <span class="text-xs font-bold text-gov-navy-700">Rp</span>
+        <div class="relative rounded-lg">
+            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+                <span class="text-xs font-medium text-ink-muted">Rp</span>
             </div>
             <input
                 type="text"
@@ -58,11 +58,11 @@ function handleInput(event) {
                 @input="handleInput"
                 :disabled="disabled"
                 :placeholder="placeholder"
-                class="block w-full rounded-lg border-gov-surface-border pl-10 pr-3 py-2 text-right text-sm font-medium tabular-nums text-gov-navy-900 placeholder:text-slate-400 focus:border-gov-navy-800 focus:ring-1 focus:ring-gov-navy-800 disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed"
-                :class="[error ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500' : '']"
+                class="block w-full h-10 rounded-lg border-hairline bg-surface pl-10 pr-3.5 text-right text-sm font-mono font-medium tabular-nums text-ink placeholder:text-ink-muted shadow-subtle focus:border-accent focus:ring-1 focus:ring-accent disabled:bg-raised disabled:text-ink-muted disabled:cursor-not-allowed transition-colors duration-150 ease-unslop"
+                :class="[error ? 'border-semantic-danger focus:border-semantic-danger focus:ring-semantic-danger' : '']"
             />
         </div>
-        <p v-if="error" class="mt-1 text-xs text-rose-600 font-medium">{{ error }}</p>
+        <p v-if="error" class="mt-1.5 text-xs text-semantic-danger font-medium">{{ error }}</p>
     </div>
 </template>
 

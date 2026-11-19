@@ -15,17 +15,28 @@ defineProps({
 
 <template>
     <span
-        class="inline-flex items-center font-medium rounded-full"
+        class="inline-flex items-center gap-1.5 font-medium rounded-md border text-xs whitespace-nowrap"
         :class="[
-            size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-2.5 py-1 text-xs',
-            variant === 'neutral' && 'bg-slate-100 text-slate-700 border border-slate-200',
-            variant === 'primary' && 'bg-gov-navy-100 text-gov-navy-900 border border-gov-navy-200',
-            variant === 'success' && 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-            variant === 'warning' && 'bg-amber-50 text-amber-700 border border-amber-200',
-            variant === 'danger' && 'bg-rose-50 text-rose-700 border border-rose-200',
-            variant === 'info' && 'bg-sky-50 text-sky-700 border border-sky-200',
+            size === 'sm' ? 'px-2 py-0.5' : 'px-2.5 py-1',
+            variant === 'neutral' && 'bg-raised text-ink-secondary border-hairline',
+            variant === 'primary' && 'bg-accent-soft text-accent border-accent-border',
+            variant === 'success' && 'bg-emerald-50/70 text-semantic-success border-emerald-200',
+            variant === 'warning' && 'bg-amber-50/70 text-semantic-warning border-amber-200',
+            variant === 'danger' && 'bg-red-50/70 text-semantic-danger border-red-200',
+            variant === 'info' && 'bg-sky-50/70 text-semantic-info border-sky-200',
         ]"
     >
+        <span
+            class="w-1.5 h-1.5 rounded-[50%] shrink-0"
+            :class="[
+                variant === 'neutral' && 'bg-ink-muted',
+                variant === 'primary' && 'bg-accent',
+                variant === 'success' && 'bg-semantic-success',
+                variant === 'warning' && 'bg-semantic-warning',
+                variant === 'danger' && 'bg-semantic-danger',
+                variant === 'info' && 'bg-semantic-info',
+            ]"
+        ></span>
         <slot />
     </span>
 </template>

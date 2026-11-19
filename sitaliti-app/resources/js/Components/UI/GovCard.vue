@@ -16,15 +16,15 @@ defineProps({
 </script>
 
 <template>
-    <div class="bg-white rounded-xl border border-gov-surface-border shadow-sm overflow-hidden">
-        <div v-if="title || $slots.header || $slots.actions" class="px-5 py-4 border-b border-gov-surface-border flex items-center justify-between">
+    <div class="bg-surface rounded-xl border border-hairline shadow-subtle overflow-hidden">
+        <div v-if="title || $slots.header || $slots.actions" class="px-5 py-4 border-b border-hairline flex items-center justify-between gap-4">
             <div>
                 <slot name="header">
-                    <h3 class="text-base font-semibold text-gov-navy-900">{{ title }}</h3>
-                    <p v-if="subtitle" class="text-xs text-slate-500 mt-0.5">{{ subtitle }}</p>
+                    <h3 class="text-base font-medium text-ink">{{ title }}</h3>
+                    <p v-if="subtitle" class="text-xs text-ink-muted mt-0.5">{{ subtitle }}</p>
                 </slot>
             </div>
-            <div v-if="$slots.actions" class="flex items-center gap-2">
+            <div v-if="$slots.actions" class="flex items-center gap-2 shrink-0">
                 <slot name="actions" />
             </div>
         </div>
@@ -33,7 +33,7 @@ defineProps({
             <slot />
         </div>
 
-        <div v-if="$slots.footer" class="px-5 py-3.5 bg-gov-surface-subtle border-t border-gov-surface-border">
+        <div v-if="$slots.footer" class="px-5 py-3.5 bg-canvas border-t border-hairline">
             <slot name="footer" />
         </div>
     </div>
