@@ -330,7 +330,7 @@ onMounted(async () => {
             <div class="rounded-lg border border-gov-border bg-gov-card p-3 shadow-xs">
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-4">
                     <div class="sm:col-span-2">
-                        <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gov-text-sub">
+                        <label class="mb-1.5 block text-xs font-medium text-ink-secondary">
                             Cari Nama / Email / NIP / Jabatan
                         </label>
                         <input
@@ -341,7 +341,7 @@ onMounted(async () => {
                         />
                     </div>
                     <div>
-                        <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gov-text-sub">
+                        <label class="mb-1.5 block text-xs font-medium text-ink-secondary">
                             Unit Kerja
                         </label>
                         <select
@@ -355,7 +355,7 @@ onMounted(async () => {
                         </select>
                     </div>
                     <div>
-                        <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gov-text-sub">
+                        <label class="mb-1.5 block text-xs font-medium text-ink-secondary">
                             Peran
                         </label>
                         <div class="flex gap-2">
