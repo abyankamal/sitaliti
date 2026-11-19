@@ -45,6 +45,7 @@ const submit = () => {
                     id="username"
                     type="text"
                     class="mt-1.5 block w-full"
+                    :class="{ 'border-semantic-danger focus:border-semantic-danger focus:ring-semantic-danger': form.errors.username }"
                     v-model="form.username"
                     placeholder="operator.pataruman"
                     required
@@ -52,7 +53,7 @@ const submit = () => {
                     autocomplete="username"
                 />
 
-                <InputError class="mt-2" :message="form.errors.username" />
+                <InputError class="mt-1.5" :message="form.errors.username" />
             </div>
 
             <div>
@@ -62,28 +63,29 @@ const submit = () => {
                     id="password"
                     type="password"
                     class="mt-1.5 block w-full"
+                    :class="{ 'border-semantic-danger focus:border-semantic-danger focus:ring-semantic-danger': form.errors.password }"
                     v-model="form.password"
                     required
                     autocomplete="current-password"
                 />
 
-                <InputError class="mt-2" :message="form.errors.password" />
+                <InputError class="mt-1.5" :message="form.errors.password" />
             </div>
 
-            <div class="block pt-1">
-                <label class="flex items-center">
+            <div class="block pt-0.5">
+                <label class="inline-flex items-center cursor-pointer">
                     <Checkbox name="remember" v-model:checked="form.remember" />
                     <span class="ms-2 text-sm text-ink-secondary">Ingat saya</span>
                 </label>
             </div>
 
-            <div class="pt-2 flex items-center justify-between gap-3">
+            <div class="pt-2 flex items-center justify-between gap-4 border-t border-hairline">
                 <span class="text-xs text-ink-muted">
                     Lupa kata sandi? Hubungi Admin SKPD
                 </span>
 
                 <PrimaryButton
-                    class="ms-4 shrink-0"
+                    class="shrink-0"
                     :class="{ 'opacity-25': form.processing }"
                     :disabled="form.processing"
                 >
