@@ -7,6 +7,7 @@ import { formatRupiah } from '@/Utils/currency';
 import { formatTanggalIndo } from '@/Utils/date';
 import { STATUS_LABELS, STATUS_VARIANTS } from '@/Constants/workflowStatus';
 import { ref, computed, onMounted } from 'vue';
+import { Download, Plus, Info } from 'lucide-vue-next';
 import { budgetService } from '@/Services/budgetService';
 import { receiptService } from '@/Services/receiptService';
 import { Head, router, usePage } from '@inertiajs/vue3';
@@ -46,133 +47,117 @@ function handleGatekeeperSelected(context) {
         <template #header>
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                    <h1 class="text-xl font-bold text-gov-navy-950 flex items-center gap-2.5">
-                        <span>Pusat Kendali Akuntabilitas SPJ</span>
-                        <span class="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-gov-navy-100 text-gov-navy-900 border border-gov-navy-200">
-                            Pre-Audit Gateway
-                        </span>
+                    <h1 class="text-xl font-semibold text-ink tracking-tight">
+                        Pusat Kendali Akuntabilitas SPJ
                     </h1>
-                    <p class="text-xs text-slate-500 mt-1">
-                        {{ isKelurahan && currentUser?.unit_kerja ? `Sistem Informasi Tata Kelola dan Asistensi SPJ • ${currentUser.unit_kerja.nama_unit}` : 'Sistem Informasi Tata Kelola, Asistensi, dan Verifikasi Akuntabilitas SPJ Kecamatan Tarogong Kidul' }}
+                    <p class="text-xs text-ink-muted mt-1">
+                        {{ isKelurahan && currentUser?.unit_kerja ? `Sistem Informasi Tata Kelola dan Asistensi SPJ · ${currentUser.unit_kerja.nama_unit}` : 'Sistem Informasi Tata Kelola, Asistensi, dan Verifikasi Akuntabilitas SPJ Kecamatan Tarogong Kidul' }}
                     </p>
                 </div>
-                <div class="flex items-center gap-2.5">
+                <div class="flex items-center gap-2.5 shrink-0">
                     <GovButton variant="secondary" size="sm" @click="receiptService.exportReceipts()">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                        </svg>
+                        <Download class="w-4 h-4" :stroke-width="1.5" />
                         Ekspor Laporan
                     </GovButton>
-                    <GovButton v-if="canCreateReceipt" variant="gold" size="sm" @click="showGatekeeperModal = true">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                        </svg>
+                    <GovButton v-if="canCreateReceipt" variant="primary" size="sm" @click="showGatekeeperModal = true">
+                        <Plus class="w-4 h-4" :stroke-width="1.5" />
                         Input Kuitansi Baru
                     </GovButton>
                 </div>
             </div>
         </template>
 
+        <!-- Loading State -->
+        <div v-if="loading" class="py-12 text-center text-sm text-ink-muted">
+            Memuat ringkasan anggaran dan aktivitas SPJ...
+        </div>
+
         <!-- Main Content -->
-        <div v-if="dashboardData" class="space-y-6">
-            <!-- Alert Banner: Pre-Audit Clearing House Info -->
-            <div class="bg-gradient-to-r from-gov-navy-900 to-gov-navy-800 text-white rounded-xl p-4 shadow-sm border border-gov-navy-700 flex items-start justify-between gap-4">
-                <div class="flex items-start gap-3.5">
-                    <div class="p-2 bg-gov-navy-950/60 rounded-lg text-gov-gold-400 border border-gov-gold-500/20 shrink-0">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <h4 class="text-sm font-semibold text-gov-gold-300">Prinsip Kerja Pre-Audit SI-TALITI</h4>
-                        <p class="text-xs text-slate-300 mt-0.5 leading-relaxed">
-                            SI-TALITI melakukan verifikasi kepatuhan, keabsahan SSH/SBM, kelengkapan pajak, serta validasi pagu RAK. Sistem ini tidak menerbitkan SP2D dan tidak melakukan pencairan kas resmi (otoritas tetap pada SIPD-RI).
-                        </p>
-                    </div>
+        <div v-else-if="dashboardData" class="space-y-6">
+            <!-- Contextual Note: Pre-Audit Clearing House Info -->
+            <div class="bg-surface rounded-xl px-4 py-3.5 border border-hairline shadow-subtle flex items-center justify-between gap-4">
+                <div class="flex items-start gap-3">
+                    <Info class="w-4 h-4 text-accent mt-0.5 shrink-0" :stroke-width="1.5" />
+                    <p class="text-xs text-ink-secondary leading-relaxed">
+                        <span class="font-medium text-ink">Prinsip Pre-Audit:</span>
+                        SI-TALITI memverifikasi kepatuhan, keabsahan SSH/SBM, kelengkapan pajak, dan validasi pagu RAK. Penerbitan SP2D serta pencairan kas tetap menjadi otoritas SIPD-RI.
+                    </p>
                 </div>
-                <div class="hidden lg:block text-right shrink-0">
-                    <span class="text-[11px] text-slate-300 block">Status RAK Terkini</span>
-                    <span class="text-xs font-semibold text-emerald-400">Terkontrol & Terkunci Real-Time</span>
+                <div class="hidden lg:flex items-center gap-2 shrink-0 text-xs text-ink-secondary">
+                    <span class="w-1.5 h-1.5 rounded-[50%] bg-semantic-success"></span>
+                    <span class="font-medium">RAK Terkunci Real-Time</span>
                 </div>
             </div>
 
             <!-- KPI Metrik Anggaran & SPJ (4 Cards) -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <!-- Card 1: Total Pagu Anggaran -->
-                <div class="bg-white rounded-xl border border-gov-surface-border p-4 shadow-sm">
-                    <div class="flex items-center justify-between text-slate-500 mb-2">
-                        <span class="text-xs font-semibold uppercase tracking-wider">Total Pagu (RAK-P)</span>
-                        <div class="w-7 h-7 rounded-lg bg-gov-navy-50 text-gov-navy-900 flex items-center justify-center font-bold text-xs">
-                            TA
-                        </div>
+                <div class="bg-surface rounded-xl border border-hairline p-5 shadow-subtle">
+                    <div class="text-xs font-medium text-ink-muted">
+                        Total Pagu (RAK-P)
                     </div>
-                    <div class="text-lg font-bold text-gov-navy-950 tabular-nums">
+                    <div class="mt-2 text-xl font-medium font-mono text-ink tabular-nums">
                         {{ formatRupiah(dashboardData.summary.total_pagu) }}
                     </div>
-                    <p class="text-[11px] text-slate-500 mt-1">
-                        {{ dashboardData.meta?.unit_count || 1 }} Unit • {{ dashboardData.meta?.sub_activity_count || dashboardData.meta?.total_sub_activities || 0 }} Subkegiatan • {{ dashboardData.meta?.rekening_count || dashboardData.meta?.total_accounts || 0 }} Rekening
+                    <p class="text-xs text-ink-muted mt-2 tabular-nums">
+                        {{ dashboardData.meta?.unit_count || 1 }} unit · {{ dashboardData.meta?.sub_activity_count || dashboardData.meta?.total_sub_activities || 0 }} subkegiatan · {{ dashboardData.meta?.rekening_count || dashboardData.meta?.total_accounts || 0 }} rekening
                     </p>
                 </div>
 
                 <!-- Card 2: Realisasi Pagu -->
-                <div class="bg-white rounded-xl border border-gov-surface-border p-4 shadow-sm">
-                    <div class="flex items-center justify-between text-slate-500 mb-2">
-                        <span class="text-xs font-semibold uppercase tracking-wider">Realisasi Penyerapan</span>
-                        <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                <div class="bg-surface rounded-xl border border-hairline p-5 shadow-subtle">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-xs font-medium text-ink-muted">Realisasi Penyerapan</span>
+                        <span class="text-xs font-mono font-medium text-semantic-success tabular-nums">
                             {{ dashboardData.summary.persentase_realisasi }}%
                         </span>
                     </div>
-                    <div class="text-lg font-bold text-emerald-700 tabular-nums">
+                    <div class="mt-2 text-xl font-medium font-mono text-ink tabular-nums">
                         {{ formatRupiah(dashboardData.summary.total_terserap) }}
                     </div>
-                    <div class="w-full bg-slate-100 h-1.5 rounded-full mt-2 overflow-hidden">
-                        <div
-                            class="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                            :style="{ width: `${dashboardData.summary.persentase_realisasi}%` }"
-                        ></div>
-                    </div>
+                    <p class="text-xs text-ink-muted mt-2">
+                        Terhadap total pagu RAK-P berjalan
+                    </p>
                 </div>
 
                 <!-- Card 3: Pagu Terkunci & Sisa -->
-                <div class="bg-white rounded-xl border border-gov-surface-border p-4 shadow-sm">
-                    <div class="flex items-center justify-between text-slate-500 mb-2">
-                        <span class="text-xs font-semibold uppercase tracking-wider">Pagu Terkunci / Komitmen</span>
-                        <span class="text-[11px] text-amber-700 font-medium">Dalam Proses</span>
+                <div class="bg-surface rounded-xl border border-hairline p-5 shadow-subtle">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-xs font-medium text-ink-muted">Pagu Terkunci / Komitmen</span>
+                        <span class="text-xs font-medium text-semantic-warning">Dalam proses</span>
                     </div>
-                    <div class="text-lg font-bold text-amber-600 tabular-nums">
+                    <div class="mt-2 text-xl font-medium font-mono text-ink tabular-nums">
                         {{ formatRupiah(dashboardData.summary.total_terkunci) }}
                     </div>
-                    <p class="text-[11px] text-slate-500 mt-1">
-                        Sisa Pagu Bebas: <span class="font-semibold text-slate-700 tabular-nums">{{ formatRupiah(dashboardData.summary.total_sisa) }}</span>
+                    <p class="text-xs text-ink-muted mt-2">
+                        Sisa bebas: <span class="font-mono font-medium text-ink-secondary tabular-nums">{{ formatRupiah(dashboardData.summary.total_sisa) }}</span>
                     </p>
                 </div>
 
                 <!-- Card 4: Antrean Verifikasi & PPTK -->
-                <div class="bg-white rounded-xl border border-gov-surface-border p-4 shadow-sm">
-                    <div class="flex items-center justify-between text-slate-500 mb-2">
-                        <span class="text-xs font-semibold uppercase tracking-wider">Antrean Verifikasi</span>
-                        <span class="flex h-2.5 w-2.5 relative">
-                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
-                            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-sky-500"></span>
-                        </span>
+                <div class="bg-surface rounded-xl border border-hairline p-5 shadow-subtle">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-xs font-medium text-ink-muted">Antrean Verifikasi</span>
+                        <span class="w-2 h-2 rounded-[50%] bg-accent"></span>
                     </div>
-                    <div class="flex items-baseline gap-2">
-                        <span class="text-2xl font-black text-gov-navy-950 tabular-nums">
+                    <div class="mt-2 flex items-baseline gap-2">
+                        <span class="text-2xl font-medium font-mono text-ink tabular-nums">
                             {{ dashboardData.summary.pending_verification_count }}
                         </span>
-                        <span class="text-xs text-slate-500">berkas kuitansi</span>
+                        <span class="text-xs text-ink-muted">berkas kuitansi</span>
                     </div>
-                    <div class="flex items-center gap-2 mt-1.5 text-[11px] flex-wrap">
-                        <span v-if="dashboardData.queue_counts?.menunggu_pptk" class="text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded font-semibold border border-indigo-200">
-                            {{ dashboardData.queue_counts.menunggu_pptk }} antre PPTK
-                        </span>
-                        <span v-if="dashboardData.queue_counts?.menunggu_lurah" class="text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded font-semibold border border-amber-300">
-                            {{ dashboardData.queue_counts.menunggu_lurah }} antre Lurah
-                        </span>
-                        <span v-if="dashboardData.summary.active_revisions_count" class="text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded font-semibold border border-amber-200">
-                            {{ dashboardData.summary.active_revisions_count }} revisi
-                        </span>
-                    </div>
+                    <p class="text-xs text-ink-muted mt-2 tabular-nums">
+                        <template v-if="dashboardData.queue_counts?.menunggu_pptk || dashboardData.queue_counts?.menunggu_lurah || dashboardData.summary.active_revisions_count">
+                            <span v-if="dashboardData.queue_counts?.menunggu_pptk">{{ dashboardData.queue_counts.menunggu_pptk }} PPTK</span>
+                            <span v-if="dashboardData.queue_counts?.menunggu_pptk && (dashboardData.queue_counts?.menunggu_lurah || dashboardData.summary.active_revisions_count)"> · </span>
+                            <span v-if="dashboardData.queue_counts?.menunggu_lurah">{{ dashboardData.queue_counts.menunggu_lurah }} Lurah</span>
+                            <span v-if="dashboardData.queue_counts?.menunggu_lurah && dashboardData.summary.active_revisions_count"> · </span>
+                            <span v-if="dashboardData.summary.active_revisions_count" class="text-semantic-warning">{{ dashboardData.summary.active_revisions_count }} revisi</span>
+                        </template>
+                        <template v-else>
+                            Tidak ada antrean tertunda
+                        </template>
+                    </p>
                 </div>
             </div>
 
@@ -182,12 +167,12 @@ function handleGatekeeperSelected(context) {
                 <div class="lg:col-span-2">
                     <GovCard
                         title="Distribusi RAK 12 Bulan (Tahun Anggaran 2026)"
-                        subtitle="Prinsip Carry-Over: Sisa pagu bulan lalu dapat dibawa, pagu bulan depan terkunci"
+                        subtitle="Prinsip carry-over: sisa pagu bulan lalu dapat dibawa, pagu bulan depan terkunci"
                         :no-padding="true"
                     >
                         <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gov-surface-border text-left">
-                                <thead class="bg-gov-surface-subtle text-[11px] uppercase tracking-wider font-semibold text-slate-600">
+                            <table class="min-w-full divide-y divide-hairline text-left">
+                                <thead class="bg-canvas text-xs font-medium text-ink-secondary">
                                     <tr>
                                         <th class="py-3 px-4">Bulan</th>
                                         <th class="py-3 px-4 text-right">Target RAK</th>
@@ -195,46 +180,37 @@ function handleGatekeeperSelected(context) {
                                         <th class="py-3 px-4 text-center">Status Pagu</th>
                                     </tr>
                                 </thead>
-                                <tbody class="divide-y divide-gov-surface-border text-xs">
+                                <tbody class="divide-y divide-hairline text-xs">
                                     <tr
                                         v-for="item in dashboardData.monthly_allocation"
                                         :key="item.month"
                                         :class="[
-                                            item.status === 'active' ? 'bg-amber-50/60 font-medium' : 'hover:bg-slate-50/60'
+                                            item.status === 'active' ? 'bg-accent-soft/70 font-medium' : 'hover:bg-raised/60'
                                         ]"
                                     >
-                                        <td class="py-2.5 px-4 font-semibold text-gov-navy-900 flex items-center gap-2">
+                                        <td class="py-2.5 px-4 font-medium text-ink flex items-center gap-2">
                                             <span
                                                 v-if="item.status === 'active'"
-                                                class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"
+                                                class="w-1.5 h-1.5 rounded-[50%] bg-accent shrink-0"
                                             ></span>
                                             <span>Bulan {{ item.month }} - {{ item.name }}</span>
                                         </td>
-                                        <td class="py-2.5 px-4 text-right text-slate-600 tabular-nums">
+                                        <td class="py-2.5 px-4 text-right text-ink-secondary font-mono tabular-nums">
                                             {{ formatRupiah(item.target) }}
                                         </td>
-                                        <td class="py-2.5 px-4 text-right font-semibold tabular-nums" :class="item.realisasi > 0 ? 'text-gov-navy-950' : 'text-slate-400'">
+                                        <td class="py-2.5 px-4 text-right font-mono font-medium tabular-nums" :class="item.realisasi > 0 ? 'text-ink' : 'text-ink-muted'">
                                             {{ formatRupiah(item.realisasi) }}
                                         </td>
                                         <td class="py-2.5 px-4 text-center">
-                                            <span
-                                                v-if="item.status === 'closed'"
-                                                class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700"
-                                            >
+                                            <GovBadge v-if="item.status === 'closed'" variant="neutral" size="sm">
                                                 Selesai / Ditutup
-                                            </span>
-                                            <span
-                                                v-else-if="item.status === 'active'"
-                                                class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200"
-                                            >
-                                                Bulan Berjalan (Open)
-                                            </span>
-                                            <span
-                                                v-else
-                                                class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-400"
-                                            >
-                                                Terkunci (Belum Terbuka)
-                                            </span>
+                                            </GovBadge>
+                                            <GovBadge v-else-if="item.status === 'active'" variant="primary" size="sm">
+                                                Bulan Berjalan
+                                            </GovBadge>
+                                            <GovBadge v-else variant="neutral" size="sm">
+                                                Terkunci
+                                            </GovBadge>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -250,36 +226,36 @@ function handleGatekeeperSelected(context) {
                         :title="`Pagu Subkegiatan ${currentUser?.unit_kerja?.nama_unit || 'Kelurahan'}`"
                         subtitle="Realisasi Sarpras & Pemberdayaan Masyarakat"
                     >
-                        <div class="space-y-4">
+                        <div class="space-y-3">
                             <div
                                 v-for="sub in dashboardData.sub_activities"
                                 :key="sub.code"
-                                class="p-3 rounded-lg border border-gov-surface-border bg-gov-surface-subtle hover:bg-slate-50 transition-colors"
+                                class="p-3.5 rounded-lg border border-hairline bg-canvas hover:bg-raised/60 transition-colors duration-150 ease-unslop"
                             >
                                 <div class="flex items-start justify-between gap-2">
                                     <div>
-                                        <span class="text-[10px] font-mono text-gov-gold-700 bg-gov-gold-50 px-1 py-0.5 rounded border border-gov-gold-200 inline-block mb-1">
+                                        <span class="text-xs font-mono text-ink-secondary bg-surface px-1.5 py-0.5 rounded border border-hairline inline-block mb-1.5">
                                             {{ sub.code }}
                                         </span>
-                                        <h5 class="text-xs font-bold text-gov-navy-900 leading-tight">
+                                        <h5 class="text-xs font-medium text-ink leading-snug">
                                             {{ sub.name }}
                                         </h5>
                                     </div>
-                                    <span class="text-[10px] text-slate-500 font-mono shrink-0 font-bold">
+                                    <span class="text-xs text-ink-secondary font-mono shrink-0 font-medium tabular-nums">
                                         {{ sub.pagu > 0 ? Math.round((sub.terserap / sub.pagu) * 100) : 0 }}%
                                     </span>
                                 </div>
-                                <div class="mt-2 flex items-center justify-between text-[11px]">
-                                    <span class="text-slate-500">Terserap:</span>
-                                    <span class="font-semibold text-slate-800 tabular-nums">{{ formatRupiah(sub.terserap) }}</span>
+                                <div class="mt-2.5 flex items-center justify-between text-xs">
+                                    <span class="text-ink-muted">Terserap</span>
+                                    <span class="font-mono font-medium text-ink tabular-nums">{{ formatRupiah(sub.terserap) }}</span>
                                 </div>
-                                <div class="w-full bg-slate-200 h-1.5 rounded-full mt-1.5 overflow-hidden">
+                                <div class="w-full bg-hairline h-1.5 rounded-sm mt-1.5 overflow-hidden">
                                     <div
-                                        class="bg-gov-navy-800 h-full rounded-full transition-all duration-500"
+                                        class="bg-accent h-full rounded-sm transition-[width] duration-300 ease-unslop"
                                         :style="{ width: `${sub.pagu > 0 ? Math.min(100, Math.round((sub.terserap / sub.pagu) * 100)) : 0}%` }"
                                     ></div>
                                 </div>
-                                <div class="mt-1.5 flex items-center justify-between text-[10px] text-slate-400">
+                                <div class="mt-2 flex items-center justify-between text-xs text-ink-muted font-mono tabular-nums">
                                     <span>Pagu: {{ formatRupiah(sub.pagu) }}</span>
                                     <span>Sisa: {{ formatRupiah(sub.sisa) }}</span>
                                 </div>
@@ -292,28 +268,28 @@ function handleGatekeeperSelected(context) {
                         title="Pagu Unit Organisasi (6 Unit)"
                         subtitle="Realisasi penyerapan per unit kerja"
                     >
-                        <div class="space-y-4">
+                        <div class="space-y-3">
                             <div
                                 v-for="unit in dashboardData.units"
                                 :key="unit.id"
-                                class="p-3 rounded-lg border border-gov-surface-border bg-gov-surface-subtle hover:bg-slate-50 transition-colors"
+                                class="p-3.5 rounded-lg border border-hairline bg-canvas hover:bg-raised/60 transition-colors duration-150 ease-unslop"
                             >
                                 <div class="flex items-start justify-between gap-2">
-                                    <h5 class="text-xs font-bold text-gov-navy-900 leading-tight">
+                                    <h5 class="text-xs font-medium text-ink leading-snug">
                                         {{ unit.name }}
                                     </h5>
-                                    <span class="text-[10px] text-slate-400 font-mono shrink-0">
+                                    <span class="text-xs text-ink-secondary font-mono shrink-0 tabular-nums">
                                         {{ unit.pagu > 0 ? Math.round((unit.terserap / unit.pagu) * 100) : 0 }}%
                                     </span>
                                 </div>
-                                <div class="mt-2 flex items-center justify-between text-[11px]">
-                                    <span class="text-slate-500">Terserap:</span>
-                                    <span class="font-semibold text-slate-800 tabular-nums">{{ formatRupiah(unit.terserap) }}</span>
+                                <div class="mt-2 flex items-center justify-between text-xs">
+                                    <span class="text-ink-muted">Terserap</span>
+                                    <span class="font-mono font-medium text-ink tabular-nums">{{ formatRupiah(unit.terserap) }}</span>
                                 </div>
-                                <div class="w-full bg-slate-200 h-1.5 rounded-full mt-1.5 overflow-hidden">
+                                <div class="w-full bg-hairline h-1.5 rounded-sm mt-1.5 overflow-hidden">
                                     <div
-                                        class="bg-gov-navy-800 h-full rounded-full"
-                                        :style="{ width: `${unit.pagu > 0 ? Math.round((unit.terserap / unit.pagu) * 100) : 0}%` }"
+                                        class="bg-accent h-full rounded-sm transition-[width] duration-300 ease-unslop"
+                                        :style="{ width: `${unit.pagu > 0 ? Math.min(100, Math.round((unit.terserap / unit.pagu) * 100)) : 0}%` }"
                                     ></div>
                                 </div>
                             </div>
@@ -328,12 +304,12 @@ function handleGatekeeperSelected(context) {
                 subtitle="Monitoring alur transaksi sebelum dibundel menjadi SPP"
                 :no-padding="true"
             >
-                <div v-if="dashboardData.recent_activities?.length === 0" class="p-8 text-center text-slate-400 text-xs">
+                <div v-if="dashboardData.recent_activities?.length === 0" class="p-8 text-center text-ink-muted text-xs">
                     Belum ada aktivitas transaksi kuitansi yang tercatat.
                 </div>
                 <div v-else class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gov-surface-border text-left">
-                        <thead class="bg-gov-surface-subtle text-[11px] uppercase tracking-wider font-semibold text-slate-600">
+                    <table class="min-w-full divide-y divide-hairline text-left">
+                        <thead class="bg-canvas text-xs font-medium text-ink-secondary">
                             <tr>
                                 <th class="py-3 px-4">No. Bukti & Tanggal</th>
                                 <th class="py-3 px-4">Unit Kerja & Kegiatan</th>
@@ -343,37 +319,37 @@ function handleGatekeeperSelected(context) {
                                 <th class="py-3 px-4 text-center">Status</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gov-surface-border text-xs">
+                        <tbody class="divide-y divide-hairline text-xs">
                             <tr
                                 v-for="act in dashboardData.recent_activities"
                                 :key="act.id"
-                                class="hover:bg-slate-50 transition-colors"
+                                class="hover:bg-raised/60 transition-colors duration-150 ease-unslop"
                             >
                                 <td class="py-3 px-4">
-                                    <div class="font-semibold text-gov-navy-900">{{ act.id }}</div>
-                                    <div class="text-[11px] text-slate-400">
+                                    <div class="font-mono font-medium text-ink">{{ act.id }}</div>
+                                    <div class="text-xs text-ink-muted tabular-nums mt-0.5">
                                         {{ act.timestamp || formatTanggalIndo(act.tanggal) }}
                                     </div>
-                                    <div v-if="act.actor_name" class="text-[10px] text-slate-400 mt-0.5">
+                                    <div v-if="act.actor_name" class="text-xs text-ink-muted mt-0.5">
                                         Oleh: {{ act.actor_name }}
                                     </div>
                                 </td>
                                 <td class="py-3 px-4">
-                                    <div class="font-medium text-slate-800">{{ act.unit }}</div>
-                                    <div class="text-[11px] text-slate-500 truncate max-w-xs">{{ act.kegiatan }}</div>
+                                    <div class="font-medium text-ink">{{ act.unit }}</div>
+                                    <div class="text-xs text-ink-secondary truncate max-w-xs mt-0.5">{{ act.kegiatan }}</div>
                                 </td>
-                                <td class="py-3 px-4 text-slate-700 max-w-sm">
+                                <td class="py-3 px-4 text-ink-secondary max-w-sm">
                                     <p class="truncate">{{ act.uraian }}</p>
-                                    <span v-if="act.action" class="inline-block text-[10px] text-slate-400 font-mono mt-0.5">
+                                    <span v-if="act.action" class="inline-block text-xs text-ink-muted font-mono mt-0.5">
                                         Aksi: {{ act.action }}
                                     </span>
                                 </td>
                                 <td class="py-3 px-4 text-center">
-                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-gov-navy-900 border border-slate-200">
+                                    <span class="px-2 py-0.5 rounded-md text-xs font-mono font-medium bg-raised text-ink-secondary border border-hairline">
                                         {{ act.kategori }}
                                     </span>
                                 </td>
-                                <td class="py-3 px-4 text-right font-bold text-gov-navy-950 tabular-nums">
+                                <td class="py-3 px-4 text-right font-mono font-medium text-ink tabular-nums whitespace-nowrap">
                                     {{ formatRupiah(act.nominal) }}
                                 </td>
                                 <td class="py-3 px-4 text-center">
