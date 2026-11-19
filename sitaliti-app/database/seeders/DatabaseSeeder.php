@@ -52,8 +52,13 @@ class DatabaseSeeder extends Seeder
         }
 
         // 3. Otomatis jalankan import RAK jika file tersedia
-        $rakPath = storage_path('app/rak/RAK_Belanja_7.01.0.00.0.00.41.0000 - Kecamatan Tarogong Kidul.xlsx');
-        if (file_exists($rakPath)) {
+        $rakFilename = 'RAK_Belanja_7.01.0.00.0.00.41.0000 - Kecamatan Tarogong Kidul.xlsx';
+        $rakPath = collect([
+            storage_path('app/rak/'.$rakFilename),
+            base_path('../'.$rakFilename),
+        ])->first(fn (string $path) => file_exists($path));
+
+        if ($rakPath) {
             $this->command->call('sitaliti:import-rak', ['file' => $rakPath]);
         }
 
