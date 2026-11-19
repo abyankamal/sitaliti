@@ -2,6 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+    html {
+        color: #171717;
+        background-color: #FAFAFA;
+        caret-color: #15324C;
+    }
+
+    ::selection {
+        background-color: rgba(21, 50, 76, 0.14);
+        color: #15324C;
+    }
+}
+
 @layer utilities {
     /* Angka keuangan wajib presisi rata kanan dan lebar karakter sama */
     .tabular-nums {

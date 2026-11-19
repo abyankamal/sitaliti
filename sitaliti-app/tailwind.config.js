@@ -13,11 +13,35 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['"Plus Jakarta Sans"', 'Inter', 'Figtree', ...defaultTheme.fontFamily.sans],
-                mono: ['"JetBrains Mono"', 'Fira Code', ...defaultTheme.fontFamily.mono],
+                sans: ['"Plus Jakarta Sans"', ...defaultTheme.fontFamily.sans],
+                mono: ['"JetBrains Mono"', ...defaultTheme.fontFamily.mono],
             },
             colors: {
-                // Deep Government Navy Theme
+                // Light Graphite Neutral Ramp (Unslop Design System)
+                canvas: '#FAFAFA',
+                surface: '#FFFFFF',
+                raised: '#F4F4F5',
+                hairline: '#E5E5E5',
+                ink: {
+                    DEFAULT: '#171717',
+                    secondary: '#525252',
+                    muted: '#737373',
+                },
+                // Institutional Navy Accent
+                accent: {
+                    DEFAULT: '#15324C',
+                    hover: '#0F2537',
+                    soft: '#EEF2F6',
+                    border: '#CBD5E1',
+                },
+                // Calibrated Semantic Colors
+                semantic: {
+                    success: '#15803D',
+                    warning: '#B45309',
+                    danger: '#DC2626',
+                    info: '#0369A1',
+                },
+                // Deep Government Navy Theme (dipertahankan untuk kompatibilitas transisi bertahap)
                 gov: {
                     navy: {
                         50: '#F0F4F8',
@@ -49,7 +73,14 @@ export default {
                         border: '#E2E8F0',
                     }
                 }
-            }
+            },
+            boxShadow: {
+                subtle: '0 1px 2px rgba(0, 0, 0, 0.04)',
+                floating: '0 8px 24px rgba(0, 0, 0, 0.06)',
+            },
+            transitionTimingFunction: {
+                unslop: 'cubic-bezier(0.22, 1, 0.36, 1)',
+            },
         },
     },
 
