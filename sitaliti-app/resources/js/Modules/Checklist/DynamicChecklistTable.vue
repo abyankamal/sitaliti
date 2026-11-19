@@ -137,18 +137,18 @@ function handleRemoveFile(index) {
                                 <h4 class="text-xs font-bold text-gov-navy-900">{{ doc.name }}</h4>
                                 <span
                                     v-if="doc.required"
-                                    class="text-[10px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.2 rounded border border-rose-200"
+                                    class="text-xs font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200"
                                 >
                                     Wajib
                                 </span>
                                 <span
                                     v-else
-                                    class="text-[10px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded"
+                                    class="text-xs font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded"
                                 >
                                     Kondisional / Opsional
                                 </span>
                             </div>
-                            <p class="text-[11px] text-slate-500 mt-0.5 leading-tight">{{ doc.description }}</p>
+                            <p class="text-xs text-slate-500 mt-0.5 leading-tight">{{ doc.description }}</p>
 
                             <!-- Uploaded File Badge -->
                             <div v-if="doc.file" class="mt-2 flex items-center gap-2">
@@ -157,12 +157,12 @@ function handleRemoveFile(index) {
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
                                     <span class="max-w-xs truncate">{{ doc.file_name }}</span>
-                                    <span class="text-[10px] text-emerald-700 font-mono">({{ doc.file_size }})</span>
+                                    <span class="text-xs text-emerald-700 font-mono">({{ doc.file_size }})</span>
                                 </span>
                                 <button
                                     type="button"
                                     @click="handleRemoveFile(idx)"
-                                    class="text-[11px] text-rose-600 hover:text-rose-800 hover:underline"
+                                    class="text-xs text-rose-600 hover:text-rose-800 hover:underline"
                                 >
                                     Hapus
                                 </button>

@@ -410,7 +410,7 @@ function getStatusBadge(status) {
                                     <span class="font-medium text-rose-600 tabular-nums">- {{ formatRupiah(pjk.nominal) }}</span>
                                 </div>
 
-                                <div v-if="taxDeductions.length === 0" class="text-slate-400 italic text-[11px] pl-3">
+                                <div v-if="taxDeductions.length === 0" class="text-slate-400 italic text-xs pl-3">
                                     Bebas pemotongan pajak rekanan (PMK 59/2022).
                                 </div>
 
@@ -427,7 +427,7 @@ function getStatusBadge(status) {
                                         </svg>
                                         <span>Bea Meterai Lunas (Dokumen Fisik)</span>
                                     </div>
-                                    <span class="font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded text-[11px]">
+                                    <span class="font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded text-xs">
                                         Rp 10.000 (Tidak Memotong Hak Rekanan)
                                     </span>
                                 </div>
@@ -456,11 +456,11 @@ function getStatusBadge(status) {
                                         </svg>
                                         <div class="truncate">
                                             <div class="font-medium text-slate-800 truncate">{{ lampiran.nama_dokumen || lampiran.file_name }}</div>
-                                            <div class="text-[10px] text-slate-400 font-mono truncate">SHA: {{ lampiran.file_hash }}</div>
+                                            <div class="text-xs text-slate-400 font-mono truncate">SHA: {{ lampiran.file_hash }}</div>
                                         </div>
                                     </div>
 
-                                    <span class="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                    <span class="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                                         Tervalidasi
                                     </span>
                                 </div>
@@ -672,7 +672,7 @@ function getStatusBadge(status) {
                         placeholder="Tuliskan alasan penolakan secara spesifik (min. 5 karakter)..."
                         class="w-full text-xs p-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
                     ></textarea>
-                    <p v-if="rejectError" class="text-[11px] text-rose-600 font-medium">{{ rejectError }}</p>
+                    <p v-if="rejectError" class="text-xs text-rose-600 font-medium">{{ rejectError }}</p>
                 </div>
 
                 <div class="flex items-center justify-end gap-2 pt-2">

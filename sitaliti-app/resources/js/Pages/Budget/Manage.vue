@@ -319,7 +319,7 @@ async function submitEdit() {
             <div class="bg-white rounded-xl border border-gov-surface-border shadow-sm overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-slate-200 text-sm">
-                        <thead class="bg-slate-50 text-xs font-bold uppercase tracking-wider text-slate-600">
+                        <thead class="bg-slate-50 text-xs font-bold  text-slate-600">
                             <tr>
                                 <th class="px-4 py-3 text-left">Unit Kerja</th>
                                 <th class="px-4 py-3 text-left">Subkegiatan</th>
@@ -433,7 +433,7 @@ async function submitEdit() {
                                     {{ cat.code }} — {{ cat.name }}
                                 </option>
                             </select>
-                            <p class="mt-1 text-[11px] text-slate-500">{{ selectedCategoryInfo?.description }}</p>
+                            <p class="mt-1 text-xs text-slate-500">{{ selectedCategoryInfo?.description }}</p>
                             <p v-if="formErrors.kategori_belanja" class="mt-1 text-xs text-rose-600">{{ formErrors.kategori_belanja[0] }}</p>
                         </div>
                     </div>
@@ -544,7 +544,7 @@ async function submitEdit() {
                     <div class="flex flex-wrap items-center justify-between gap-2">
                         <div>
                             <span class="text-xs font-bold uppercase text-gov-navy-900">Rincian Alokasi 12 Bulan</span>
-                            <p class="text-[11px] text-slate-500">
+                            <p class="text-xs text-slate-500">
                                 Validasi minimum dihitung secara kumulatif dari Januari hingga bulan berjalan.
                             </p>
                         </div>
@@ -560,7 +560,7 @@ async function submitEdit() {
                                 :label="`${idx + 1}. ${bulan}`"
                             />
                             <p
-                                class="text-[10px] tabular-nums"
+                                class="text-xs tabular-nums"
                                 :class="Math.round(editCumulativeAlokasi[idx] * 100) < Math.round(editCumulativeMin[idx] * 100) ? 'text-rose-600 font-semibold' : 'text-slate-500'"
                             >
                                 Terpakai bln ini: <span class="font-semibold">{{ formatRupiah(editMinRequired[idx]) }}</span>

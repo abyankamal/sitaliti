@@ -345,10 +345,10 @@ async function handleSubmitDraft() {
                 <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div class="space-y-1">
                         <div class="flex items-center gap-2">
-                            <span class="text-[11px] font-bold  text-gov-gold-400">
+                            <span class="text-xs font-bold  text-gov-gold-400">
                                 Konteks Anggaran Terkunci (Gatekeeper)
                             </span>
-                            <span class="text-[10px] bg-gov-navy-800 px-2 py-0.5 rounded border border-slate-700 font-mono">
+                            <span class="text-xs bg-gov-navy-800 px-2 py-0.5 rounded border border-slate-700 font-mono">
                                 Alokasi Bln {{ budgetContext.month }} - {{ budgetContext.monthName }} 2026
                             </span>
                         </div>
@@ -364,11 +364,11 @@ async function handleSubmitDraft() {
                     </div>
 
                     <div class="bg-gov-navy-900/80 p-3.5 rounded-lg border border-gov-navy-800 md:text-right shrink-0">
-                        <span class="text-[11px] text-slate-400 block">Sisa Plafon Pagu Bebas</span>
+                        <span class="text-xs text-slate-400 block">Sisa Plafon Pagu Bebas</span>
                         <div class="text-xl font-bold text-emerald-400 tabular-nums">
                             {{ formatRupiah(budgetContext.rakContext?.sisa_dapat_digunakan) }}
                         </div>
-                        <span class="text-[10px] text-slate-400">Termasuk Carry-Over bulan lalu</span>
+                        <span class="text-xs text-slate-400">Termasuk Carry-Over bulan lalu</span>
                     </div>
                 </div>
             </div>
@@ -436,7 +436,7 @@ async function handleSubmitDraft() {
             >
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gov-surface-border text-left">
-                        <thead class="bg-gov-surface-subtle text-[11px]  font-semibold text-slate-600">
+                        <thead class="bg-gov-surface-subtle text-xs  font-semibold text-slate-600">
                             <tr>
                                 <th class="py-3 px-4 w-12 text-center">No</th>
                                 <th class="py-3 px-4">Nama Barang / Uraian Rincian</th>
@@ -535,7 +535,7 @@ async function handleSubmitDraft() {
                                     />
                                     <span>Rekanan Memiliki NPWP</span>
                                 </label>
-                                <p class="text-[11px] text-slate-500 mt-1 pl-5">Non-NPWP dikenakan penalti tarif 100% lebih tinggi pada PPh 22 / PPh 23.</p>
+                                <p class="text-xs text-slate-500 mt-1 pl-5">Non-NPWP dikenakan penalti tarif 100% lebih tinggi pada PPh 22 / PPh 23.</p>
                             </div>
 
                             <div v-if="categoryCode === 'B.3'" class="p-3 rounded-lg border border-gov-surface-border bg-gov-surface-subtle">
@@ -562,7 +562,7 @@ async function handleSubmitDraft() {
                                     />
                                     <span>Termasuk Sewa Kendaraan / Jasa Pihak Ketiga</span>
                                 </label>
-                                <p class="text-[11px] text-slate-500 mt-1 pl-5">SPPD ASN biasa bebas pajak (0%); sewa kendaraan dipotong PPh 23 (2% / 4%).</p>
+                                <p class="text-xs text-slate-500 mt-1 pl-5">SPPD ASN biasa bebas pajak (0%); sewa kendaraan dipotong PPh 23 (2% / 4%).</p>
                             </div>
 
                             <div v-if="categoryCode === 'B.5'" class="p-3 rounded-lg border border-gov-surface-border bg-gov-surface-subtle">
@@ -574,17 +574,17 @@ async function handleSubmitDraft() {
                                     />
                                     <span>Rekanan Jasa PKP (Kena PPN &gt; Rp2 Juta)</span>
                                 </label>
-                                <p class="text-[11px] text-slate-500 mt-1 pl-5">Jasa pemeliharaan dipotong PPh 23 (2% / 4%) serta PPN 11% jika &gt; Rp2.000.000 &amp; PKP.</p>
+                                <p class="text-xs text-slate-500 mt-1 pl-5">Jasa pemeliharaan dipotong PPh 23 (2% / 4%) serta PPN 11% jika &gt; Rp2.000.000 &amp; PKP.</p>
                             </div>
 
                             <div v-if="categoryCode === 'B.2'" class="p-3 rounded-lg border border-emerald-200 bg-emerald-50/70">
                                 <div class="font-semibold text-emerald-900">PBJT Makan/Minum 10% (UU HKPD)</div>
-                                <p class="text-[11px] text-emerald-800 mt-1">Belanja mamin otomatis dikenakan PBJT Pemda Garut 10% dan mutlak bebas PPN pusat.</p>
+                                <p class="text-xs text-emerald-800 mt-1">Belanja mamin otomatis dikenakan PBJT Pemda Garut 10% dan mutlak bebas PPN pusat.</p>
                             </div>
 
                             <div v-if="categoryCode === 'B.1' || categoryCode === 'B.6'" class="p-3 rounded-lg border border-slate-200 bg-slate-50">
                                 <div class="font-semibold text-gov-navy-900">Ambang Batas PMK 59/2022</div>
-                                <p class="text-[11px] text-slate-600 mt-1">Transaksi &le; Rp2.000.000 bebas pungut PPN &amp; PPh 22; di atas Rp2.000.000 dipungut PPN 11% &amp; PPh 22.</p>
+                                <p class="text-xs text-slate-600 mt-1">Transaksi &le; Rp2.000.000 bebas pungut PPN &amp; PPh 22; di atas Rp2.000.000 dipungut PPN 11% &amp; PPh 22.</p>
                             </div>
                         </div>
                     </GovCard>
@@ -597,7 +597,7 @@ async function handleSubmitDraft() {
                             <h4 class="text-xs font-bold  text-gov-gold-400">
                                 Ringkasan Pembayaran &amp; Kas
                             </h4>
-                            <span v-if="isValidatingTax" class="text-[10px] text-slate-300">Menghitung...</span>
+                            <span v-if="isValidatingTax" class="text-xs text-slate-300">Menghitung...</span>
                         </div>
 
                         <div class="space-y-2 text-xs">
@@ -637,14 +637,14 @@ async function handleSubmitDraft() {
                             </div>
 
                             <div class="pt-3 border-t border-gov-navy-800">
-                                <div class="text-[11px] text-slate-400">Total Yang Dibayarkan Riil (Neto):</div>
+                                <div class="text-xs text-slate-400">Total Yang Dibayarkan Riil (Neto):</div>
                                 <div class="text-xl font-semibold text-gov-gold-400 tabular-nums font-mono mt-0.5">
                                     {{ formatRupiah(estimasiPajak.totalNetto) }}
                                 </div>
                             </div>
                         </div>
 
-                        <p class="text-[10px] text-slate-400 italic pt-1 leading-tight">
+                        <p class="text-xs text-slate-400 italic pt-1 leading-tight">
                             *Simulasi dihitung langsung oleh mesin pajak backend (`/api/v1/receipts/validate-draft`).
                         </p>
                     </div>
