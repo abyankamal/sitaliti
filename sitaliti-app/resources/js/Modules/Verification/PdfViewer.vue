@@ -50,10 +50,10 @@ function resetView() {
                     </svg>
                 </span>
                 <span class="text-xs font-medium text-slate-200 truncate">{{ fileName }}</span>
-                <span v-if="isImage" class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-900/60 text-emerald-300 font-mono">
+                <span v-if="isImage" class="text-xs px-1.5 py-0.5 rounded bg-emerald-900/60 text-emerald-300 font-mono">
                     IMAGE
                 </span>
-                <span v-else-if="fileUrl" class="text-[10px] px-1.5 py-0.5 rounded bg-sky-900/60 text-sky-300 font-mono">
+                <span v-else-if="fileUrl" class="text-xs px-1.5 py-0.5 rounded bg-sky-900/60 text-sky-300 font-mono">
                     PDF
                 </span>
             </div>
@@ -69,7 +69,7 @@ function resetView() {
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
                     </svg>
                 </button>
-                <span class="text-[11px] font-mono text-slate-400 w-10 text-center">{{ zoomLevel }}%</span>
+                <span class="text-xs font-mono text-slate-400 w-10 text-center">{{ zoomLevel }}%</span>
                 <button
                     type="button"
                     @click="zoomIn"
@@ -94,7 +94,7 @@ function resetView() {
                 <button
                     type="button"
                     @click="resetView"
-                    class="px-2 py-1 text-[10px] rounded hover:bg-gov-navy-800 text-slate-400 hover:text-white"
+                    class="px-2 py-1 text-xs rounded hover:bg-gov-navy-800 text-slate-400 hover:text-white"
                 >
                     Reset
                 </button>
@@ -105,7 +105,7 @@ function resetView() {
         <div class="flex-1 overflow-auto p-4 flex items-center justify-center bg-slate-900/90 relative">
             <div
                 v-if="fileUrl"
-                class="transition-all duration-200 shadow-2xl origin-center bg-white rounded flex items-center justify-center overflow-hidden min-h-[500px] w-full"
+                class="transition-colors duration-150 ease-unslop duration-200 shadow-2xl origin-center bg-white rounded flex items-center justify-center overflow-hidden min-h-[500px] w-full"
                 :style="{
                     transform: `scale(${zoomLevel / 100}) rotate(${rotation}deg)`
                 }"

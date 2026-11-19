@@ -334,7 +334,7 @@ async function handleQuickAuthSubmit() {
         <!-- Notification Toast In-App -->
         <div
             v-if="notification.show"
-            class="mx-6 mt-3 p-3 rounded-lg text-xs font-semibold flex items-center justify-between border shadow-sm transition-all"
+            class="mx-6 mt-3 p-3 rounded-lg text-xs font-semibold flex items-center justify-between border shadow-sm transition-colors duration-150 ease-unslop"
             :class="notification.type === 'error' ? 'bg-rose-50 text-rose-800 border-rose-200' : 'bg-emerald-50 text-emerald-800 border-emerald-200'"
         >
             <span>{{ notification.message }}</span>
@@ -351,7 +351,7 @@ async function handleQuickAuthSubmit() {
                         :key="att.id || idx"
                         type="button"
                         @click="activeAttachmentIndex = idx"
-                        class="px-2.5 py-1 rounded-lg text-[11px] font-semibold border whitespace-nowrap transition"
+                        class="px-2.5 py-1 rounded-lg text-xs font-semibold border whitespace-nowrap transition"
                         :class="activeAttachmentIndex === idx
                             ? 'bg-gov-navy-900 text-white border-gov-navy-900'
                             : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'"
@@ -379,7 +379,7 @@ async function handleQuickAuthSubmit() {
                             <span class="text-base font-bold text-gov-navy-950 tabular-nums block">
                                 {{ formatRupiah(detail.nominal_bruto ?? detail.nominal ?? 0) }}
                             </span>
-                            <span class="text-[11px] text-emerald-700 font-semibold tabular-nums">
+                            <span class="text-xs text-emerald-700 font-semibold tabular-nums">
                                 Neto: {{ formatRupiah(detail.nominal_neto ?? detail.nominal_bruto ?? 0) }}
                             </span>
                         </div>
@@ -416,7 +416,7 @@ async function handleQuickAuthSubmit() {
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                                 Riwayat Audit
-                                <span v-if="auditHistory.length > 0" class="ml-0.5 px-1.5 py-0.5 rounded-full bg-gov-navy-100 text-gov-navy-800 text-[10px] font-bold">
+                                <span v-if="auditHistory.length > 0" class="ml-0.5 px-1.5 py-0.5 rounded-md bg-gov-navy-100 text-gov-navy-800 text-xs font-bold">
                                     {{ auditHistory.length }}
                                 </span>
                             </span>
@@ -428,7 +428,7 @@ async function handleQuickAuthSubmit() {
                 <div v-show="activeTab === 'checklist'" class="flex-1 overflow-y-auto p-4 space-y-3">
                     <div class="flex items-center justify-between text-xs font-bold text-gov-navy-900 border-b pb-2">
                         <span>Checklist Hasil Pemeriksaan Fisik Dokumen</span>
-                        <span class="text-[11px] font-normal text-slate-500">
+                        <span class="text-xs font-normal text-slate-500">
                             {{ detail.checklist?.length || 0 }} butir • {{ lampiranList.length }} lampiran
                         </span>
                     </div>
@@ -451,12 +451,12 @@ async function handleQuickAuthSubmit() {
                         v-for="(item, idx) in detail.checklist || []"
                         :key="item.item_id || item.kode_item || idx"
                         @click="selectAttachmentForChecklist(item)"
-                        class="p-3 rounded-lg border transition-all cursor-pointer text-xs border-gov-surface-border bg-white hover:bg-slate-50"
+                        class="p-3 rounded-lg border transition-colors duration-150 ease-unslop cursor-pointer text-xs border-gov-surface-border bg-white hover:bg-slate-50"
                     >
                         <div class="flex items-start justify-between gap-2">
                             <div class="flex items-start gap-2 flex-1">
                                 <span
-                                    class="w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold"
+                                    class="w-5 h-5 rounded-md flex items-center justify-center shrink-0 text-xs font-bold"
                                     :class="[
                                         item.ui_status === 'VALID' ? 'bg-emerald-100 text-emerald-800' :
                                         item.ui_status === 'REVISION_NEEDED' ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-600'
@@ -466,16 +466,16 @@ async function handleQuickAuthSubmit() {
                                 </span>
                                 <div>
                                     <div class="flex items-center gap-1.5 flex-wrap">
-                                        <span class="font-mono text-[10px] text-slate-500">{{ item.kode_item }}</span>
+                                        <span class="font-mono text-xs text-slate-500">{{ item.kode_item }}</span>
                                         <h4 class="font-bold text-gov-navy-950">{{ item.nama_item }}</h4>
-                                        <span v-if="item.is_required" class="text-[9px] font-bold text-rose-600 bg-rose-50 px-1 rounded">
+                                        <span v-if="item.is_required" class="text-xs font-bold text-rose-600 bg-rose-50 px-1 rounded">
                                             Wajib
                                         </span>
-                                        <span v-else class="text-[9px] font-semibold text-slate-500 bg-slate-100 px-1 rounded">
+                                        <span v-else class="text-xs font-semibold text-slate-500 bg-slate-100 px-1 rounded">
                                             Opsional
                                         </span>
                                     </div>
-                                    <p v-if="item.deskripsi" class="text-[11px] text-slate-500 mt-0.5">{{ item.deskripsi }}</p>
+                                    <p v-if="item.deskripsi" class="text-xs text-slate-500 mt-0.5">{{ item.deskripsi }}</p>
                                 </div>
                             </div>
 
@@ -484,23 +484,23 @@ async function handleQuickAuthSubmit() {
                                 <button
                                     type="button"
                                     @click.stop="setChecklistStatus(idx, 'VALID')"
-                                    class="px-2 py-1 rounded text-[10px] font-bold transition-colors"
+                                    class="px-2 py-1 rounded text-xs font-bold transition-colors"
                                     :class="item.ui_status === 'VALID' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
                                 >
-                                    ✓ Lolos
+                                    Lolos
                                 </button>
                                 <button
                                     type="button"
                                     @click.stop="setChecklistStatus(idx, 'REVISION_NEEDED')"
-                                    class="px-2 py-1 rounded text-[10px] font-bold transition-colors"
+                                    class="px-2 py-1 rounded text-xs font-bold transition-colors"
                                     :class="item.ui_status === 'REVISION_NEEDED' ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
                                 >
-                                    ✕ Ada Catatan
+                                    Ada Catatan
                                 </button>
                             </div>
                             <div v-else class="shrink-0">
                                 <span
-                                    class="px-2 py-0.5 rounded text-[10px] font-semibold"
+                                    class="px-2 py-0.5 rounded text-xs font-semibold"
                                     :class="item.ui_status === 'VALID' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'"
                                 >
                                     {{ item.ui_status === 'VALID' ? 'Lolos' : 'Pending' }}
@@ -509,25 +509,25 @@ async function handleQuickAuthSubmit() {
                         </div>
 
                         <!-- Catatan Temuan jika ada -->
-                        <div v-if="item.catatan" class="mt-2 p-2 bg-amber-50 rounded text-[11px] text-amber-800 border border-amber-200">
+                        <div v-if="item.catatan" class="mt-2 p-2 bg-amber-50 rounded text-xs text-amber-800 border border-amber-200">
                             <strong>Temuan:</strong> {{ item.catatan }}
                         </div>
                     </div>
 
                     <!-- Riwayat Revisi Terdahulu (Audit Trail) -->
                     <div v-if="detail.revision_history?.length > 0" class="mt-4 pt-3 border-t">
-                        <h5 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Riwayat Revisi Berkas</h5>
+                        <h5 class="text-xs font-bold text-slate-700  mb-2">Riwayat Revisi Berkas</h5>
                         <div class="space-y-2">
                             <div
                                 v-for="(rev, rIdx) in detail.revision_history"
                                 :key="rIdx"
                                 class="p-2.5 rounded bg-amber-50/70 border border-amber-200 text-xs"
                             >
-                                <div class="flex items-center justify-between text-[10px] text-amber-900 font-semibold">
+                                <div class="flex items-center justify-between text-xs text-amber-900 font-semibold">
                                     <span>{{ rev.author }}</span>
                                     <span>{{ rev.timestamp }}</span>
                                 </div>
-                                <p class="text-[11px] text-slate-700 mt-1">{{ rev.note }}</p>
+                                <p class="text-xs text-slate-700 mt-1">{{ rev.note }}</p>
                             </div>
                         </div>
                     </div>
@@ -536,7 +536,7 @@ async function handleQuickAuthSubmit() {
                 <!-- Tab Content: Riwayat Audit Timeline -->
                 <div v-show="activeTab === 'timeline'" class="flex-1 overflow-y-auto p-4">
                     <div v-if="loadingHistory" class="flex items-center justify-center py-10">
-                        <div class="text-sm text-slate-400 animate-pulse">Memuat riwayat audit...</div>
+                        <div class="text-sm text-slate-400 ">Memuat riwayat audit...</div>
                     </div>
                     <AuditTimeline v-else :events="auditHistory" />
                 </div>
@@ -549,7 +549,7 @@ async function handleQuickAuthSubmit() {
                             {{ allMandatoryVerified ? 'Siap Lolos Verifikasi' : 'Belum Semua Dokumen Lolos' }}
                         </strong>
                     </span>
-                    <span class="text-[11px] text-slate-400">Pemeriksa: {{ currentUser?.name || 'Verifikator' }}</span>
+                    <span class="text-xs text-slate-400">Pemeriksa: {{ currentUser?.name || 'Verifikator' }}</span>
                 </div>
             </div>
         </div>

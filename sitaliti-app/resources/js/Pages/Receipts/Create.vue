@@ -345,7 +345,7 @@ async function handleSubmitDraft() {
                 <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div class="space-y-1">
                         <div class="flex items-center gap-2">
-                            <span class="text-[11px] font-bold uppercase tracking-wider text-gov-gold-400">
+                            <span class="text-[11px] font-bold  text-gov-gold-400">
                                 Konteks Anggaran Terkunci (Gatekeeper)
                             </span>
                             <span class="text-[10px] bg-gov-navy-800 px-2 py-0.5 rounded border border-slate-700 font-mono">
@@ -415,7 +415,7 @@ async function handleSubmitDraft() {
                     />
 
                     <div class="md:col-span-2 lg:col-span-4">
-                        <label class="block text-xs font-semibold text-gov-navy-900 uppercase tracking-wider mb-1.5">
+                        <label class="block text-xs font-semibold text-gov-navy-900  mb-1.5">
                             Uraian Belanja Kuitansi <span class="text-rose-500">*</span>
                         </label>
                         <textarea
@@ -436,7 +436,7 @@ async function handleSubmitDraft() {
             >
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gov-surface-border text-left">
-                        <thead class="bg-gov-surface-subtle text-[11px] uppercase tracking-wider font-semibold text-slate-600">
+                        <thead class="bg-gov-surface-subtle text-[11px]  font-semibold text-slate-600">
                             <tr>
                                 <th class="py-3 px-4 w-12 text-center">No</th>
                                 <th class="py-3 px-4">Nama Barang / Uraian Rincian</th>
@@ -594,7 +594,7 @@ async function handleSubmitDraft() {
                 <div>
                     <div class="bg-gov-navy-900 text-white rounded-xl p-5 shadow-sm space-y-3">
                         <div class="flex items-center justify-between border-b border-gov-navy-800 pb-2">
-                            <h4 class="text-xs font-bold uppercase tracking-wider text-gov-gold-400">
+                            <h4 class="text-xs font-bold  text-gov-gold-400">
                                 Ringkasan Pembayaran &amp; Kas
                             </h4>
                             <span v-if="isValidatingTax" class="text-[10px] text-slate-300">Menghitung...</span>
@@ -638,7 +638,7 @@ async function handleSubmitDraft() {
 
                             <div class="pt-3 border-t border-gov-navy-800">
                                 <div class="text-[11px] text-slate-400">Total Yang Dibayarkan Riil (Neto):</div>
-                                <div class="text-xl font-black text-gov-gold-400 tabular-nums font-mono mt-0.5">
+                                <div class="text-xl font-semibold text-gov-gold-400 tabular-nums font-mono mt-0.5">
                                     {{ formatRupiah(estimasiPajak.totalNetto) }}
                                 </div>
                             </div>

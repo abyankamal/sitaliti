@@ -57,7 +57,7 @@ function handleConfirm() {
                             {{ actionType === 'REVISION_MAJOR' ? 'Tolak Berkas (Revisi Mayor)' : 'Pengembalian Berkas (Revisi Minor)' }}
                         </h3>
                     </div>
-                    <button @click="$emit('close')" class="text-white/80 hover:text-white">✕</button>
+                    <button @click="$emit('close')" class="text-white/80 hover:text-white">Tutup</button>
                 </div>
 
                 <!-- Body -->
@@ -72,7 +72,7 @@ function handleConfirm() {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-gov-navy-900 uppercase tracking-wider mb-1">
+                        <label class="block text-xs font-bold text-gov-navy-900  mb-1">
                             Uraian Temuan / Instruksi Perbaikan <span class="text-rose-500">*</span>
                         </label>
                         <textarea

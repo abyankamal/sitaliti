@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { usePage, Link, router } from '@inertiajs/vue3';
+import { X, Loader2, AlertCircle } from 'lucide-vue-next';
 import axios from 'axios';
 import GovBadge from '@/Components/UI/GovBadge.vue';
 import GovButton from '@/Components/UI/GovButton.vue';
@@ -265,57 +266,45 @@ function getStatusBadge(status) {
                 aria-label="Panel Rincian Kuitansi"
             >
                 <!-- Drawer Header -->
-                <div class="px-6 py-4 bg-gov-navy-950 text-white flex items-center justify-between border-b border-gov-navy-800">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-lg bg-gov-navy-800 border border-gov-gold-500/30 flex items-center justify-center font-bold text-gov-gold-400 text-xs">
-                            KW
+                <div class="px-6 py-4 bg-surface text-ink flex items-center justify-between border-b border-hairline">
+                    <div>
+                        <div class="flex items-center gap-2.5">
+                            <h2 class="font-mono font-semibold text-base tracking-tight text-ink">
+                                {{ receipt?.nomor_kuitansi || 'Memuat Data...' }}
+                            </h2>
+                            <GovBadge v-if="receipt" :variant="getStatusBadge(receipt.status).variant" size="sm">
+                                {{ getStatusBadge(receipt.status).label }}
+                            </GovBadge>
                         </div>
-                        <div>
-                            <div class="flex items-center gap-2">
-                                <h2 class="font-bold text-base tracking-tight text-white">
-                                    {{ receipt?.nomor_kuitansi || 'Memuat Data...' }}
-                                </h2>
-                                <GovBadge v-if="receipt" :variant="getStatusBadge(receipt.status).variant" size="sm">
-                                    {{ getStatusBadge(receipt.status).label }}
-                                </GovBadge>
-                            </div>
-                            <p class="text-xs text-slate-400 mt-0.5">
-                                Lembar Rincian Pre-Audit Akuntabilitas Belanja
-                            </p>
-                        </div>
+                        <p class="text-xs text-ink-muted mt-0.5">
+                            Lembar Rincian Pre-Audit Akuntabilitas Belanja
+                        </p>
                     </div>
 
                     <button
                         @click="closeDrawer"
-                        class="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-gov-navy-800 focus:outline-none transition-colors"
+                        class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-ink-muted hover:text-ink hover:bg-raised focus:outline-none transition-colors duration-150 ease-unslop"
                         title="Tutup Panel (ESC)"
                     >
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                        <X class="w-4 h-4" :stroke-width="1.5" />
                     </button>
                 </div>
 
                 <!-- Drawer Body (Scrollable) -->
                 <div class="flex-1 overflow-y-auto p-6 space-y-6">
                     <!-- Loading State -->
-                    <div v-if="isLoading" class="py-16 flex flex-col items-center justify-center space-y-3 text-slate-400">
-                        <svg class="w-8 h-8 animate-spin text-gov-navy-600" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-                        </svg>
+                    <div v-if="isLoading" class="py-16 flex flex-col items-center justify-center space-y-3 text-ink-muted">
+                        <Loader2 class="w-6 h-6 animate-spin text-accent" :stroke-width="1.5" />
                         <p class="text-sm font-medium">Memuat detail kuitansi...</p>
                     </div>
 
                     <!-- Error State -->
-                    <div v-else-if="errorMessage" class="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm">
-                        <div class="font-bold flex items-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
+                    <div v-else-if="errorMessage" class="p-4 rounded-xl bg-red-50/70 border border-red-200 text-semantic-danger text-sm">
+                        <div class="font-medium flex items-center gap-2">
+                            <AlertCircle class="w-4 h-4 shrink-0" :stroke-width="1.5" />
                             Gagal Memuat Kuitansi
                         </div>
-                        <p class="mt-1">{{ errorMessage }}</p>
+                        <p class="mt-1 text-xs">{{ errorMessage }}</p>
                     </div>
 
                     <!-- Content State -->
@@ -340,7 +329,7 @@ function getStatusBadge(status) {
 
                         <!-- 1. Ringkasan Pos Anggaran & Identitas Belanja -->
                         <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            <h3 class="text-xs font-bold text-slate-500 ">
                                 Pos Anggaran & Dokumen Belanja
                             </h3>
                             <div class="grid grid-cols-2 gap-3 text-xs">
@@ -374,7 +363,7 @@ function getStatusBadge(status) {
 
                         <!-- 2. Rincian Item Belanja -->
                         <div class="space-y-2">
-                            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            <h3 class="text-xs font-bold text-slate-500 ">
                                 Rincian Barang / Jasa
                             </h3>
                             <div class="border border-slate-200 rounded-xl overflow-hidden">
@@ -406,7 +395,7 @@ function getStatusBadge(status) {
 
                         <!-- 3. Rekonsiliasi Keuangan & Perhitungan Pajak -->
                         <div class="bg-gov-navy-950/5 p-4 rounded-xl border border-gov-navy-900/10 space-y-3">
-                            <h3 class="text-xs font-bold text-gov-navy-900 uppercase tracking-wider">
+                            <h3 class="text-xs font-bold text-gov-navy-900 ">
                                 Rekonsiliasi Keuangan & Pemotongan Pajak
                             </h3>
                             <div class="space-y-2 text-xs">
@@ -452,7 +441,7 @@ function getStatusBadge(status) {
 
                         <!-- 4. Berkas Bukti & Lampiran SHA-256 -->
                         <div class="space-y-2">
-                            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            <h3 class="text-xs font-bold text-slate-500 ">
                                 Berkas Bukti & Hash SHA-256 (Anti-Duplikasi)
                             </h3>
                             <div class="space-y-1.5">
@@ -484,7 +473,7 @@ function getStatusBadge(status) {
 
                         <!-- 5. Jejak Audit BPK (Timeline) -->
                         <div class="space-y-3 pt-2">
-                            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            <h3 class="text-xs font-bold text-slate-500 ">
                                 Jejak Audit BPK & Riwayat Transisi Status
                             </h3>
                             <div class="bg-white p-4 rounded-xl border border-slate-200">
@@ -656,7 +645,7 @@ function getStatusBadge(status) {
         <div v-if="isRejectModalOpen" class="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
             <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 border border-slate-200">
                 <div class="flex items-center gap-3 text-rose-600">
-                    <div class="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center">
+                    <div class="w-10 h-10 rounded-md bg-rose-50 flex items-center justify-center">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>

@@ -405,7 +405,7 @@ async function confirmDeleteAttachment() {
                 v-if="receipt && (receipt.status === 'REVISI_MINOR' || receipt.status === 'REVISI_MAYOR')"
                 class="p-4 rounded-xl border border-amber-300 bg-amber-50 text-amber-950 space-y-1.5"
             >
-                <p class="text-xs font-bold uppercase tracking-wider text-amber-800">
+                <p class="text-xs font-bold  text-amber-800">
                     Catatan Revisi Verifikator ({{ receipt.status === 'REVISI_MINOR' ? 'Revisi Minor' : 'Revisi Mayor' }})
                 </p>
                 <p class="text-sm font-medium">

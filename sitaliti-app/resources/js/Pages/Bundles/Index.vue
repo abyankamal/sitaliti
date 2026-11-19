@@ -291,7 +291,7 @@ const BUNDLE_STATUS_LABELS = {
                 <div>
                     <h1 class="text-lg font-bold text-gov-navy-950 flex items-center gap-2">
                         <span>{{ isKelurahanScoped ? 'Pengelompokan Bundel LPJ BPP' : 'Pengelompokan Bundel SPJ (Two-Tier Settlement)' }}</span>
-                        <span class="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-gov-navy-100 text-gov-navy-900 border border-gov-navy-200">
+                        <span class="text-xs px-2.5 py-0.5 rounded-md font-semibold bg-gov-navy-100 text-gov-navy-900 border border-gov-navy-200">
                             {{ isKelurahanScoped ? 'Tier 2 Pertanggungjawaban BPP' : 'Tier 2 Pengesahan' }}
                         </span>
                     </h1>
@@ -367,7 +367,7 @@ const BUNDLE_STATUS_LABELS = {
 
                     <div class="text-right">
                         <div class="text-xs text-slate-500">Total Nominal Bundel</div>
-                        <div class="text-lg font-black text-gov-navy-900 tabular-nums">
+                        <div class="text-lg font-semibold text-gov-navy-900 tabular-nums">
                             {{ formatRupiah(bundle.total_nominal || bundle.total_bruto) }}
                         </div>
                     </div>
@@ -376,7 +376,7 @@ const BUNDLE_STATUS_LABELS = {
                 <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- Sisi Kiri: 9 Dokumen Bagian A -->
                     <div>
-                        <h4 class="text-xs font-bold text-gov-navy-900 uppercase tracking-wider mb-2.5">
+                        <h4 class="text-xs font-bold text-gov-navy-900  mb-2.5">
                             Status 9 Dokumen Wajib Pengesahan SPJ (Bagian A)
                         </h4>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
@@ -385,9 +385,9 @@ const BUNDLE_STATUS_LABELS = {
                                 :key="doc.id || doc.name || idx"
                                 class="p-2 rounded border border-slate-200 bg-slate-50 flex items-center justify-between"
                             >
-                                <span class="truncate pr-2 text-slate-700 text-[11px]">{{ doc.name }}</span>
+                                <span class="truncate pr-2 text-slate-700 text-xs">{{ doc.name }}</span>
                                 <span
-                                    class="px-1.5 py-0.5 rounded text-[10px] font-bold font-mono"
+                                    class="px-1.5 py-0.5 rounded text-xs font-bold font-mono"
                                     :class="doc.checked ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'"
                                 >
                                     {{ doc.checked ? 'LENGKAP' : 'BELUM' }}
@@ -398,9 +398,9 @@ const BUNDLE_STATUS_LABELS = {
 
                     <!-- Sisi Kanan: Kuitansi-Kuitansi yang Tergabung -->
                     <div>
-                        <h4 class="text-xs font-bold text-gov-navy-900 uppercase tracking-wider mb-2.5 flex items-center justify-between">
+                        <h4 class="text-xs font-bold text-gov-navy-900  mb-2.5 flex items-center justify-between">
                             <span>Daftar Kuitansi Tergabung (Tier 1)</span>
-                            <span class="text-slate-500 text-[11px]">{{ (bundle.kuitansi_list || bundle.items || []).length }} Bukti Kuitansi</span>
+                            <span class="text-slate-500 text-xs">{{ (bundle.kuitansi_list || bundle.items || []).length }} Bukti Kuitansi</span>
                         </h4>
                         <div class="space-y-2">
                             <div
@@ -411,16 +411,16 @@ const BUNDLE_STATUS_LABELS = {
                                 <div class="flex-1 min-w-0 pr-2">
                                     <div class="font-bold text-gov-navy-950 flex items-center gap-1.5 flex-wrap">
                                         <span>{{ kw.id || kw.nomor_kuitansi }}</span>
-                                        <span class="text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded font-mono">
+                                        <span class="text-xs bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-mono">
                                             {{ kw.kategori || 'B.1' }}
                                         </span>
                                     </div>
-                                    <p class="text-[11px] text-slate-500 truncate max-w-xs">{{ kw.uraian || kw.uraian_belanja }}</p>
+                                    <p class="text-xs text-slate-500 truncate max-w-xs">{{ kw.uraian || kw.uraian_belanja }}</p>
                                 </div>
                                 <div class="flex items-center gap-2 shrink-0">
                                     <div class="text-right">
                                         <div class="font-bold text-slate-800 tabular-nums">{{ formatRupiah(kw.nominal || kw.nominal_bruto) }}</div>
-                                        <span class="text-[10px] text-emerald-700 font-medium">Lolos Verifikasi</span>
+                                        <span class="text-xs text-emerald-700 font-medium">Lolos Verifikasi</span>
                                     </div>
                                     <button
                                         v-if="canUnbundle && (bundle.status || bundle.status_bundel) === 'DRAFT'"
@@ -442,7 +442,7 @@ const BUNDLE_STATUS_LABELS = {
 
                 <div class="px-5 py-3 bg-slate-50 border-t border-gov-surface-border flex items-center justify-between text-xs flex-wrap gap-2">
                     <div class="flex items-center gap-2">
-                        <span class="text-slate-500 text-[11px]">
+                        <span class="text-slate-500 text-xs">
                             Status:
                             <strong v-if="bundle.status === 'SYNCED_SIPD'" class="text-emerald-700">
                                 Anggaran Telah Cair Definitif (SP2D: {{ bundle.nomor_sipd || bundle.nomor_sp2d_sipd }})
@@ -499,7 +499,7 @@ const BUNDLE_STATUS_LABELS = {
                             v-else-if="(bundle.status || bundle.status_bundel) === 'SYNCED_SIPD'"
                             class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200"
                         >
-                            ✓ Realisasi Definitif Selesai
+                            Realisasi Definitif Selesai
                         </span>
                     </div>
                 </div>
@@ -515,7 +515,7 @@ const BUNDLE_STATUS_LABELS = {
                         <h3 class="text-base font-bold text-white flex items-center gap-2">
                             {{ isKelurahanBpp ? 'Penyatuan Bundel LPJ-BPP Baru (Kelurahan)' : 'Penyatuan Bundel SPP Baru (Two-Tier Model)' }}
                         </h3>
-                        <button type="button" @click="showCreateModal = false" class="text-slate-400 hover:text-white">✕</button>
+                        <button type="button" @click="showCreateModal = false" class="text-slate-400 hover:text-white">Tutup</button>
                     </div>
 
                     <div class="p-6 space-y-4 text-xs">
@@ -573,7 +573,7 @@ const BUNDLE_STATUS_LABELS = {
                                         />
                                         <div>
                                             <div class="font-bold text-gov-navy-950">{{ rec.nomor_kuitansi || rec.id }}</div>
-                                            <div class="text-[11px] text-slate-500">{{ rec.uraian_belanja || rec.uraian }}</div>
+                                            <div class="text-xs text-slate-500">{{ rec.uraian_belanja || rec.uraian }}</div>
                                         </div>
                                     </div>
                                     <div class="font-bold text-gov-navy-900 tabular-nums">
@@ -604,15 +604,15 @@ const BUNDLE_STATUS_LABELS = {
                             <h3 class="text-base font-bold text-white flex items-center gap-2">
                                 <span>Pencatatan Realisasi SP2D SIPD-RI</span>
                             </h3>
-                            <p class="text-[11px] text-gov-gold-400 mt-0.5 font-mono">
+                            <p class="text-xs text-gov-gold-400 mt-0.5 font-mono">
                                 Bundel: {{ selectedBundleForSp2d?.nomor_bundel || selectedBundleForSp2d?.nomor_spp }}
                             </p>
                         </div>
-                        <button type="button" @click="showSp2dModal = false" class="text-slate-400 hover:text-white">✕</button>
+                        <button type="button" @click="showSp2dModal = false" class="text-slate-400 hover:text-white">Tutup</button>
                     </div>
 
                     <div class="p-6 space-y-4 text-xs">
-                        <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 leading-relaxed text-[11px]">
+                        <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 leading-relaxed text-xs">
                             <strong>Perhatian (Statutory Rule):</strong> Pencatatan SP2D ini bersifat definitif. Sistem akan mengeksekusi <em>settleBudget()</em> dan memindahkan seluruh saldo kuncian pagu kuitansi pada bundel ini menjadi realisasi riil pembukuan kas daerah.
                         </div>
 
@@ -649,7 +649,7 @@ const BUNDLE_STATUS_LABELS = {
                             </div>
                         </div>
 
-                        <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-1 text-[11px]">
+                        <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-1 text-xs">
                             <div class="flex justify-between text-slate-500">
                                 <span>Jumlah Kuitansi:</span>
                                 <span class="font-bold text-slate-800">{{ (selectedBundleForSp2d?.kuitansi_list || selectedBundleForSp2d?.items || []).length }} berkas</span>

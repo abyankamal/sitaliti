@@ -103,7 +103,7 @@ function handleRemoveFile(index) {
             <div
                 v-for="(doc, idx) in items"
                 :key="doc.id"
-                class="p-3.5 rounded-lg border transition-all"
+                class="p-3.5 rounded-lg border transition-colors duration-150 ease-unslop"
                 :class="[
                     doc.file
                         ? 'bg-emerald-50/40 border-emerald-200'
@@ -117,7 +117,7 @@ function handleRemoveFile(index) {
                     <div class="flex items-start gap-3 flex-1">
                         <!-- Status Icon -->
                         <div
-                            class="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold"
+                            class="w-7 h-7 rounded-md flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold"
                             :class="[
                                 doc.file
                                     ? 'bg-emerald-500 text-white'

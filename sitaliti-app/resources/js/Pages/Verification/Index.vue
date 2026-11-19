@@ -127,7 +127,7 @@ async function handleAuthSubmit() {
                 <div>
                     <h1 class="text-lg font-bold text-gov-navy-950 flex items-center gap-2">
                         <span>Antrean Verifikasi & Otorisasi Kuitansi</span>
-                        <span class="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-gov-navy-100 text-gov-navy-900 border border-gov-navy-200">
+                        <span class="text-xs px-2.5 py-0.5 rounded-md font-semibold bg-gov-navy-100 text-gov-navy-900 border border-gov-navy-200">
                             {{ isKelurahan ? (user.unit_kerja?.nama_unit || 'Kelurahan') : 'Tim Verifikator & PPK' }}
                         </span>
                     </h1>
@@ -142,7 +142,7 @@ async function handleAuthSubmit() {
             <!-- In-App Notification Banner -->
             <div
                 v-if="notification.show"
-                class="p-3.5 rounded-xl text-xs font-semibold flex items-center justify-between shadow-sm transition-all border"
+                class="p-3.5 rounded-xl text-xs font-semibold flex items-center justify-between shadow-sm transition-colors duration-150 ease-unslop border"
                 :class="notification.type === 'error' ? 'bg-rose-50 text-rose-800 border-rose-200' : 'bg-emerald-50 text-emerald-800 border-emerald-200'"
             >
                 <div class="flex items-center gap-2">
@@ -180,7 +180,7 @@ async function handleAuthSubmit() {
                     ]"
                 >
                     <span>Persetujuan PPTK</span>
-                    <span v-if="countPptk > 0" class="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-200 text-amber-900 font-bold">
+                    <span v-if="countPptk > 0" class="px-1.5 py-0.5 rounded-md text-xs bg-raised text-ink-secondary font-bold">
                         {{ countPptk }}
                     </span>
                 </button>
@@ -195,7 +195,7 @@ async function handleAuthSubmit() {
                     ]"
                 >
                     <span>Otorisasi Lurah</span>
-                    <span v-if="countLurah > 0" class="px-1.5 py-0.2 rounded-full text-[10px] bg-purple-200 text-purple-900 font-bold">
+                    <span v-if="countLurah > 0" class="px-1.5 py-0.5 rounded-md text-xs bg-raised text-ink-secondary font-bold">
                         {{ countLurah }}
                     </span>
                 </button>
@@ -209,7 +209,7 @@ async function handleAuthSubmit() {
                     ]"
                 >
                     <span>Verifikasi Teknis</span>
-                    <span v-if="countVerifikasi > 0" class="px-1.5 py-0.2 rounded-full text-[10px] bg-blue-200 text-blue-900 font-bold">
+                    <span v-if="countVerifikasi > 0" class="px-1.5 py-0.5 rounded-md text-xs bg-raised text-ink-secondary font-bold">
                         {{ countVerifikasi }}
                     </span>
                 </button>
@@ -223,7 +223,7 @@ async function handleAuthSubmit() {
                     ]"
                 >
                     <span>Revisi / SLA</span>
-                    <span v-if="countRevisi > 0" class="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-200 text-rose-900 font-bold">
+                    <span v-if="countRevisi > 0" class="px-1.5 py-0.5 rounded-md text-xs bg-red-50 text-semantic-danger font-bold">
                         {{ countRevisi }}
                     </span>
                 </button>
@@ -237,7 +237,7 @@ async function handleAuthSubmit() {
                     ]"
                 >
                     <span>Lolos Verifikasi</span>
-                    <span v-if="countLolos > 0" class="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-200 text-emerald-900 font-bold">
+                    <span v-if="countLolos > 0" class="px-1.5 py-0.5 rounded-md text-xs bg-emerald-50 text-semantic-success font-bold">
                         {{ countLolos }}
                     </span>
                 </button>
@@ -246,7 +246,7 @@ async function handleAuthSubmit() {
             <GovCard :no-padding="true">
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gov-surface-border text-left">
-                        <thead class="bg-gov-surface-subtle text-[11px] uppercase tracking-wider font-semibold text-slate-600">
+                        <thead class="bg-gov-surface-subtle text-xs  font-semibold text-slate-600">
                             <tr>
                                 <th class="py-3 px-4">No. Bukti / Tanggal</th>
                                 <th class="py-3 px-4">Unit Kerja & Subkegiatan</th>
@@ -271,18 +271,18 @@ async function handleAuthSubmit() {
                             <tr v-for="item in filteredQueue" :key="item.id" class="hover:bg-slate-50">
                                 <td class="py-3 px-4">
                                     <div class="font-bold text-gov-navy-900">{{ item.id }}</div>
-                                    <div class="text-[11px] text-slate-400">{{ formatTanggalIndo(item.tanggal) }}</div>
+                                    <div class="text-xs text-slate-400">{{ formatTanggalIndo(item.tanggal) }}</div>
                                 </td>
                                 <td class="py-3 px-4">
                                     <div class="font-medium text-slate-800">{{ item.unit }}</div>
-                                    <div class="text-[11px] text-slate-500 max-w-xs truncate">{{ item.sub_activity }}</div>
+                                    <div class="text-xs text-slate-500 max-w-xs truncate">{{ item.sub_activity }}</div>
                                 </td>
                                 <td class="py-3 px-4">
                                     <div class="text-slate-800 max-w-xs truncate font-medium">{{ item.uraian }}</div>
-                                    <div class="text-[11px] text-slate-400 font-mono">{{ item.vendor }}</div>
+                                    <div class="text-xs text-slate-400 font-mono">{{ item.vendor }}</div>
                                 </td>
                                 <td class="py-3 px-4 text-center">
-                                    <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-gov-navy-900 border border-slate-200">
+                                    <span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-100 text-gov-navy-900 border border-slate-200">
                                         {{ item.category }}
                                     </span>
                                 </td>
@@ -299,7 +299,7 @@ async function handleAuthSubmit() {
                                         <template v-if="item.status === 'REVISI_MINOR'">
                                             <span
                                                 v-if="item.is_sla_breached"
-                                                class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300 animate-pulse"
+                                                class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300 "
                                                 title="SLA Terlampaui (Lebih dari 2 hari kerja)"
                                             >
                                                 <svg class="w-3 h-3 text-rose-600" fill="currentColor" viewBox="0 0 20 20">
@@ -309,7 +309,7 @@ async function handleAuthSubmit() {
                                             </span>
                                             <span
                                                 v-else-if="item.sla_remaining_hours !== null && item.sla_remaining_hours !== undefined"
-                                                class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200"
+                                                class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200"
                                             >
                                                 <svg class="w-3 h-3 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
                                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />

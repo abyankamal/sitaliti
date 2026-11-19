@@ -60,12 +60,12 @@ watch(() => props.value, () => {
             <div
                 v-else
                 :style="{ width: `${size}px`, height: `${size}px` }"
-                class="bg-slate-100 flex items-center justify-center text-[10px] text-slate-400"
+                class="bg-slate-100 flex items-center justify-center text-xs text-slate-400"
             >
                 Memuat QR...
             </div>
         </div>
-        <span v-if="label" class="text-[10px] text-slate-500 font-mono mt-1 text-center truncate max-w-[140px]">
+        <span v-if="label" class="text-xs text-slate-500 font-mono mt-1 text-center truncate max-w-[140px]">
             {{ label }}
         </span>
     </div>

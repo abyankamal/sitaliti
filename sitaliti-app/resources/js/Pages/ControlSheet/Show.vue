@@ -104,16 +104,16 @@ function handlePrint() {
                 </div>
 
                 <div class="flex-1 text-center">
-                    <h3 class="text-sm font-bold uppercase tracking-wider text-slate-800">
+                    <h3 class="text-sm font-bold  text-slate-800">
                         Pemerintah Daerah Kabupaten Garut
                     </h3>
-                    <h2 class="text-base font-black uppercase text-gov-navy-950">
+                    <h2 class="text-base font-semibold uppercase text-gov-navy-950">
                         Kecamatan Tarogong Kidul
                     </h2>
-                    <p class="text-[11px] text-slate-600">
+                    <p class="text-xs text-slate-600">
                         Jl. Suherman No. 27, Tarogong Kidul, Kabupaten Garut, Jawa Barat 44151
                     </p>
-                    <p class="text-[10px] text-slate-500 font-mono mt-0.5">
+                    <p class="text-xs text-slate-500 font-mono mt-0.5">
                         Sistem Informasi Tata Kelola, Asistensi, dan Verifikasi Akuntabilitas SPJ (SI-TALITI v2.0)
                     </p>
                 </div>
@@ -123,7 +123,7 @@ function handlePrint() {
 
             <!-- Document Title & Badge -->
             <div class="text-center mb-6">
-                <h1 class="text-sm font-bold uppercase tracking-widest text-gov-navy-950 underline decoration-2">
+                <h1 class="text-sm font-bold  text-gov-navy-950 underline decoration-2">
                     Lembar Kendali Verifikasi Akuntabilitas SPJ
                 </h1>
                 <p class="text-xs text-slate-600 font-mono mt-1">
@@ -133,7 +133,7 @@ function handlePrint() {
 
             <!-- Bagian 1: Data Identitas Kuitansi Transaksi -->
             <div class="mb-6">
-                <h4 class="text-xs font-bold uppercase tracking-wider text-gov-navy-950 bg-slate-100 px-3 py-1.5 border-l-4 border-gov-navy-900 mb-3">
+                <h4 class="text-xs font-bold  text-gov-navy-950 bg-slate-100 px-3 py-1.5 border-l-4 border-gov-navy-900 mb-3">
                     I. Informasi Dokumen Kuitansi & Anggaran
                 </h4>
                 <table class="w-full text-xs">
@@ -182,11 +182,11 @@ function handlePrint() {
 
             <!-- Bagian 2: Hasil Pemeriksaan Checklist Dokumen Fisik -->
             <div class="mb-6">
-                <h4 class="text-xs font-bold uppercase tracking-wider text-gov-navy-950 bg-slate-100 px-3 py-1.5 border-l-4 border-gov-navy-900 mb-3">
+                <h4 class="text-xs font-bold  text-gov-navy-950 bg-slate-100 px-3 py-1.5 border-l-4 border-gov-navy-900 mb-3">
                     II. Checklist Hasil Uji Fisik Dokumen Pendukung
                 </h4>
                 <table class="w-full text-xs border border-slate-200">
-                    <thead class="bg-slate-100 text-[11px] font-bold uppercase text-slate-700">
+                    <thead class="bg-slate-100 text-xs font-bold uppercase text-slate-700">
                         <tr>
                             <th class="py-2 px-3 border-b text-center w-10">No</th>
                             <th class="py-2 px-3 border-b text-left">Nama Dokumen Bukti Pertanggungjawaban</th>
@@ -199,18 +199,18 @@ function handlePrint() {
                         <tr v-for="(item, idx) in detail.checklist || []" :key="item.kode_item || idx">
                             <td class="py-2 px-3 text-center text-slate-500 font-mono">{{ idx + 1 }}</td>
                             <td class="py-2 px-3 font-medium text-slate-800">{{ item.nama_item || '-' }}</td>
-                            <td class="py-2 px-3 text-center font-mono text-[11px] text-slate-600">{{ item.kode_item || '-' }}</td>
+                            <td class="py-2 px-3 text-center font-mono text-xs text-slate-600">{{ item.kode_item || '-' }}</td>
                             <td class="py-2 px-3 text-center font-bold">
                                 <span
                                     :class="['SESUAI', 'VALID'].includes(item.status_kesesuaian)
                                         ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
                                         : 'text-amber-700 bg-amber-50 border-amber-200'"
-                                    class="px-2 py-0.5 rounded text-[10px] border"
+                                    class="px-2 py-0.5 rounded text-xs border"
                                 >
-                                    {{ ['SESUAI', 'VALID'].includes(item.status_kesesuaian) ? '✓ MEMENUHI' : (item.status_kesesuaian || 'DIPERIKSA') }}
+                                    {{ ['SESUAI', 'VALID'].includes(item.status_kesesuaian) ? 'MEMENUHI' : (item.status_kesesuaian || 'DIPERIKSA') }}
                                 </span>
                             </td>
-                            <td class="py-2 px-3 text-[11px] text-slate-600">
+                            <td class="py-2 px-3 text-xs text-slate-600">
                                 {{ item.catatan || 'Lengkap & Sesuai' }}
                             </td>
                         </tr>
@@ -227,15 +227,15 @@ function handlePrint() {
             <div class="mb-8 p-4 bg-slate-50 border border-slate-300 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-6">
                 <div class="space-y-1.5 flex-1">
                     <div class="flex items-center gap-2">
-                        <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
-                        <h4 class="text-xs font-bold uppercase tracking-wider text-gov-navy-950">
+                        <span class="w-3 h-3 rounded-md bg-emerald-500"></span>
+                        <h4 class="text-xs font-bold  text-gov-navy-950">
                             Kesimpulan Verifikasi Pre-Audit SI-TALITI:
                         </h4>
                     </div>
                     <p class="text-xs font-bold text-emerald-800">
                         DINYATAKAN LOLOS & MEMENUHI SYARAT KELENGKAPAN AKUNTABILITAS SPJ
                     </p>
-                    <p class="text-[11px] text-slate-600 leading-relaxed">
+                    <p class="text-xs text-slate-600 leading-relaxed">
                         {{ detail.catatan_verifikasi || 'Dokumen ini telah diperiksa kesesuaian SSH/SBM, ketersediaan alokasi RAK, dan kelengkapan bukti fisik pengeluaran kas. Berkas ini siap dibundel dalam pengesahan SPP sebelum diproses resmi melalui SIPD-RI.' }}
                     </p>
                 </div>
@@ -247,7 +247,7 @@ function handlePrint() {
                         :label="detail.qr_token ? `TOKEN: ${detail.qr_token}` : 'TOKEN: -'"
                         :size="100"
                     />
-                    <p class="text-[9px] text-slate-400 mt-1">Pindai untuk validasi</p>
+                    <p class="text-xs text-slate-400 mt-1">Pindai untuk validasi</p>
                 </div>
             </div>
 
@@ -262,7 +262,7 @@ function handlePrint() {
                     <p class="font-bold text-slate-900 underline">
                         {{ detail.verifikator?.name || 'Verifikator Kecamatan' }}
                     </p>
-                    <p class="text-[11px] text-slate-500">
+                    <p class="text-xs text-slate-500">
                         NIP. {{ detail.verifikator?.nip || '-' }}
                     </p>
                 </div>
@@ -273,10 +273,10 @@ function handlePrint() {
                     </p>
                     <p class="font-bold text-gov-navy-950">Dokumen Tervalidasi Sistem</p>
                     <div class="h-20"></div>
-                    <p class="font-mono text-[11px] font-bold text-slate-700">
+                    <p class="font-mono text-xs font-bold text-slate-700">
                         {{ detail.nomor_register }}
                     </p>
-                    <p class="text-[11px] text-slate-500">
+                    <p class="text-xs text-slate-500">
                         Status: {{ detail.status }}
                     </p>
                 </div>
