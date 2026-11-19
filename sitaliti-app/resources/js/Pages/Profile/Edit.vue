@@ -19,30 +19,22 @@ defineProps({
 
     <GovAppLayout>
         <template #header>
-            <h2
-                class="text-xl font-semibold leading-tight text-gray-800"
-            >
+            <h2 class="text-xl font-semibold leading-tight text-ink">
                 Profile
             </h2>
         </template>
 
-        <div class="py-12">
-            <div class="mx-auto max-w-7xl space-y-6 sm:px-6 lg:px-8">
-                <div
-                    class="bg-white p-4 shadow sm:rounded-lg sm:p-8"
-                >
-                    <UpdateProfileInformationForm
-                        :must-verify-email="mustVerifyEmail"
-                        :status="status"
-                        class="max-w-xl"
-                    />
-                </div>
+        <div class="space-y-6 max-w-3xl">
+            <div class="rounded-xl border border-hairline bg-surface p-6 shadow-subtle">
+                <UpdateProfileInformationForm
+                    :must-verify-email="mustVerifyEmail"
+                    :status="status"
+                    class="max-w-xl"
+                />
+            </div>
 
-                <div
-                    class="bg-white p-4 shadow sm:rounded-lg sm:p-8"
-                >
-                    <UpdatePasswordForm class="max-w-xl" />
-                </div>
+            <div class="rounded-xl border border-hairline bg-surface p-6 shadow-subtle">
+                <UpdatePasswordForm class="max-w-xl" />
             </div>
         </div>
     </GovAppLayout>
