@@ -33,20 +33,20 @@ const submit = () => {
     <GuestLayout>
         <Head title="Masuk — SI-TALITI" />
 
-        <div v-if="status" class="mb-4 text-sm font-medium text-green-600">
+        <div v-if="status" class="mb-4 text-sm font-medium text-semantic-success">
             {{ status }}
         </div>
 
-        <form @submit.prevent="submit">
+        <form @submit.prevent="submit" class="space-y-4">
             <div>
                 <InputLabel for="username" value="Username" />
 
                 <TextInput
                     id="username"
                     type="text"
-                    class="mt-1 block w-full"
+                    class="mt-1.5 block w-full"
                     v-model="form.username"
-                    placeholder="Contoh: operator.pataruman"
+                    placeholder="operator.pataruman"
                     required
                     autofocus
                     autocomplete="username"
@@ -55,13 +55,13 @@ const submit = () => {
                 <InputError class="mt-2" :message="form.errors.username" />
             </div>
 
-            <div class="mt-4">
-                <InputLabel for="password" value="Kata Sandi" />
+            <div>
+                <InputLabel for="password" value="Kata sandi" />
 
                 <TextInput
                     id="password"
                     type="password"
-                    class="mt-1 block w-full"
+                    class="mt-1.5 block w-full"
                     v-model="form.password"
                     required
                     autocomplete="current-password"
@@ -70,22 +70,20 @@ const submit = () => {
                 <InputError class="mt-2" :message="form.errors.password" />
             </div>
 
-            <div class="mt-4 block">
+            <div class="block pt-1">
                 <label class="flex items-center">
                     <Checkbox name="remember" v-model:checked="form.remember" />
-                    <span class="ms-2 text-sm text-gray-600"
-                        >Ingat saya</span
-                    >
+                    <span class="ms-2 text-sm text-ink-secondary">Ingat saya</span>
                 </label>
             </div>
 
-            <div class="mt-4 flex items-center justify-between gap-3">
-                <span class="text-xs text-slate-500">
-                    Lupa kata sandi? Hubungi Admin SKPD.
+            <div class="pt-2 flex items-center justify-between gap-3">
+                <span class="text-xs text-ink-muted">
+                    Lupa kata sandi? Hubungi Admin SKPD
                 </span>
 
                 <PrimaryButton
-                    class="ms-4"
+                    class="ms-4 shrink-0"
                     :class="{ 'opacity-25': form.processing }"
                     :disabled="form.processing"
                 >
