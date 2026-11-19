@@ -1,6 +1,16 @@
 <script setup>
 import { Link, usePage } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
+import {
+    Menu,
+    LogOut,
+    LayoutGrid,
+    Table2,
+    FileText,
+    ClipboardCheck,
+    Layers,
+    Users,
+} from 'lucide-vue-next';
 
 defineProps({
     title: {
@@ -91,35 +101,30 @@ const navItems = computed(() => {
 </script>
 
 <template>
-    <div class="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-800 antialiased">
-        <!-- Top App Bar - Deep Government Navy Theme -->
-        <header class="bg-gov-navy-950 text-white border-b border-gov-navy-800 sticky top-0 z-40 shadow-md">
-            <div class="px-4 sm:px-6 lg:px-8">
-                <div class="flex items-center justify-between h-16">
+    <div class="min-h-screen bg-canvas flex flex-col font-sans text-ink antialiased">
+        <!-- Top App Bar - Light Graphite & Institutional Navy -->
+        <header class="bg-surface text-ink border-b border-hairline sticky top-0 z-40">
+            <div class="px-4 sm:px-6">
+                <div class="flex items-center justify-between h-14">
                     <!-- Left: Logo & Identity -->
-                    <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-3">
                         <button
                             @click="isSidebarOpen = !isSidebarOpen"
-                            class="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-gov-navy-900 focus:outline-none"
+                            class="w-9 h-9 inline-flex items-center justify-center rounded-lg text-ink-muted hover:text-ink hover:bg-raised focus:outline-none focus:ring-2 focus:ring-accent transition-colors duration-150 ease-unslop"
                             title="Buka/Tutup Sidebar"
                         >
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
-                            </svg>
+                            <Menu class="w-4 h-4" :stroke-width="1.5" />
                         </button>
 
                         <div class="flex items-center gap-3">
                             <img
                                 src="/Lambang_Kabupaten_Garut.svg.webp"
                                 alt="Lambang Kabupaten Garut"
-                                class="w-9 h-9 object-contain rounded-lg bg-white/95 p-1 border border-gov-gold-500/30 shadow-inner"
+                                class="w-8 h-8 object-contain"
                             />
-                            <div>
-                                <div class="flex items-center gap-2">
-                                    <span class="font-bold tracking-tight text-white text-base">SI-TALITI</span>
-                                    <span class="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-gov-gold-600/20 text-gov-gold-400 border border-gov-gold-500/30">v2.0 Pre-Audit</span>
-                                </div>
-                                <p class="text-[11px] text-slate-400 font-normal">
+                            <div class="leading-tight">
+                                <span class="font-semibold tracking-tight text-ink text-base block">SI-TALITI</span>
+                                <p class="text-xs text-ink-muted font-normal">
                                     {{ user.is_kelurahan_scoped && user.unit_kerja ? `${user.unit_kerja.nama_unit} • Kec. Tarogong Kidul` : 'Kecamatan Tarogong Kidul • Kab. Garut' }}
                                 </p>
                             </div>
@@ -128,27 +133,22 @@ const navItems = computed(() => {
 
                     <!-- Right: Context Info & Profile -->
                     <div class="flex items-center gap-4">
-                        <div class="hidden md:flex flex-col text-right">
-                            <div class="flex items-center gap-1.5 justify-end">
-                                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                                <span class="text-xs font-semibold text-slate-200">TA {{ new Date().getFullYear() }} (RAK Perubahan)</span>
-                            </div>
+                        <div class="hidden md:flex items-center gap-2 text-xs text-ink-secondary">
+                            <span class="w-1.5 h-1.5 rounded-[50%] bg-semantic-success shrink-0"></span>
+                            <span class="font-medium tabular-nums">TA {{ new Date().getFullYear() }} (RAK Perubahan)</span>
                         </div>
 
-                        <div class="h-8 w-px bg-gov-navy-800 hidden md:block"></div>
+                        <div class="h-6 w-px bg-hairline hidden md:block"></div>
 
-                        <!-- User Profile Badge -->
-                        <div class="flex items-center gap-3 pl-2">
-                            <div class="w-8 h-8 rounded-full bg-gov-navy-800 border border-slate-600 flex items-center justify-center text-xs font-semibold text-white">
+                        <!-- User Profile & Logout -->
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-[50%] bg-accent-soft border border-accent-border flex items-center justify-center text-xs font-semibold text-accent shrink-0">
                                 {{ user.name?.charAt(0) || 'U' }}
                             </div>
                             <div class="hidden sm:block text-left leading-tight">
-                                <p class="text-xs font-medium text-white">{{ user.name }}</p>
-                                <p class="text-[10px] text-gov-gold-400 font-medium">
-                                    {{ roleDisplayName }}
-                                </p>
-                                <p v-if="user.unit_kerja?.nama_unit" class="text-[9px] text-slate-400 truncate">
-                                    {{ user.unit_kerja.nama_unit }}
+                                <p class="text-xs font-medium text-ink">{{ user.name }}</p>
+                                <p class="text-xs text-ink-muted">
+                                    {{ roleDisplayName }}<span v-if="user.unit_kerja?.nama_unit"> · {{ user.unit_kerja.nama_unit }}</span>
                                 </p>
                             </div>
                             <Link
@@ -156,12 +156,10 @@ const navItems = computed(() => {
                                 method="post"
                                 as="button"
                                 type="button"
-                                class="ml-2 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-200 bg-gov-navy-800 hover:bg-rose-700 hover:text-white border border-gov-navy-700 transition-colors"
+                                class="ml-1 inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium text-ink-secondary bg-surface hover:bg-raised hover:text-semantic-danger border border-hairline transition-colors duration-150 ease-unslop"
                                 title="Keluar dari aplikasi"
                             >
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                </svg>
+                                <LogOut class="w-4 h-4" :stroke-width="1.5" />
                                 <span class="hidden sm:inline">Keluar</span>
                             </Link>
                         </div>
@@ -173,65 +171,62 @@ const navItems = computed(() => {
         <div class="flex-1 flex overflow-hidden">
             <!-- Sidebar Navigation -->
             <aside
-                :class="[isSidebarOpen ? 'w-64' : 'w-20']"
-                class="bg-gov-navy-900 border-r border-gov-navy-800 transition-all duration-200 flex flex-col justify-between shrink-0"
+                :class="[isSidebarOpen ? 'w-64' : 'w-16']"
+                class="bg-canvas border-r border-hairline transition-[width] duration-200 ease-unslop flex flex-col justify-between shrink-0"
             >
-                <div class="p-3 space-y-1">
+                <nav class="p-3 space-y-1">
                     <Link
                         v-for="item in navItems"
                         :key="item.name"
                         :href="route().has(item.route) ? route(item.route) : '#'"
-                        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors group"
+                        class="flex items-center gap-2.5 h-9 px-2.5 rounded-lg text-sm transition-colors duration-150 ease-unslop"
                         :class="[
                             route().current(item.route)
-                                ? 'bg-gov-navy-800 text-white border-l-4 border-gov-gold-500 pl-2'
-                                : 'text-slate-400 hover:text-slate-200 hover:bg-gov-navy-800/50'
+                                ? 'bg-accent-soft text-accent font-medium'
+                                : 'text-ink-secondary hover:text-ink hover:bg-raised font-normal'
                         ]"
                     >
-                        <!-- Simple Nav Icons -->
-                        <span class="w-5 h-5 flex items-center justify-center text-gov-gold-400">
-                            <svg v-if="item.icon === 'dashboard'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                            </svg>
-                            <svg v-else-if="item.icon === 'table'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                            </svg>
-                            <svg v-else-if="item.icon === 'receipt'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            <svg v-else-if="item.icon === 'verification'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                            </svg>
-                            <svg v-else-if="item.icon === 'users'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                            </svg>
-                            <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                            </svg>
+                        <span
+                            class="w-5 h-5 flex items-center justify-center shrink-0"
+                            :class="route().current(item.route) ? 'text-accent' : 'text-ink-muted'"
+                        >
+                            <LayoutGrid v-if="item.icon === 'dashboard'" :size="18" :stroke-width="1.5" />
+                            <Table2 v-else-if="item.icon === 'table'" :size="18" :stroke-width="1.5" />
+                            <FileText v-else-if="item.icon === 'receipt'" :size="18" :stroke-width="1.5" />
+                            <ClipboardCheck v-else-if="item.icon === 'verification'" :size="18" :stroke-width="1.5" />
+                            <Users v-else-if="item.icon === 'users'" :size="18" :stroke-width="1.5" />
+                            <Layers v-else :size="18" :stroke-width="1.5" />
                         </span>
-                        <span v-if="isSidebarOpen" class="truncate font-medium">{{ item.name }}</span>
+                        <span v-if="isSidebarOpen" class="truncate">{{ item.name }}</span>
                     </Link>
-                </div>
+                </nav>
 
                 <!-- Gatekeeper Status Footer in Sidebar -->
-                <div v-if="isSidebarOpen" class="p-4 m-3 rounded-lg bg-gov-navy-950/70 border border-gov-navy-800 text-xs">
-                    <div class="flex items-center justify-between text-slate-400">
+                <div v-if="isSidebarOpen" class="px-3 py-3 m-3 rounded-lg bg-surface border border-hairline text-xs">
+                    <div class="flex items-center justify-between text-ink-secondary">
                         <span>Pre-Audit Gateway</span>
-                        <span class="text-emerald-400 font-semibold">Aktif</span>
+                        <span class="inline-flex items-center gap-1.5 text-semantic-success font-medium">
+                            <span class="w-1.5 h-1.5 rounded-[50%] bg-semantic-success"></span>
+                            Aktif
+                        </span>
                     </div>
                 </div>
             </aside>
 
             <!-- Main Content Area -->
-            <main class="flex-1 overflow-y-auto">
+            <main class="flex-1 overflow-y-auto bg-canvas">
                 <!-- Page Header & Action Bar -->
-                <div v-if="$slots.header" class="bg-white border-b border-gov-surface-border px-6 py-4 shadow-sm">
-                    <slot name="header" />
+                <div v-if="$slots.header" class="bg-surface border-b border-hairline px-6 py-4">
+                    <div class="max-w-[1440px] mx-auto">
+                        <slot name="header" />
+                    </div>
                 </div>
 
                 <!-- Page Body -->
                 <div class="p-6">
-                    <slot />
+                    <div class="max-w-[1440px] mx-auto">
+                        <slot />
+                    </div>
                 </div>
             </main>
         </div>
