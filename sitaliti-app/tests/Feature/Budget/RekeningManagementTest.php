@@ -274,24 +274,40 @@ class RekeningManagementTest extends TestCase
         // 1. Unauthenticated -> 401
         $this->postJson('/api/v1/budget-management/rekening', $validPayload)->assertStatus(401);
 
-        // 2. Operator / PPTK / BPP -> 403
-        foreach (['OPERATOR', 'PPTK', 'BPP'] as $role) {
+        // 2. PPTK / BPP -> 403
+        foreach (['PPTK', 'BPP'] as $role) {
             $user = User::factory()->create(['unit_kerja_id' => $kecamatan->id, 'role' => $role]);
             $this->actingAs($user)->getJson('/api/v1/budget-management/rekening')->assertStatus(403);
             $this->actingAs($user)->postJson('/api/v1/budget-management/rekening', $validPayload)->assertStatus(403);
         }
 
-        // 3. Kelurahan-scoped user bahkan dengan role VERIFIKATOR/KPA -> 403 di seluruh endpoint
-        $kelurahanAdmin = User::factory()->create([
-            'unit_kerja_id' => $kelurahan->id,
-            'role' => 'VERIFIKATOR',
-        ]);
-        $this->actingAs($kelurahanAdmin)->getJson('/api/v1/budget-management/rekening')->assertStatus(403);
-        $this->actingAs($kelurahanAdmin)->getJson('/api/v1/budget-management/sub-activities')->assertStatus(403);
-        $this->actingAs($kelurahanAdmin)->postJson('/api/v1/budget-management/rekening', $validPayload)->assertStatus(403);
-        $this->actingAs($kelurahanAdmin)->putJson('/api/v1/budget-management/rekening/1', [
-            'alokasi' => array_fill(0, 12, 100000),
-        ])->assertStatus(403);
+        // 3. OPERATOR & LURAH Kelurahan boleh mengelola unitnya sendiri, tapi ditolak (403) untuk unit lain
+        $otherUnit = UnitKerja::where('id', '!=', $kelurahan->id)->firstOrFail();
+        $rekeningOtherUnit = $this->service->createRekening(array_merge($validPayload, [
+            'unit_kerja_id' => $otherUnit->id,
+            'kode_rekening' => '5.1.02.01.01.0067',
+        ]));
+
+        foreach (['OPERATOR', 'LURAH'] as $role) {
+            $kelurahanUser = User::factory()->create([
+                'unit_kerja_id' => $kelurahan->id,
+                'role' => $role,
+            ]);
+
+            $this->actingAs($kelurahanUser)->getJson('/api/v1/budget-management/rekening')->assertStatus(200);
+            $this->actingAs($kelurahanUser)->getJson('/api/v1/budget-management/sub-activities')->assertStatus(200);
+
+            // Ditolak membuat rekening di unit lain
+            $this->actingAs($kelurahanUser)->postJson('/api/v1/budget-management/rekening', array_merge($validPayload, [
+                'unit_kerja_id' => $otherUnit->id,
+                'kode_rekening' => '5.1.02.01.01.0068',
+            ]))->assertStatus(403);
+
+            // Ditolak mengubah rekening milik unit lain
+            $this->actingAs($kelurahanUser)->putJson("/api/v1/budget-management/rekening/{$rekeningOtherUnit->id}", [
+                'alokasi' => array_fill(0, 12, 100000),
+            ])->assertStatus(403);
+        }
     }
 
     public function test_api_update_allocations_updates_pagu_perubahan_and_enforces_minimum_locked_realized(): void

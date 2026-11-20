@@ -170,7 +170,7 @@ class ReceiptWebRouteTest extends TestCase
         $response->assertStatus(403);
     }
 
-    public function test_skpd_admin_can_access_budget_management_but_operator_and_kelurahan_are_forbidden(): void
+    public function test_skpd_admin_and_unit_operator_or_lurah_can_access_budget_management_but_pptk_and_bpp_are_forbidden(): void
     {
         $this->actingAs($this->verifikator)
             ->get('/budget-management')
@@ -179,15 +179,25 @@ class ReceiptWebRouteTest extends TestCase
 
         $this->actingAs($this->operator)
             ->get('/budget-management')
-            ->assertStatus(403);
+            ->assertStatus(200)
+            ->assertInertia(fn (Assert $page) => $page->component('Budget/Manage'));
 
         $kelurahan = UnitKerja::where('tipe', 'KELURAHAN')->firstOrFail();
-        $kelurahanAdmin = User::factory()->create([
+        $lurah = User::factory()->create([
             'unit_kerja_id' => $kelurahan->id,
-            'role' => 'VERIFIKATOR',
+            'role' => 'LURAH',
         ]);
 
-        $this->actingAs($kelurahanAdmin)
+        $this->actingAs($lurah)
+            ->get('/budget-management')
+            ->assertStatus(200)
+            ->assertInertia(fn (Assert $page) => $page->component('Budget/Manage'));
+
+        $pptk = User::factory()->create([
+            'unit_kerja_id' => $kelurahan->id,
+            'role' => 'PPTK',
+        ]);
+        $this->actingAs($pptk)
             ->get('/budget-management')
             ->assertStatus(403);
     }

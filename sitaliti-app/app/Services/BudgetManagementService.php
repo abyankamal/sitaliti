@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AnggaranAuditLog;
 use App\Models\AnggaranKasBulanan;
 use App\Models\AnggaranRekening;
 use App\Models\User;
@@ -70,7 +71,7 @@ class BudgetManagementService
      *
      * @param  array<string, mixed>  $data
      */
-    public function createRekening(array $data): AnggaranRekening
+    public function createRekening(array $data, ?User $actor = null, ?string $ipAddress = null): AnggaranRekening
     {
         $alokasi = $this->normalizeAllocations($data['alokasi'] ?? []);
         $total = round(array_sum($alokasi), 2);
@@ -97,7 +98,7 @@ class BudgetManagementService
         );
 
         try {
-            return DB::transaction(function () use ($data, $unitKerjaId, $kodeSubkegiatan, $namaSubkegiatan, $kodeRekening, $alokasi, $total) {
+            return DB::transaction(function () use ($data, $unitKerjaId, $kodeSubkegiatan, $namaSubkegiatan, $kodeRekening, $alokasi, $total, $actor, $ipAddress) {
                 $rekening = AnggaranRekening::create([
                     'unit_kerja_id' => $unitKerjaId,
                     'kode_sub_kegiatan' => $kodeSubkegiatan,
@@ -120,6 +121,19 @@ class BudgetManagementService
                     ]);
                 }
 
+                AnggaranAuditLog::create([
+                    'anggaran_rekening_id' => $rekening->id,
+                    'unit_kerja_id' => $rekening->unit_kerja_id,
+                    'user_id' => $actor?->id,
+                    'actor_role' => $actor?->role,
+                    'action' => 'CREATED',
+                    'old_pagu_perubahan' => 0.00,
+                    'new_pagu_perubahan' => $total,
+                    'old_alokasi' => null,
+                    'new_alokasi' => $alokasi,
+                    'ip_address' => $ipAddress,
+                ]);
+
                 return $rekening->load('kasBulanan');
             });
         } catch (UniqueConstraintViolationException) {
@@ -135,12 +149,12 @@ class BudgetManagementService
      *
      * @param  array<string, mixed>  $data
      */
-    public function updateAllocations(int $rekeningId, array $data, ?User $actor = null): AnggaranRekening
+    public function updateAllocations(int $rekeningId, array $data, ?User $actor = null, ?string $ipAddress = null): AnggaranRekening
     {
         $alokasi = $this->normalizeAllocations($data['alokasi'] ?? []);
         $newTotal = round(array_sum($alokasi), 2);
 
-        return DB::transaction(function () use ($rekeningId, $alokasi, $newTotal, $actor) {
+        return DB::transaction(function () use ($rekeningId, $alokasi, $newTotal, $actor, $ipAddress) {
             $rekening = AnggaranRekening::where('id', $rekeningId)
                 ->lockForUpdate()
                 ->firstOrFail();
@@ -150,6 +164,12 @@ class BudgetManagementService
                 ->lockForUpdate()
                 ->get()
                 ->keyBy('bulan');
+
+            $oldAlokasi = [];
+            for ($bulan = 1; $bulan <= 12; $bulan++) {
+                $existing = $kasRows->get($bulan);
+                $oldAlokasi[$bulan] = $existing ? (float) $existing->alokasi_pagu : 0.0;
+            }
 
             $cumAlokasiCents = 0;
             $cumUsedCents = 0;
@@ -195,9 +215,23 @@ class BudgetManagementService
             $oldPaguPerubahan = (float) $rekening->pagu_perubahan;
             $rekening->update(['pagu_perubahan' => $newTotal]);
 
+            AnggaranAuditLog::create([
+                'anggaran_rekening_id' => $rekening->id,
+                'unit_kerja_id' => $rekening->unit_kerja_id,
+                'user_id' => $actor?->id,
+                'actor_role' => $actor?->role,
+                'action' => 'ALLOCATIONS_UPDATED',
+                'old_pagu_perubahan' => $oldPaguPerubahan,
+                'new_pagu_perubahan' => $newTotal,
+                'old_alokasi' => $oldAlokasi,
+                'new_alokasi' => $alokasi,
+                'ip_address' => $ipAddress,
+            ]);
+
             Log::info('BUDGET_ALLOCATION_UPDATED', [
                 'actor_id' => $actor?->id,
-                'actor_email' => $actor?->email,
+                'actor_username' => $actor?->username,
+                'actor_role' => $actor?->role,
                 'rekening_id' => $rekening->id,
                 'kode_rekening' => $rekening->kode_rekening,
                 'old_pagu_perubahan' => $oldPaguPerubahan,

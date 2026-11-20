@@ -50,6 +50,40 @@ class ReceiptWorkflowApiController extends Controller
     }
 
     /**
+     * Endpoint penarikan kuitansi kembali ke DRAFT oleh Operator pembuatnya (POST /api/v1/receipts/{id}/recall).
+     */
+    public function recall(Request $request, int|string $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'alasan' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $resolved = $this->findAuthorizedOperatorReceipt($request, $id);
+        if ($resolved instanceof JsonResponse) {
+            return $resolved;
+        }
+        $kuitansi = $resolved;
+
+        try {
+            $updated = $this->workflowService->recallByOperator(
+                $kuitansi->id,
+                $validated['alasan'] ?? null,
+                $request->user()
+            );
+
+            return $this->successResponse([
+                'id' => $updated->id,
+                'nomor_kuitansi' => $updated->nomor_kuitansi,
+                'status' => $updated->status,
+            ], 'Kuitansi berhasil ditarik kembali ke DRAFT dan pagu anggaran telah dipulihkan');
+        } catch (InvalidArgumentException $e) {
+            return $this->errorResponse('INVALID_RECEIPT_STATE', $e->getMessage(), null, 422);
+        } catch (Throwable $e) {
+            return $this->serverErrorResponse('RECALL_RECEIPT_FAILED', $e);
+        }
+    }
+
+    /**
      * Endpoint pengajuan kuitansi ke PPTK yang mengunci pagu anggaran (POST /api/v1/receipts/{id}/submit).
      */
     public function submit(Request $request, int|string $id): JsonResponse

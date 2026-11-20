@@ -83,8 +83,7 @@ const allNavItems = [
         name: 'Kelola Anggaran (RAK)',
         route: 'budget-management.index',
         icon: 'table',
-        roles: ['VERIFIKATOR', 'KPA'],
-        skpdOnly: true,
+        roles: ['VERIFIKATOR', 'KPA', 'LURAH', 'OPERATOR'],
     },
 ];
 

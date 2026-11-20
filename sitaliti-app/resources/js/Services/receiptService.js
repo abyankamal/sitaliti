@@ -85,6 +85,14 @@ export const receiptService = {
     },
 
     /**
+     * Tarik kembali kuitansi ke DRAFT oleh Operator pembuatnya (Self-Recall).
+     */
+    async recallReceipt(receiptId, alasan = null) {
+        const response = await axios.post(`${API_BASE}/${receiptId}/recall`, { alasan });
+        return response.data;
+    },
+
+    /**
      * Persetujuan kuitansi oleh PPTK.
      */
     async approveByPptk(receiptId, catatan = null) {

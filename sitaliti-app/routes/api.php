@@ -49,6 +49,8 @@ Route::prefix('v1')->group(function () {
                 ->middleware('permission:kuitansi.submit_pptk|kuitansi.edit');
             Route::post('{id}/submit', [ReceiptWorkflowApiController::class, 'submit'])
                 ->middleware('permission:kuitansi.submit_pptk');
+            Route::post('{id}/recall', [ReceiptWorkflowApiController::class, 'recall'])
+                ->middleware('permission:kuitansi.recall');
             Route::post('{id}/pptk-approve', [ReceiptWorkflowApiController::class, 'pptkApprove'])
                 ->middleware('permission:kuitansi.pptk_approve');
             Route::post('{id}/pptk-reject', [ReceiptWorkflowApiController::class, 'pptkReject'])
@@ -115,8 +117,8 @@ Route::prefix('v1')->group(function () {
             Route::delete('{id}', [UserManagementApiController::class, 'destroy']);
         });
 
-        // Budget & Rekening Management Endpoints (Administrator Anggaran SKPD)
-        Route::prefix('budget-management')->middleware('permission:user.manage')->group(function () {
+        // Budget & Rekening Management Endpoints (SKPD & Kelurahan untuk unit kerjanya)
+        Route::prefix('budget-management')->middleware('permission:budget.manage')->group(function () {
             Route::get('rekening', [RekeningManagementApiController::class, 'index']);
             Route::get('sub-activities', [RekeningManagementApiController::class, 'subActivities']);
             Route::post('rekening', [RekeningManagementApiController::class, 'store']);

@@ -306,4 +306,68 @@ class ReceiptWorkflowService
             return $kuitansi;
         });
     }
+
+    /**
+     * Penarikan kuitansi kembali ke DRAFT oleh Operator pembuatnya (Self-Recall).
+     * Menggunakan pessimistic lock, melepas pagu terkunci, membersihkan metadata persetujuan,
+     * dan memblokir kuitansi yang sudah pernah masuk siklus REVISI_MINOR (SLA), punya QR, atau masuk bundel SPJ.
+     */
+    public function recallByOperator(int|string $kuitansiId, ?string $alasan = null, ?User $actor = null): Kuitansi
+    {
+        return DB::transaction(function () use ($kuitansiId, $alasan, $actor) {
+            $kuitansi = Kuitansi::resolveOrFailByIdOrNumber($kuitansiId, lockForUpdate: true);
+
+            if ($actor !== null && (int) $kuitansi->user_id !== (int) $actor->id) {
+                throw new InvalidArgumentException('Hanya Operator pembuat kuitansi yang dapat menarik kembali kuitansi ini ke DRAFT.');
+            }
+
+            if (! in_array($kuitansi->status, ['MENUNGGU_PPTK', 'MENUNGGU_LURAH', 'MENUNGGU_VERIFIKASI'], true)) {
+                throw new InvalidArgumentException("Kuitansi berstatus '{$kuitansi->status}' tidak dapat ditarik kembali ke DRAFT.");
+            }
+
+            if ($kuitansi->status === 'MENUNGGU_VERIFIKASI' && $kuitansi->tenggat_sla !== null) {
+                throw new InvalidArgumentException('Kuitansi yang pernah masuk siklus Revisi Minor (memiliki tenggat SLA) tidak dapat ditarik kembali ke DRAFT.');
+            }
+
+            if ($kuitansi->activeSpjItem()->exists() || ! empty($kuitansi->qr_token)) {
+                throw new InvalidArgumentException('Kuitansi yang telah terverifikasi atau masuk bundel SPJ tidak dapat ditarik kembali.');
+            }
+
+            $statusLama = $kuitansi->status;
+
+            $this->budgetService->releaseBudget(
+                (string) $kuitansi->anggaran_rekening_id,
+                $kuitansi->bulan_anggaran,
+                (float) $kuitansi->nominal_bruto
+            );
+
+            $kuitansi->checklistVerifikasi()->delete();
+
+            $kuitansi->update([
+                'status' => 'DRAFT',
+                'tanggal_submit' => null,
+                'pptk_user_id' => null,
+                'tanggal_pptk_approve' => null,
+                'catatan_pptk' => null,
+                'lurah_user_id' => null,
+                'tanggal_lurah_approve' => null,
+                'catatan_lurah' => null,
+            ]);
+
+            $this->auditTrailService->log(
+                $kuitansi,
+                'RECALLED_BY_OPERATOR',
+                $statusLama,
+                'DRAFT',
+                $alasan ?: 'Kuitansi ditarik kembali ke DRAFT oleh Operator',
+                $actor,
+                [
+                    'pagu_dipulihkan' => (float) $kuitansi->nominal_bruto,
+                    'bulan_anggaran' => $kuitansi->bulan_anggaran,
+                ]
+            );
+
+            return $kuitansi;
+        });
+    }
 }

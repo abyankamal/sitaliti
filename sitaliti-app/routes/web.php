@@ -72,12 +72,13 @@ Route::middleware('auth')->group(function () {
         return Inertia::render('Users/Index');
     })->middleware('permission:user.manage')->name('users.index');
 
-    // Routes Manajemen Kode Rekening & Alokasi Pagu (Administrator Anggaran SKPD)
+    // Routes Manajemen Kode Rekening & Alokasi Pagu (SKPD & Kelurahan untuk unit kerjanya)
     Route::get('/budget-management', function (Request $request) {
-        abort_if($request->user()?->isKelurahanScoped(), 403, 'Hanya administrator tingkat SKPD yang dapat mengakses halaman ini.');
+        $user = $request->user();
+        abort_if(! $user || (! $user->isSkpdWide() && $user->unit_kerja_id === null), 403, 'Akun Anda belum terhubung dengan unit kerja.');
 
         return Inertia::render('Budget/Manage');
-    })->middleware('permission:user.manage')->name('budget-management.index');
+    })->middleware('permission:budget.manage')->name('budget-management.index');
 
     // Profile Routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

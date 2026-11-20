@@ -24,7 +24,7 @@ class RekeningManagementApiController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $this->authorizeSkpdAdmin($request);
+        $scopedUnitId = $this->resolveAuthorizedUnitId($request);
 
         $query = AnggaranRekening::with([
             'unitKerja',
@@ -34,7 +34,9 @@ class RekeningManagementApiController extends Controller
             ->withSum('kasBulanan as total_terkunci', 'terkunci_bulan')
             ->withSum('kasBulanan as total_realisasi', 'realisasi_bulan');
 
-        if ($request->filled('unit_kerja_id')) {
+        if ($scopedUnitId !== null) {
+            $query->where('unit_kerja_id', $scopedUnitId);
+        } elseif ($request->filled('unit_kerja_id')) {
             $query->where('unit_kerja_id', (int) $request->input('unit_kerja_id'));
         }
 
@@ -64,13 +66,15 @@ class RekeningManagementApiController extends Controller
      */
     public function subActivities(Request $request): JsonResponse
     {
-        $this->authorizeSkpdAdmin($request);
+        $scopedUnitId = $this->resolveAuthorizedUnitId($request);
 
         $query = AnggaranRekening::query()
             ->select('unit_kerja_id', 'kode_sub_kegiatan', 'nama_sub_kegiatan')
             ->distinct();
 
-        if ($request->filled('unit_kerja_id')) {
+        if ($scopedUnitId !== null) {
+            $query->where('unit_kerja_id', $scopedUnitId);
+        } elseif ($request->filled('unit_kerja_id')) {
             $query->where('unit_kerja_id', (int) $request->input('unit_kerja_id'));
         }
 
@@ -84,7 +88,7 @@ class RekeningManagementApiController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $this->authorizeSkpdAdmin($request);
+        $scopedUnitId = $this->resolveAuthorizedUnitId($request);
 
         $validated = $request->validate([
             'unit_kerja_id' => ['required', Rule::exists('master_unit_kerja', 'id')->where('is_active', true)],
@@ -97,7 +101,11 @@ class RekeningManagementApiController extends Controller
             'alokasi.*' => ['required', 'numeric', 'min:0', 'max:9999999999999.99'],
         ]);
 
-        $rekening = $this->budgetManagementService->createRekening($validated);
+        if ($scopedUnitId !== null && (int) $validated['unit_kerja_id'] !== $scopedUnitId) {
+            abort(403, 'Anda hanya berwenang menambah kode rekening untuk unit kerja Anda sendiri.');
+        }
+
+        $rekening = $this->budgetManagementService->createRekening($validated, $request->user(), $request->ip());
         $rekening->load(['unitKerja', 'kasBulanan' => fn ($q) => $q->orderBy('bulan', 'asc')]);
 
         return $this->successResponse(
@@ -112,14 +120,21 @@ class RekeningManagementApiController extends Controller
      */
     public function update(Request $request, int $id): JsonResponse
     {
-        $this->authorizeSkpdAdmin($request);
+        $scopedUnitId = $this->resolveAuthorizedUnitId($request);
+
+        if ($scopedUnitId !== null) {
+            $existing = AnggaranRekening::findOrFail($id);
+            if ((int) $existing->unit_kerja_id !== $scopedUnitId) {
+                abort(403, 'Anda hanya berwenang memperbarui alokasi pagu untuk unit kerja Anda sendiri.');
+            }
+        }
 
         $validated = $request->validate([
             'alokasi' => ['required', 'array', 'size:12'],
             'alokasi.*' => ['required', 'numeric', 'min:0', 'max:9999999999999.99'],
         ]);
 
-        $rekening = $this->budgetManagementService->updateAllocations($id, $validated, $request->user());
+        $rekening = $this->budgetManagementService->updateAllocations($id, $validated, $request->user(), $request->ip());
 
         return $this->successResponse(
             $this->serializeRekening($rekening),
@@ -127,13 +142,22 @@ class RekeningManagementApiController extends Controller
         );
     }
 
-    private function authorizeSkpdAdmin(Request $request): void
+    private function resolveAuthorizedUnitId(Request $request): ?int
     {
+        $user = $request->user();
+        abort_if(! $user, 403, 'Autentikasi diperlukan.');
+
+        if ($user->isSkpdWide()) {
+            return null;
+        }
+
         abort_if(
-            $request->user()?->isKelurahanScoped(),
+            $user->unit_kerja_id === null,
             403,
-            'Hanya administrator anggaran tingkat SKPD yang berwenang mengelola rekening.'
+            'Akun Anda belum terhubung dengan unit kerja sehingga tidak dapat mengelola anggaran.'
         );
+
+        return (int) $user->unit_kerja_id;
     }
 
     /**

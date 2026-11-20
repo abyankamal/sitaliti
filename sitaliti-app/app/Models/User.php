@@ -62,6 +62,8 @@ class User extends Authenticatable
                 'kuitansi.create',
                 'kuitansi.edit',
                 'kuitansi.submit_pptk',
+                'kuitansi.recall',
+                'budget.manage',
             ],
             'BPP' => [
                 'kuitansi.view',
@@ -85,6 +87,7 @@ class User extends Authenticatable
                 'verification.process_action',
                 'verification.generate_qr',
                 'user.manage',
+                'budget.manage',
             ],
             'LURAH' => [
                 'kuitansi.view',
@@ -92,6 +95,7 @@ class User extends Authenticatable
                 'kuitansi.lurah_reject',
                 'bundle.view',
                 'budget.view',
+                'budget.manage',
                 'verification.queue',
                 'verification.audit',
             ],
@@ -103,6 +107,7 @@ class User extends Authenticatable
                 'bundle.record_sp2d',
                 'dashboard.view_all',
                 'user.manage',
+                'budget.manage',
             ],
         ];
 

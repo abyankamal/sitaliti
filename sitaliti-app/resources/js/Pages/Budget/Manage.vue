@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
-import { Head } from '@inertiajs/vue3';
+import { Head, usePage } from '@inertiajs/vue3';
 import GovAppLayout from '@/Layouts/GovAppLayout.vue';
 import GovBadge from '@/Components/UI/GovBadge.vue';
 import GovButton from '@/Components/UI/GovButton.vue';
@@ -8,6 +8,11 @@ import GovCurrencyInput from '@/Components/UI/GovCurrencyInput.vue';
 import { formatRupiah } from '@/Utils/currency';
 import { NAMA_BULAN } from '@/Utils/date';
 import { BUDGET_CATEGORIES } from '@/Constants/budgetCategories';
+
+const page = usePage();
+const currentUser = computed(() => page.props.auth?.user || {});
+const isSkpdWide = computed(() => ['VERIFIKATOR', 'KPA'].includes(currentUser.value?.role));
+const userUnitId = computed(() => currentUser.value?.unit_kerja_id ?? '');
 
 const categoryOptions = Object.values(BUDGET_CATEGORIES);
 
@@ -147,7 +152,9 @@ watch(subkegiatanMode, (mode) => {
 
 function openCreateModal() {
     form.value = createDefaultForm();
-    if (units.value.length > 0) {
+    if (!isSkpdWide.value && userUnitId.value) {
+        form.value.unit_kerja_id = userUnitId.value;
+    } else if (units.value.length > 0) {
         form.value.unit_kerja_id = units.value[0].id;
     }
     subkegiatanMode.value = 'existing';
@@ -292,6 +299,7 @@ async function submitEdit() {
             <div class="bg-white rounded-xl border border-gov-surface-border p-4 shadow-sm flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
                 <div class="flex flex-col sm:flex-row gap-3 flex-1">
                     <select
+                        v-if="isSkpdWide"
                         v-model="filterUnitId"
                         @change="fetchRekenings(1)"
                         class="rounded-lg border-gov-surface-border text-sm text-slate-700 py-2 px-3 sm:w-64"
@@ -417,7 +425,7 @@ async function submitEdit() {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-semibold text-gov-navy-900 uppercase mb-1">Unit Kerja <span class="text-rose-500">*</span></label>
-                            <select v-model="form.unit_kerja_id" required class="w-full rounded-lg border-gov-surface-border text-sm py-2 px-3">
+                            <select v-model="form.unit_kerja_id" required :disabled="!isSkpdWide" class="w-full rounded-lg border-gov-surface-border text-sm py-2 px-3 disabled:bg-slate-100 disabled:text-slate-600">
                                 <option value="" disabled>Pilih Unit Kerja</option>
                                 <option v-for="unit in units" :key="unit.id" :value="unit.id">
                                     {{ unit.name || unit.nama_unit }}

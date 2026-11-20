@@ -139,6 +139,16 @@ async function handleActionConfirm() {
                 emit('refresh');
                 await fetchReceiptDetail(receipt.value.id);
             }
+        } else if (actionModalMode.value === 'RECALL_DRAFT') {
+            const response = await axios.post(`/api/v1/receipts/${receipt.value.id}/recall`, {
+                alasan: actionNote.value.trim() || 'Ditarik kembali ke DRAFT oleh Operator untuk perbaikan data',
+            });
+            if (response.data?.success) {
+                isActionModalOpen.value = false;
+                showDrawerToast('Kuitansi berhasil ditarik kembali ke DRAFT dan pagu anggaran telah dipulihkan.');
+                emit('refresh');
+                await fetchReceiptDetail(receipt.value.id);
+            }
         } else if (actionModalMode.value === 'PPTK_APPROVE') {
             const response = await axios.post(`/api/v1/receipts/${receipt.value.id}/pptk-approve`, {
                 catatan: actionNote.value.trim() || 'Disetujui oleh PPTK',
@@ -525,6 +535,21 @@ function getStatusBadge(status) {
                                 {{ isActionLoading ? 'Memproses...' : 'Ajukan ke PPTK' }}
                             </GovButton>
 
+                            <!-- Aksi Operator: Self-Recall ke DRAFT jika milik sendiri & belum masuk siklus SLA Revisi Minor -->
+                            <GovButton
+                                v-if="
+                                    userRole === 'OPERATOR'
+                                    && Number(receipt.user_id) === Number(currentUser.id)
+                                    && (['MENUNGGU_PPTK', 'MENUNGGU_LURAH'].includes(receipt.status) || (receipt.status === 'MENUNGGU_VERIFIKASI' && !receipt.tenggat_sla))
+                                "
+                                @click="openActionModal('RECALL_DRAFT')"
+                                variant="danger"
+                                size="sm"
+                                :disabled="isActionLoading"
+                            >
+                                {{ isActionLoading ? 'Memproses...' : 'Tarik ke Draft' }}
+                            </GovButton>
+
                             <!-- Aksi PPTK: Quick Approve & Reject jika MENUNGGU_PPTK -->
                             <template v-if="userRole === 'PPTK' && receipt.status === 'MENUNGGU_PPTK'">
                                 <GovButton
@@ -603,24 +628,30 @@ function getStatusBadge(status) {
                         {{
                             actionModalMode === 'SUBMIT_PPTK'
                                 ? 'Ajukan Kuitansi ke PPTK'
-                                : actionModalMode === 'PPTK_APPROVE'
-                                    ? 'Persetujuan Teknis PPTK'
-                                    : 'Otorisasi Kuitansi Lurah'
+                                : actionModalMode === 'RECALL_DRAFT'
+                                    ? 'Tarik Kembali Kuitansi ke Draft'
+                                    : actionModalMode === 'PPTK_APPROVE'
+                                        ? 'Persetujuan Teknis PPTK'
+                                        : 'Otorisasi Kuitansi Lurah'
                         }}
                     </h3>
                     <p class="text-xs text-slate-500 mt-1">
                         {{
                             actionModalMode === 'SUBMIT_PPTK'
                                 ? `Ajukan kuitansi ${receipt?.nomor_kuitansi} ke PPTK? Pagu anggaran kas akan otomatis dikunci.`
-                                : actionModalMode === 'PPTK_APPROVE'
-                                    ? 'Tambahkan catatan persetujuan teknis (opsional) sebelum meneruskan kuitansi.'
-                                    : 'Tambahkan catatan otorisasi Lurah (opsional) sebelum meneruskan ke Verifikator Kecamatan.'
+                                : actionModalMode === 'RECALL_DRAFT'
+                                    ? `Tarik kuitansi ${receipt?.nomor_kuitansi} kembali ke DRAFT? Pagu anggaran yang terkunci akan dilepas otomatis dan persetujuan sebelumnya dibatalkan.`
+                                    : actionModalMode === 'PPTK_APPROVE'
+                                        ? 'Tambahkan catatan persetujuan teknis (opsional) sebelum meneruskan kuitansi.'
+                                        : 'Tambahkan catatan otorisasi Lurah (opsional) sebelum meneruskan ke Verifikator Kecamatan.'
                         }}
                     </p>
                 </div>
 
                 <div v-if="actionModalMode !== 'SUBMIT_PPTK'" class="space-y-1">
-                    <label class="text-xs font-semibold text-slate-700">Catatan Persetujuan (Opsional):</label>
+                    <label class="text-xs font-semibold text-slate-700">
+                        {{ actionModalMode === 'RECALL_DRAFT' ? 'Alasan Penarikan (Opsional):' : 'Catatan Persetujuan (Opsional):' }}
+                    </label>
                     <textarea
                         v-model="actionNote"
                         rows="3"
