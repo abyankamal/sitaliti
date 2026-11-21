@@ -151,12 +151,12 @@ class CrossUnitIdorIsolationTest extends TestCase
 
         // Users
         $this->operatorPataruman = User::factory()->create([
-            'role' => 'OPERATOR',
+            'role' => 'BPP',
             'unit_kerja_id' => $this->kelurahanPataruman->id,
         ]);
 
         $this->operatorSukagalih = User::factory()->create([
-            'role' => 'OPERATOR',
+            'role' => 'BPP',
             'unit_kerja_id' => $this->kelurahanSukagalih->id,
         ]);
 
@@ -447,7 +447,7 @@ class CrossUnitIdorIsolationTest extends TestCase
 
         // 4. User non-SKPD dengan unit_kerja_id null tidak pernah bisa akses kuitansi
         $orphanOperator = User::factory()->create([
-            'role' => 'OPERATOR',
+            'role' => 'BPP',
             'unit_kerja_id' => null,
         ]);
         $this->assertFalse($orphanOperator->canAccessReceipt($this->kuitansiSarprasPataruman));
@@ -488,16 +488,24 @@ class CrossUnitIdorIsolationTest extends TestCase
             'file_hash' => hash('sha256', 'nota-draft-1'),
         ]);
 
-        // Operator lain di unit yang sama (Kelurahan Pataruman) ditolak 403 di seluruh endpoint detail/edit/preview/history
-        $operatorLainPataruman = User::factory()->create([
-            'role' => 'OPERATOR',
+        // BPP di unit yang sama (Kelurahan Pataruman) dapat mengakses & mengedit draft unitnya, sedangkan BPP unit lain ditolak 403
+        $bppLainPataruman = User::factory()->create([
+            'role' => 'BPP',
             'unit_kerja_id' => $this->kelurahanPataruman->id,
         ]);
 
-        $this->actingAs($operatorLainPataruman)->get("/receipts/{$draftMilikPataruman->id}/edit")->assertStatus(403);
-        $this->actingAs($operatorLainPataruman)->get("/receipts/{$draftMilikPataruman->id}/attachments/{$att->id}/preview")->assertStatus(403);
-        $this->actingAs($operatorLainPataruman)->getJson("/api/v1/receipts/{$draftMilikPataruman->id}")->assertStatus(403);
-        $this->actingAs($operatorLainPataruman)->getJson("/api/v1/receipts/{$draftMilikPataruman->id}/history")->assertStatus(403);
+        \Illuminate\Support\Facades\Storage::disk('local')->put('lampiran/nota.pdf', '%PDF-1.4 dummy');
+        $this->actingAs($bppLainPataruman)->get("/receipts/{$draftMilikPataruman->id}/edit")->assertStatus(200);
+        $this->actingAs($bppLainPataruman)->get("/receipts/{$draftMilikPataruman->id}/attachments/{$att->id}/preview")->assertStatus(200);
+        $this->actingAs($bppLainPataruman)->getJson("/api/v1/receipts/{$draftMilikPataruman->id}")->assertStatus(200);
+        $this->actingAs($bppLainPataruman)->getJson("/api/v1/receipts/{$draftMilikPataruman->id}/history")->assertStatus(200);
+
+        $bppUnitLain = User::factory()->create([
+            'role' => 'BPP',
+            'unit_kerja_id' => $this->kelurahanSukagalih->id,
+        ]);
+        $this->actingAs($bppUnitLain)->get("/receipts/{$draftMilikPataruman->id}/edit")->assertStatus(403);
+        $this->actingAs($bppUnitLain)->getJson("/api/v1/receipts/{$draftMilikPataruman->id}")->assertStatus(403);
 
         // Operator pembuat yang dipindah ke unit lain juga ditolak 403 mengakses DRAFT di unit lama
         $this->operatorPataruman->update(['unit_kerja_id' => $this->kelurahanSukagalih->id]);

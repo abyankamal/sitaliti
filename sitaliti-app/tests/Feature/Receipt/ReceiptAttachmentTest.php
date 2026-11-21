@@ -157,7 +157,7 @@ class ReceiptAttachmentTest extends TestCase
     {
         $operator = User::factory()->create([
             'unit_kerja_id' => $this->unit->id,
-            'role' => 'OPERATOR',
+            'role' => 'BPP',
         ]);
 
         $fileA = UploadedFile::fake()->createWithContent('nota_1.pdf', '%PDF-1.4 same-bytes');
@@ -185,7 +185,7 @@ class ReceiptAttachmentTest extends TestCase
     {
         $operator = User::factory()->create([
             'unit_kerja_id' => $this->unit->id,
-            'role' => 'OPERATOR',
+            'role' => 'BPP',
         ]);
 
         $rekeningB = AnggaranRekening::create([
@@ -255,7 +255,7 @@ class ReceiptAttachmentTest extends TestCase
     {
         $operator = User::factory()->create([
             'unit_kerja_id' => $this->unit->id,
-            'role' => 'OPERATOR',
+            'role' => 'BPP',
         ]);
 
         $draft = Kuitansi::create([

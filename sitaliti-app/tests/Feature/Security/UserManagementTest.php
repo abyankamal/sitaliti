@@ -31,7 +31,7 @@ class UserManagementTest extends TestCase
         $this->pataruman = UnitKerja::where('nama_unit', 'Kelurahan Pataruman')->firstOrFail();
 
         $this->adminUser = User::where('email', 'kasubag.keuangan@tarkid.garutkab.go.id')->firstOrFail();
-        $this->operatorUser = User::where('email', 'operator@tarkid.garutkab.go.id')->firstOrFail();
+        $this->operatorUser = User::where('email', 'bp@tarkid.garutkab.go.id')->firstOrFail();
     }
 
     public function test_unauthorized_user_cannot_access_user_management_api(): void
@@ -157,7 +157,7 @@ class UserManagementTest extends TestCase
             'name' => 'Staf Magang',
             'email' => 'magang@tarkid.garutkab.go.id',
             'password' => bcrypt('password'),
-            'role' => 'OPERATOR',
+            'role' => 'BP',
             'unit_kerja_id' => $this->pataruman->id,
         ]);
 
@@ -188,13 +188,13 @@ class UserManagementTest extends TestCase
             'name' => 'Test',
             'email' => 'blocked@tarkid.garutkab.go.id',
             'password' => 'password123',
-            'role' => 'OPERATOR',
+            'role' => 'BP',
             'unit_kerja_id' => $this->pataruman->id,
         ])->assertStatus(403);
         $this->actingAs($kelurahanAdmin)->putJson('/api/v1/users/'.$this->operatorUser->id, [
             'name' => 'Test',
             'email' => $this->operatorUser->email,
-            'role' => 'OPERATOR',
+            'role' => 'BP',
             'unit_kerja_id' => $this->pataruman->id,
         ])->assertStatus(403);
         $this->actingAs($kelurahanAdmin)->deleteJson('/api/v1/users/'.$this->operatorUser->id)->assertStatus(403);
@@ -215,7 +215,7 @@ class UserManagementTest extends TestCase
             'username' => 'user.nonaktif',
             'email' => 'inactive@tarkid.garutkab.go.id',
             'password' => 'password123',
-            'role' => 'OPERATOR',
+            'role' => 'BP',
             'unit_kerja_id' => $inactiveUnit->id,
         ])->assertStatus(422)->assertJsonValidationErrors(['unit_kerja_id']);
 

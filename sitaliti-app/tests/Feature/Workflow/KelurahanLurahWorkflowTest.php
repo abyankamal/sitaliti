@@ -128,7 +128,7 @@ class KelurahanLurahWorkflowTest extends TestCase
 
         // Users
         $this->operatorPataruman = User::factory()->create([
-            'role' => 'OPERATOR',
+            'role' => 'BPP',
             'unit_kerja_id' => $this->kelurahanPataruman->id,
         ]);
 
@@ -163,7 +163,7 @@ class KelurahanLurahWorkflowTest extends TestCase
         ]);
 
         $this->operatorKecamatan = User::factory()->create([
-            'role' => 'OPERATOR',
+            'role' => 'BPP',
             'unit_kerja_id' => $this->kecamatan->id,
         ]);
 
@@ -220,20 +220,13 @@ class KelurahanLurahWorkflowTest extends TestCase
         $this->assertEquals($this->pptkSarprasPataruman->id, $kuitansi->pptk_user_id);
         $this->assertNotNull($kuitansi->tanggal_pptk_approve);
 
-        // 3. Lurah Pataruman mengotorisasi -> harus berstatus MENUNGGU_VERIFIKASI
+        // 3. Lurah Pataruman (read-only) ditolak 403 saat mencoba mengotorisasi
         $responseLurah = $this->actingAs($this->lurahPataruman)
             ->postJson("/api/v1/receipts/{$kuitansi->id}/lurah-approve", [
                 'catatan' => 'Disetujui KPA Kelurahan Pataruman',
             ]);
 
-        $responseLurah->assertOk()
-            ->assertJsonPath('data.status', 'MENUNGGU_VERIFIKASI')
-            ->assertJsonPath('data.lurah_user_id', $this->lurahPataruman->id);
-
-        $kuitansi->refresh();
-        $this->assertEquals('MENUNGGU_VERIFIKASI', $kuitansi->status);
-        $this->assertEquals($this->lurahPataruman->id, $kuitansi->lurah_user_id);
-        $this->assertNotNull($kuitansi->tanggal_lurah_approve);
+        $responseLurah->assertStatus(403);
     }
 
     public function test_kecamatan_receipt_approval_bypasses_lurah_and_goes_directly_to_verifikasi(): void
@@ -304,18 +297,13 @@ class KelurahanLurahWorkflowTest extends TestCase
                 'alasan' => 'Dokumentasi foto fisik belum lengkap, mohon lengkapi',
             ]);
 
-        $response->assertOk()
-            ->assertJsonPath('data.status', 'DRAFT');
+        $response->assertStatus(403);
 
-        $kuitansi->refresh();
-        $this->assertEquals('DRAFT', $kuitansi->status);
-        $this->assertEquals($this->lurahPataruman->id, $kuitansi->lurah_user_id);
-        $this->assertEquals('Dokumentasi foto fisik belum lengkap, mohon lengkapi', $kuitansi->catatan_lurah);
-
+        // Pagu tetap terkunci karena Lurah tidak berwenang menolak
         $kasBulananAfter = AnggaranKasBulanan::where('anggaran_rekening_id', $this->rekeningSarprasPataruman->id)
             ->where('bulan', 1)
             ->first();
-        $this->assertEquals(0, (float) $kasBulananAfter->terkunci_bulan);
+        $this->assertEquals(1500000, (float) $kasBulananAfter->terkunci_bulan);
     }
 
     public function test_pptk_subkegiatan_two_tier_isolation_returns_forbidden(): void

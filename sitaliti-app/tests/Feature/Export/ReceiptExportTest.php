@@ -48,12 +48,12 @@ class ReceiptExportTest extends TestCase
 
         $this->operatorA = User::factory()->create([
             'unit_kerja_id' => $this->unitA->id,
-            'role' => 'OPERATOR',
+            'role' => 'BPP',
         ]);
 
         $this->operatorB = User::factory()->create([
             'unit_kerja_id' => $this->unitB->id,
-            'role' => 'OPERATOR',
+            'role' => 'BPP',
         ]);
 
         $this->verifikator = User::factory()->create([

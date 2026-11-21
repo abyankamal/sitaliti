@@ -78,7 +78,8 @@ class SeederRoleSyncTest extends TestCase
         $this->assertEquals('LURAH', $lurahPataruman->role);
         $this->assertEquals($pataruman->id, $lurahPataruman->unit_kerja_id);
         $this->assertTrue($lurahPataruman->hasRole('LURAH'));
-        $this->assertTrue($lurahPataruman->can('kuitansi.lurah_approve'));
+        $this->assertTrue($lurahPataruman->can('kuitansi.view'));
+        $this->assertFalse($lurahPataruman->can('kuitansi.lurah_approve'));
 
         // 2. PPTK Sarpras Pataruman
         $pptkSarpras = User::where('email', 'pptk.sarpras.pataruman@tarkid.garutkab.go.id')->firstOrFail();
@@ -110,12 +111,14 @@ class SeederRoleSyncTest extends TestCase
         $kecamatan = UnitKerja::where('tipe', 'KECAMATAN')->firstOrFail();
 
         $accounts = [
-            'operator@tarkid.garutkab.go.id' => 'OPERATOR',
-            'bp@tarkid.garutkab.go.id' => 'BPP',
+            'bp@tarkid.garutkab.go.id' => 'BP',
             'pptk@tarkid.garutkab.go.id' => 'PPTK',
             'kasubag.keuangan@tarkid.garutkab.go.id' => 'VERIFIKATOR',
             'camat@tarkid.garutkab.go.id' => 'KPA',
         ];
+
+        $this->assertNull(User::where('email', 'operator@tarkid.garutkab.go.id')->first());
+        $this->assertNull(User::where('email', 'operator.pataruman@tarkid.garutkab.go.id')->first());
 
         foreach ($accounts as $email => $role) {
             $user = User::where('email', $email)->firstOrFail();
@@ -127,7 +130,7 @@ class SeederRoleSyncTest extends TestCase
 
     public function test_reseeding_does_not_overwrite_existing_user_password(): void
     {
-        $user = User::where('email', 'operator@tarkid.garutkab.go.id')->firstOrFail();
+        $user = User::where('email', 'bp@tarkid.garutkab.go.id')->firstOrFail();
         $user->update(['password' => Hash::make('MyCustomStrongPass!99')]);
 
         $this->seed(DatabaseSeeder::class);
@@ -139,14 +142,14 @@ class SeederRoleSyncTest extends TestCase
 
     public function test_changing_user_role_revokes_previous_spatie_role(): void
     {
-        $user = User::where('email', 'operator@tarkid.garutkab.go.id')->firstOrFail();
-        $this->assertTrue($user->hasRole('OPERATOR'));
+        $user = User::where('email', 'bp@tarkid.garutkab.go.id')->firstOrFail();
+        $this->assertTrue($user->hasRole('BP'));
 
         $user->update(['role' => 'PPTK']);
         $user->refresh();
 
         $this->assertTrue($user->hasRole('PPTK'));
-        $this->assertFalse($user->hasRole('OPERATOR'));
+        $this->assertFalse($user->hasRole('BP'));
         $this->assertCount(1, $user->roles);
     }
 
@@ -179,13 +182,13 @@ class SeederRoleSyncTest extends TestCase
 
             // Akun baru (jika belum ada) akan memakai configured password;
             // akun yang sudah ada di setUp tetap tidak tertimpa password-nya.
-            $operator = User::where('email', 'operator@tarkid.garutkab.go.id')->firstOrFail();
+            $operator = User::where('email', 'bp@tarkid.garutkab.go.id')->firstOrFail();
             $this->assertTrue(Hash::check('password', $operator->password));
 
             // Verifikasi pembuatan user baru di production memakai configured password
             $operator->delete();
             $this->artisan('db:seed', ['--force' => true])->assertSuccessful();
-            $recreated = User::where('email', 'operator@tarkid.garutkab.go.id')->firstOrFail();
+            $recreated = User::where('email', 'bp@tarkid.garutkab.go.id')->firstOrFail();
             $this->assertTrue(Hash::check('ProdInitialPass#2026', $recreated->password));
         } finally {
             app()->detectEnvironment(fn () => $originalEnv);

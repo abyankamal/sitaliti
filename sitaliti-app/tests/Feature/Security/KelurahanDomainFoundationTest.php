@@ -52,14 +52,14 @@ class KelurahanDomainFoundationTest extends TestCase
         $perms = User::defaultRolePermissions('LURAH');
 
         $this->assertContains('kuitansi.view', $perms);
-        $this->assertContains('kuitansi.lurah_approve', $perms);
-        $this->assertContains('kuitansi.lurah_reject', $perms);
         $this->assertContains('bundle.view', $perms);
         $this->assertContains('budget.view', $perms);
-        $this->assertContains('verification.queue', $perms);
-        $this->assertContains('verification.audit', $perms);
 
-        // Permissions that Lurah must NOT have:
+        // Permissions that Lurah must NOT have (read-only):
+        $this->assertNotContains('kuitansi.lurah_approve', $perms);
+        $this->assertNotContains('kuitansi.lurah_reject', $perms);
+        $this->assertNotContains('verification.queue', $perms);
+        $this->assertNotContains('verification.audit', $perms);
         $this->assertNotContains('dashboard.view_all', $perms);
         $this->assertNotContains('kuitansi.create', $perms);
         $this->assertNotContains('kuitansi.edit', $perms);
@@ -74,7 +74,8 @@ class KelurahanDomainFoundationTest extends TestCase
         ]);
 
         $this->assertTrue($lurah->hasRole('LURAH'));
-        $this->assertTrue($lurah->hasPermissionTo('kuitansi.lurah_approve'));
+        $this->assertTrue($lurah->hasPermissionTo('kuitansi.view'));
+        $this->assertFalse($lurah->can('kuitansi.lurah_approve'));
         $this->assertFalse($lurah->can('dashboard.view_all'));
     }
 
@@ -86,12 +87,12 @@ class KelurahanDomainFoundationTest extends TestCase
         ]);
 
         $operatorKelurahan = User::factory()->create([
-            'role' => 'OPERATOR',
+            'role' => 'BPP',
             'unit_kerja_id' => $this->kelurahanPataruman->id,
         ]);
 
         $operatorKecamatan = User::factory()->create([
-            'role' => 'OPERATOR',
+            'role' => 'BPP',
             'unit_kerja_id' => $this->kecamatan->id,
         ]);
 
@@ -101,7 +102,7 @@ class KelurahanDomainFoundationTest extends TestCase
         ]);
 
         $bpKecamatan = User::factory()->create([
-            'role' => 'BPP',
+            'role' => 'BP',
             'unit_kerja_id' => $this->kecamatan->id,
         ]);
 
@@ -209,7 +210,7 @@ class KelurahanDomainFoundationTest extends TestCase
         ]);
 
         $operatorPataruman = User::factory()->create([
-            'role' => 'OPERATOR',
+            'role' => 'BPP',
             'unit_kerja_id' => $this->kelurahanPataruman->id,
         ]);
 

@@ -30,7 +30,7 @@ class ReceiptTaxOptionsPersistenceTest extends TestCase
 
         $this->operator = User::factory()->create([
             'unit_kerja_id' => $this->unit->id,
-            'role' => 'OPERATOR',
+            'role' => 'BPP',
         ]);
     }
 

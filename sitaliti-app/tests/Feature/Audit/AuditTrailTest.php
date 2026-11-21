@@ -56,7 +56,7 @@ class AuditTrailTest extends TestCase
 
         $this->operator = User::factory()->create([
             'unit_kerja_id' => $this->unit->id,
-            'role' => 'OPERATOR',
+            'role' => 'BPP',
         ]);
 
         $this->pptk = User::factory()->create([
@@ -145,19 +145,11 @@ class AuditTrailTest extends TestCase
         ]);
         $this->workflowService->submitToPptk($kuitansi->id, $this->operator);
         $riwayat2 = KuitansiRiwayat::where('kuitansi_id', $kuitansi->id)->latest('id')->first();
-        $this->assertEquals('SUBMITTED_TO_PPTK', $riwayat2->action);
+        $this->assertEquals('SUBMITTED_TO_VERIFICATION', $riwayat2->action);
         $this->assertEquals('DRAFT', $riwayat2->status_lama);
-        $this->assertEquals('MENUNGGU_PPTK', $riwayat2->status_baru);
+        $this->assertEquals('MENUNGGU_VERIFIKASI', $riwayat2->status_baru);
 
-        // 3. PPTK_APPROVED
-        $this->workflowService->approveByPptk($kuitansi->id, 'Disetujui PPTK untuk verifikasi.', $this->pptk);
-        $riwayat3 = KuitansiRiwayat::where('kuitansi_id', $kuitansi->id)->latest('id')->first();
-        $this->assertEquals('PPTK_APPROVED', $riwayat3->action);
-        $this->assertEquals('MENUNGGU_PPTK', $riwayat3->status_lama);
-        $this->assertEquals('MENUNGGU_VERIFIKASI', $riwayat3->status_baru);
-        $this->assertEquals($this->pptk->id, $riwayat3->user_id);
-
-        // 4. VERIFIED
+        // 3. VERIFIED
         KuitansiLampiran::create([
             'kuitansi_id' => $kuitansi->id,
             'anggaran_rekening_id' => $this->rekening->id,
@@ -270,6 +262,7 @@ class AuditTrailTest extends TestCase
         ]);
 
         $this->workflowService->submitToPptk($kuitansi1->id, $this->operator);
+        $kuitansi1->update(['status' => 'MENUNGGU_PPTK']);
         $this->workflowService->rejectByPptk($kuitansi1->id, 'Spesifikasi teknis tidak sesuai RKA.', $this->pptk);
 
         $logReject = KuitansiRiwayat::where('kuitansi_id', $kuitansi1->id)->latest('id')->first();
@@ -364,7 +357,6 @@ class AuditTrailTest extends TestCase
         ]);
 
         $this->workflowService->submitToPptk($kuitansi->id, $this->operator);
-        $this->workflowService->approveByPptk($kuitansi->id, 'Disetujui PPTK.', $this->pptk);
 
         // 1. Unauthenticated -> 401
         $resUnauth = $this->getJson("/api/v1/receipts/{$kuitansi->id}/history");
@@ -404,18 +396,18 @@ class AuditTrailTest extends TestCase
             ]);
 
         $data = $resSuccess->json('data');
-        $this->assertCount(3, $data);
+        $this->assertCount(2, $data);
         $this->assertEquals('DRAFT_CREATED', $data[0]['action']);
-        $this->assertEquals('SUBMITTED_TO_PPTK', $data[1]['action']);
-        $this->assertEquals('PPTK_APPROVED', $data[2]['action']);
+        $this->assertEquals('SUBMITTED_TO_VERIFICATION', $data[1]['action']);
         $this->assertEquals($this->operator->name, $data[0]['actor_name']);
-        $this->assertEquals($this->pptk->name, $data[2]['actor_name']);
 
         // 4. Verifikasi fallback actor_name jika akun dihapus (nullOnDelete)
-        $this->pptk->delete();
+        $creatorClone = User::factory()->create(['unit_kerja_id' => $this->unit->id, 'role' => 'BPP']);
+        KuitansiRiwayat::where('id', $data[1]['id'])->update(['user_id' => $creatorClone->id]);
+        $creatorClone->delete();
         $resAfterDelete = $this->actingAs($this->operator)->getJson("/api/v1/receipts/{$kuitansi->id}/history");
         $dataAfterDelete = $resAfterDelete->json('data');
-        $this->assertNull($dataAfterDelete[2]['user_id']);
-        $this->assertEquals('Sistem / Arsip Pegawai', $dataAfterDelete[2]['actor_name']);
+        $this->assertNull($dataAfterDelete[1]['user_id']);
+        $this->assertEquals('Sistem / Arsip Pegawai', $dataAfterDelete[1]['actor_name']);
     }
 }

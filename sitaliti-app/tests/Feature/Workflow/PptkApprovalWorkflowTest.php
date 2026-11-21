@@ -41,7 +41,7 @@ class PptkApprovalWorkflowTest extends TestCase
 
         $this->operator = User::factory()->create([
             'unit_kerja_id' => $this->unit->id,
-            'role' => 'OPERATOR',
+            'role' => 'BPP',
         ]);
 
         $this->pptk = User::factory()->create([
@@ -116,9 +116,11 @@ class PptkApprovalWorkflowTest extends TestCase
             ->assertJson([
                 'success' => true,
                 'data' => [
-                    'status' => 'MENUNGGU_PPTK',
+                    'status' => 'MENUNGGU_VERIFIKASI',
                 ],
             ]);
+
+        $kuitansi->update(['status' => 'MENUNGGU_PPTK']);
 
         // Pagu anggaran bulan 2 terkunci Rp 2.500.000
         $kas = AnggaranKasBulanan::where('anggaran_rekening_id', $this->rekening->id)
@@ -230,6 +232,7 @@ class PptkApprovalWorkflowTest extends TestCase
 
         $this->actingAs($this->operator)
             ->postJson("/api/v1/receipts/{$kuitansi->id}/submit");
+        $kuitansi->update(['status' => 'MENUNGGU_PPTK']);
 
         // Pagu anggaran bulan 3 terkunci
         $kas = AnggaranKasBulanan::where('anggaran_rekening_id', $this->rekening->id)

@@ -32,10 +32,11 @@ class ReceiptApiTest extends TestCase
         Storage::fake('local');
 
         $this->seed(UnitKerjaSeeder::class);
-        $this->unit = UnitKerja::first();
+        $this->unit = UnitKerja::where('tipe', 'KELURAHAN')->first() ?? UnitKerja::first();
 
         $this->user = User::factory()->create([
             'unit_kerja_id' => $this->unit->id,
+            'role' => 'BPP',
         ]);
 
         $this->rekening = AnggaranRekening::create([
@@ -244,11 +245,11 @@ class ReceiptApiTest extends TestCase
                 'success' => true,
                 'data' => [
                     'id' => $kuitansi->id,
-                    'status' => 'MENUNGGU_PPTK',
+                    'status' => 'MENUNGGU_VERIFIKASI',
                 ],
             ]);
 
-        $this->assertEquals('MENUNGGU_PPTK', $kuitansi->fresh()->status);
+        $this->assertEquals('MENUNGGU_VERIFIKASI', $kuitansi->fresh()->status);
         $this->assertNotNull($kuitansi->fresh()->tanggal_submit);
     }
 

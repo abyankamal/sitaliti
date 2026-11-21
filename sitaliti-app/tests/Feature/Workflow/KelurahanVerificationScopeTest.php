@@ -127,12 +127,12 @@ class KelurahanVerificationScopeTest extends TestCase
 
         // Users
         $this->operatorPataruman = User::factory()->create([
-            'role' => 'OPERATOR',
+            'role' => 'BPP',
             'unit_kerja_id' => $this->kelurahanPataruman->id,
         ]);
 
         $this->operatorSukagalih = User::factory()->create([
-            'role' => 'OPERATOR',
+            'role' => 'BPP',
             'unit_kerja_id' => $this->kelurahanSukagalih->id,
         ]);
 
@@ -225,13 +225,8 @@ class KelurahanVerificationScopeTest extends TestCase
 
     public function test_verification_queue_scoping_for_lurah_pptk_and_verifikator(): void
     {
-        // 1. Antrean Lurah Pataruman: hanya melihat kuitansi di Pataruman (Sarpras dan Pemberdayaan)
-        $resLurah = $this->actingAs($this->lurahPataruman)->getJson('/api/v1/verification/queue');
-        $resLurah->assertOk();
-        $idsLurah = collect($resLurah->json('data'))->pluck('id')->all();
-        $this->assertContains('KWT/PTR/VERIF/0001', $idsLurah);
-        $this->assertContains('KWT/PTR/VERIF/0002', $idsLurah);
-        $this->assertNotContains('KWT/SKG/VERIF/0001', $idsLurah);
+        // 1. Lurah Pataruman (read-only) ditolak 403 di antrean verifikasi
+        $this->actingAs($this->lurahPataruman)->getJson('/api/v1/verification/queue')->assertStatus(403);
 
         // 2. Antrean PPTK Sarpras Pataruman: hanya melihat Sarpras Pataruman
         $resPptkSarpras = $this->actingAs($this->pptkSarprasPataruman)->getJson('/api/v1/verification/queue');
@@ -264,10 +259,10 @@ class KelurahanVerificationScopeTest extends TestCase
             ->getJson("/api/v1/verification/{$this->kuitansiSarprasPataruman->id}")
             ->assertStatus(403);
 
-        // Lurah Pataruman BERHAK membuka detail kuitansi Pataruman -> 200
+        // Lurah Pataruman (read-only) juga ditolak 403 membuka workspace verifikasi -> 403
         $this->actingAs($this->lurahPataruman)
             ->getJson("/api/v1/verification/{$this->kuitansiSarprasPataruman->id}")
-            ->assertOk();
+            ->assertStatus(403);
 
         // 2. Web Route GET /verification/{id}/workspace
         // Lurah Sukagalih dilarang membuka workspace kuitansi Pataruman -> 403

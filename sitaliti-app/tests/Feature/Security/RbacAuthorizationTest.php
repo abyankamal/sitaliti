@@ -41,15 +41,15 @@ class RbacAuthorizationTest extends TestCase
 
         $this->unit = UnitKerja::first();
 
-        // 1. Buat User untuk masing-masing dari 5 Peran
+        // 1. Buat User untuk peran aktif
         $this->operator = User::factory()->create([
             'unit_kerja_id' => $this->unit->id,
-            'role' => 'OPERATOR',
+            'role' => 'BP',
         ]);
 
         $this->bpp = User::factory()->create([
             'unit_kerja_id' => $this->unit->id,
-            'role' => 'BPP',
+            'role' => 'BP',
         ]);
 
         $this->pptk = User::factory()->create([
@@ -148,12 +148,12 @@ class RbacAuthorizationTest extends TestCase
         $resCreate = $this->actingAs($this->operator)->postJson('/api/v1/receipts', $payload);
         $resCreate->assertStatus(201);
 
-        // 2. Operator DITOLAK 403 saat mencoba mengakses antrean verifikasi
-        $resQueue = $this->actingAs($this->operator)->getJson('/api/v1/verification/queue');
+        // 2. KPA (read-only) DITOLAK 403 saat mencoba mengakses antrean verifikasi
+        $resQueue = $this->actingAs($this->kpa)->getJson('/api/v1/verification/queue');
         $resQueue->assertStatus(403);
 
-        // 3. Operator DITOLAK 403 saat mencoba membuat bundel SPP
-        $resBundle = $this->actingAs($this->operator)->postJson('/api/v1/bundles', [
+        // 3. KPA (read-only) DITOLAK 403 saat mencoba membuat bundel SPP
+        $resBundle = $this->actingAs($this->kpa)->postJson('/api/v1/bundles', [
             'jenis_pengajuan' => 'SPP-GU',
             'kuitansi_ids' => [1],
         ]);
@@ -214,12 +214,19 @@ class RbacAuthorizationTest extends TestCase
         ]);
         $resAction->assertStatus(200);
 
-        // 3. Verifikator DITOLAK 403 saat mencoba membuat kuitansi
+        // 3. Verifikator BISA membuat kuitansi (validasi 422 jika payload tidak lengkap, bukan 403)
         $resCreate = $this->actingAs($this->verifikator)->postJson('/api/v1/receipts', [
+            'anggaran_rekening_id' => $this->rekening->id,
+            'nomor_kuitansi' => 'KW-VALID-CHECK',
+        ]);
+        $resCreate->assertStatus(422);
+
+        // 4. KPA (read-only) DITOLAK 403 saat mencoba membuat kuitansi
+        $resKpaCreate = $this->actingAs($this->kpa)->postJson('/api/v1/receipts', [
             'anggaran_rekening_id' => $this->rekening->id,
             'nomor_kuitansi' => 'KW-ILLEGAL',
         ]);
-        $resCreate->assertStatus(403);
+        $resKpaCreate->assertStatus(403);
     }
 
     public function test_bpp_can_create_bundle_and_kpa_can_record_sp2d(): void
@@ -249,11 +256,16 @@ class RbacAuthorizationTest extends TestCase
         $resBundle->assertStatus(201);
         $bundleId = $resBundle->json('data.id');
 
-        // 3. BPP mengajukan ke PPK dan Verifikator menyetujui Bagian A, lalu KPA mencatat SP2D
+        // 3. BP mengajukan ke PPK dan Verifikator menyetujui Bagian A, lalu KPA (read-only) ditolak 403 dan BP mencatat SP2D
         $this->actingAs($this->bpp)->postJson("/api/v1/bundles/{$bundleId}/submit-ppk")->assertStatus(200);
         $this->actingAs($this->verifikator)->postJson("/api/v1/bundles/{$bundleId}/approve-ppk")->assertStatus(200);
 
-        $resSp2d = $this->actingAs($this->kpa)->postJson("/api/v1/bundles/{$bundleId}/sp2d", [
+        $this->actingAs($this->kpa)->postJson("/api/v1/bundles/{$bundleId}/sp2d", [
+            'nomor_sp2d' => 'SP2D/TARKID/2026/02/0099',
+            'tanggal_sp2d' => '2026-02-28',
+        ])->assertStatus(403);
+
+        $resSp2d = $this->actingAs($this->bpp)->postJson("/api/v1/bundles/{$bundleId}/sp2d", [
             'nomor_sp2d' => 'SP2D/TARKID/2026/02/0099',
             'tanggal_sp2d' => '2026-02-28',
         ]);

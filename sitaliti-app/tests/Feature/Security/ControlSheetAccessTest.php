@@ -67,8 +67,8 @@ class ControlSheetAccessTest extends TestCase
             'is_leaf' => true,
         ]);
 
-        $this->operator = User::factory()->create(['unit_kerja_id' => $this->kelurahan->id, 'role' => 'OPERATOR']);
-        $this->otherUnitOperator = User::factory()->create(['unit_kerja_id' => $this->otherKelurahan->id, 'role' => 'OPERATOR']);
+        $this->operator = User::factory()->create(['unit_kerja_id' => $this->kelurahan->id, 'role' => 'BPP']);
+        $this->otherUnitOperator = User::factory()->create(['unit_kerja_id' => $this->otherKelurahan->id, 'role' => 'BPP']);
         $this->pptk = User::factory()->create(['unit_kerja_id' => $this->kelurahan->id, 'role' => 'PPTK']);
         $this->lurah = User::factory()->create(['unit_kerja_id' => $this->kelurahan->id, 'role' => 'LURAH']);
         $this->bpp = User::factory()->create(['unit_kerja_id' => $this->kelurahan->id, 'role' => 'BPP']);

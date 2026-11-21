@@ -60,15 +60,15 @@ class ReceiptRevisionWorkflowTest extends TestCase
 
         $this->operator = User::factory()->create([
             'unit_kerja_id' => $this->unit->id,
-            'role' => 'OPERATOR',
+            'role' => 'BPP',
         ]);
-        $this->operator->assignRole('OPERATOR');
+        $this->operator->assignRole('BPP');
 
         $this->otherOperator = User::factory()->create([
             'unit_kerja_id' => $this->unit->id,
-            'role' => 'OPERATOR',
+            'role' => 'BPP',
         ]);
-        $this->otherOperator->assignRole('OPERATOR');
+        $this->otherOperator->assignRole('BPP');
     }
 
     public function test_operator_dapat_mengedit_draft_dan_menghapus_lampiran(): void
@@ -193,8 +193,15 @@ class ReceiptRevisionWorkflowTest extends TestCase
             'status' => 'REVISI_MAYOR',
         ]);
 
-        // Operator lain tidak boleh mengedit draft/revisi milik operator pembuat
-        $forbidden = $this->actingAs($this->otherOperator)->putJson("/api/v1/receipts/{$kuitansi->id}", [
+        // BPP unit kerja lain tidak boleh mengedit draft/revisi milik unit ini
+        $otherUnit = UnitKerja::where('id', '!=', $this->unit->id)->first() ?? UnitKerja::create([
+            'kode_unit' => '7.01.0.00.0.00.41.0099',
+            'nama_unit' => 'Kelurahan Lain Test',
+            'tipe' => 'KELURAHAN',
+            'is_active' => true,
+        ]);
+        $this->otherOperator->update(['unit_kerja_id' => $otherUnit->id]);
+        $forbidden = $this->actingAs($this->otherOperator->fresh())->putJson("/api/v1/receipts/{$kuitansi->id}", [
             'items' => [
                 ['nama_barang' => 'Kertas A4', 'volume' => 5, 'harga_satuan' => 50000],
             ],

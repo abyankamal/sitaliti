@@ -50,7 +50,7 @@ class BudgetConcurrencyTest extends TestCase
 
         $this->operator = User::factory()->create([
             'unit_kerja_id' => $this->unit->id,
-            'role' => 'OPERATOR',
+            'role' => 'BPP',
         ]);
 
         $this->bpp = User::factory()->create([
@@ -118,7 +118,7 @@ class BudgetConcurrencyTest extends TestCase
 
         // Submit pertama kali berhasil
         $submitted = $this->workflowService->submitToPptk($kuitansi->id, $this->operator);
-        $this->assertEquals('MENUNGGU_PPTK', $submitted->status);
+        $this->assertEquals('MENUNGGU_VERIFIKASI', $submitted->status);
 
         // Periksa bahwa pagu terkunci di database
         $rakRow = AnggaranKasBulanan::where('anggaran_rekening_id', $this->rekening->id)

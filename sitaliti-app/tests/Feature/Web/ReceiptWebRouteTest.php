@@ -36,7 +36,7 @@ class ReceiptWebRouteTest extends TestCase
 
         $this->operator = User::factory()->create([
             'unit_kerja_id' => $unit->id,
-            'role' => 'OPERATOR',
+            'role' => 'BPP',
         ]);
 
         $this->verifikator = User::factory()->create([
@@ -136,7 +136,7 @@ class ReceiptWebRouteTest extends TestCase
         $resVerif->assertStatus(403);
 
         $resBundle = $this->actingAs($this->operator)->get('/bundles');
-        $resBundle->assertStatus(403);
+        $resBundle->assertStatus(200);
     }
 
     public function test_verifikator_can_access_verification_workspace(): void
@@ -189,6 +189,10 @@ class ReceiptWebRouteTest extends TestCase
         ]);
 
         $this->actingAs($lurah)
+            ->get('/budget-management')
+            ->assertStatus(403);
+
+        $this->actingAs($this->operator)
             ->get('/budget-management')
             ->assertStatus(200)
             ->assertInertia(fn (Assert $page) => $page->component('Budget/Manage'));
@@ -251,7 +255,8 @@ class ReceiptWebRouteTest extends TestCase
             'qr_token' => 'qr-edit-forbidden',
         ]);
 
-        $resVerifikator = $this->actingAs($this->verifikator)->get("/receipts/{$draft->id}/edit");
-        $resVerifikator->assertStatus(403);
+        $kpa = User::factory()->create(['unit_kerja_id' => $draft->unit_kerja_id, 'role' => 'KPA']);
+        $resKpa = $this->actingAs($kpa)->get("/receipts/{$draft->id}/edit");
+        $resKpa->assertStatus(403);
     }
 }

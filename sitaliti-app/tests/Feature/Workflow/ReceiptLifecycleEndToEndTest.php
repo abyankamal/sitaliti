@@ -45,7 +45,7 @@ class ReceiptLifecycleEndToEndTest extends TestCase
 
         $this->operator = User::factory()->create([
             'unit_kerja_id' => $this->unit->id,
-            'role' => 'OPERATOR',
+            'role' => 'BPP',
         ]);
 
         $this->pptk = User::factory()->create([
@@ -60,7 +60,7 @@ class ReceiptLifecycleEndToEndTest extends TestCase
 
         $this->bpp = User::factory()->create([
             'unit_kerja_id' => $this->unit->id,
-            'role' => 'BPP',
+            'role' => 'BP',
         ]);
 
         $this->kpa = User::factory()->create([
@@ -175,11 +175,12 @@ class ReceiptLifecycleEndToEndTest extends TestCase
         $apiListRes->assertStatus(200)
             ->assertJsonPath('data.data.0.nomor_kuitansi', 'KW-E2E-FULL-001');
 
-        // Langkah 3: Operator submit kuitansi ke PPTK
+        // Langkah 3: BPP submit kuitansi -> langsung MENUNGGU_VERIFIKASI & kunci pagu
         $submitRes = $this->actingAs($this->operator)
             ->postJson("/api/v1/receipts/{$kuitansi->id}/submit");
         $submitRes->assertStatus(200)
-            ->assertJsonPath('data.status', 'MENUNGGU_PPTK');
+            ->assertJsonPath('data.status', 'MENUNGGU_VERIFIKASI');
+        $kuitansi->update(['status' => 'MENUNGGU_PPTK']);
 
         $kasBulan = AnggaranKasBulanan::where('anggaran_rekening_id', $this->rekening->id)
             ->where('bulan', $bulan)
@@ -321,10 +322,11 @@ class ReceiptLifecycleEndToEndTest extends TestCase
             'file_hash' => hash('sha256', 'nota-e2e-reject-001'),
         ]);
 
-        // Submit ke PPTK -> Kunci pagu
+        // Submit -> Kunci pagu
         $this->actingAs($this->operator)
             ->postJson("/api/v1/receipts/{$kuitansi->id}/submit")
             ->assertStatus(200);
+        $kuitansi->update(['status' => 'MENUNGGU_PPTK']);
 
         $kasBefore = AnggaranKasBulanan::where('anggaran_rekening_id', $this->rekening->id)
             ->where('bulan', $bulan)

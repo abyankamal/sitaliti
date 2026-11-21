@@ -32,7 +32,7 @@ class UserDeleteConstraintTest extends TestCase
 
         $this->kpaAdmin = User::factory()->create([
             'unit_kerja_id' => $this->unit->id,
-            'role' => 'KPA',
+            'role' => 'VERIFIKATOR',
         ]);
     }
 

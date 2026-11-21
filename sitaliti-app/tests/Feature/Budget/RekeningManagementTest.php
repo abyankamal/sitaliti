@@ -227,7 +227,7 @@ class RekeningManagementTest extends TestCase
         $kecamatan = UnitKerja::where('tipe', 'KECAMATAN')->firstOrFail();
         $kpa = User::factory()->create([
             'unit_kerja_id' => $kecamatan->id,
-            'role' => 'KPA',
+            'role' => 'VERIFIKATOR',
         ]);
 
         $inactiveUnit = UnitKerja::create([
@@ -274,21 +274,21 @@ class RekeningManagementTest extends TestCase
         // 1. Unauthenticated -> 401
         $this->postJson('/api/v1/budget-management/rekening', $validPayload)->assertStatus(401);
 
-        // 2. PPTK / BPP -> 403
-        foreach (['PPTK', 'BPP'] as $role) {
+        // 2. PPTK, LURAH, & KPA -> 403
+        foreach (['PPTK', 'LURAH', 'KPA'] as $role) {
             $user = User::factory()->create(['unit_kerja_id' => $kecamatan->id, 'role' => $role]);
             $this->actingAs($user)->getJson('/api/v1/budget-management/rekening')->assertStatus(403);
             $this->actingAs($user)->postJson('/api/v1/budget-management/rekening', $validPayload)->assertStatus(403);
         }
 
-        // 3. OPERATOR & LURAH Kelurahan boleh mengelola unitnya sendiri, tapi ditolak (403) untuk unit lain
+        // 3. BPP Kelurahan boleh mengelola unitnya sendiri, tapi ditolak (403) untuk unit lain
         $otherUnit = UnitKerja::where('id', '!=', $kelurahan->id)->firstOrFail();
         $rekeningOtherUnit = $this->service->createRekening(array_merge($validPayload, [
             'unit_kerja_id' => $otherUnit->id,
             'kode_rekening' => '5.1.02.01.01.0067',
         ]));
 
-        foreach (['OPERATOR', 'LURAH'] as $role) {
+        foreach (['BPP'] as $role) {
             $kelurahanUser = User::factory()->create([
                 'unit_kerja_id' => $kelurahan->id,
                 'role' => $role,

@@ -32,7 +32,7 @@ class SettlementBundlingTest extends TestCase
 
         $this->bppUser = User::factory()->create([
             'unit_kerja_id' => $this->unit->id,
-            'role' => 'BPP',
+            'role' => 'BP',
         ]);
 
         $this->rekening = AnggaranRekening::create([

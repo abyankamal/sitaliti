@@ -50,18 +50,18 @@ class ReceiptQueryTest extends TestCase
         // Operator 1 dan 2 di Unit A
         $this->operatorA1 = User::factory()->create([
             'unit_kerja_id' => $this->unitA->id,
-            'role' => 'OPERATOR',
+            'role' => 'BPP',
         ]);
 
         $this->operatorA2 = User::factory()->create([
             'unit_kerja_id' => $this->unitA->id,
-            'role' => 'OPERATOR',
+            'role' => 'BPP',
         ]);
 
         // Operator di Unit B
         $this->operatorB = User::factory()->create([
             'unit_kerja_id' => $this->unitB->id,
-            'role' => 'OPERATOR',
+            'role' => 'BPP',
         ]);
 
         // PPTK, Verifikator, dan KPA
@@ -265,9 +265,9 @@ class ReceiptQueryTest extends TestCase
         $nomorListA1 = collect($resA1->json('data.data'))->pluck('nomor_kuitansi')->all();
         $this->assertContains('KW-DRAFT-A1', $nomorListA1);
         $this->assertContains('KW-SUBMITTED-A2', $nomorListA1);
-        $this->assertNotContains('KW-DRAFT-A2', $nomorListA1);
+        $this->assertContains('KW-DRAFT-A2', $nomorListA1);
         $this->assertNotContains('KW-SUBMITTED-B', $nomorListA1);
-        $this->assertCount(2, $nomorListA1);
+        $this->assertCount(3, $nomorListA1);
     }
 
     public function test_verifikator_and_kpa_have_cross_unit_visibility(): void
