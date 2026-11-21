@@ -6,6 +6,7 @@ use App\Contracts\BudgetReservationServiceInterface;
 use App\Models\Kuitansi;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 class ReceiptWorkflowService
@@ -81,17 +82,46 @@ class ReceiptWorkflowService
                 (float) $kuitansi->nominal_bruto
             );
 
+            if ($actor?->canAutoFinalizeReceipt()) {
+                $qrToken = $kuitansi->qr_token ?: Str::uuid()->toString();
+
+                $kuitansi->update([
+                    'status' => 'LOLOS_VERIFIKASI',
+                    'tanggal_submit' => now(),
+                    'verifikator_id' => $actor->id,
+                    'tanggal_verifikasi' => now(),
+                    'qr_token' => $qrToken,
+                    'tenggat_sla' => null,
+                ]);
+
+                $this->auditTrailService->log(
+                    $kuitansi,
+                    'AUTO_FINALIZED',
+                    $statusLama,
+                    'LOLOS_VERIFIKASI',
+                    'Kuitansi diajukan dan langsung difinalisasi (LOLOS_VERIFIKASI)',
+                    $actor,
+                    [
+                        'pagu_dikunci' => (float) $kuitansi->nominal_bruto,
+                        'bulan_anggaran' => $kuitansi->bulan_anggaran,
+                        'qr_token' => $qrToken,
+                    ]
+                );
+
+                return $kuitansi;
+            }
+
             $kuitansi->update([
-                'status' => 'MENUNGGU_PPTK',
+                'status' => 'MENUNGGU_VERIFIKASI',
                 'tanggal_submit' => now(),
             ]);
 
             $this->auditTrailService->log(
                 $kuitansi,
-                'SUBMITTED_TO_PPTK',
+                'SUBMITTED_TO_VERIFICATION',
                 $statusLama,
-                'MENUNGGU_PPTK',
-                'Pengajuan kuitansi ke PPTK dan penguncian pagu kas',
+                'MENUNGGU_VERIFIKASI',
+                'Pengajuan kuitansi ke antrean verifikasi dan penguncian pagu kas',
                 $actor,
                 [
                     'pagu_dikunci' => (float) $kuitansi->nominal_bruto,

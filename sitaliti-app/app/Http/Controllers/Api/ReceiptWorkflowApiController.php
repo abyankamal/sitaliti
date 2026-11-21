@@ -95,23 +95,24 @@ class ReceiptWorkflowApiController extends Controller
         }
 
         $user = $request->user();
-        if ($user && ! $user->canAccessReceipt($kuitansi)) {
+        if ($user && ! $user->canMutateReceipt($kuitansi)) {
             return $this->errorResponse('FORBIDDEN', 'Anda tidak memiliki hak akses untuk mengajukan kuitansi ini.', null, 403);
-        }
-
-        if ($user && ($user->hasRole('OPERATOR') || $user->role === 'OPERATOR') && $kuitansi->user_id !== $user->id) {
-            return $this->errorResponse('FORBIDDEN', 'Draft kuitansi ini hanya dapat diajukan oleh pembuatnya.', null, 403);
         }
 
         try {
             $updated = $this->workflowService->submitToPptk($kuitansi->id, $user);
+
+            $message = $updated->status === 'LOLOS_VERIFIKASI'
+                ? 'Kuitansi berhasil diajukan, pagu anggaran dikunci, dan langsung berstatus LOLOS_VERIFIKASI'
+                : 'Kuitansi berhasil diajukan ke antrean verifikasi dan pagu anggaran telah dikunci';
 
             return $this->successResponse([
                 'id' => $updated->id,
                 'nomor_kuitansi' => $updated->nomor_kuitansi,
                 'status' => $updated->status,
                 'tanggal_submit' => $updated->tanggal_submit,
-            ], 'Kuitansi berhasil diajukan ke PPTK dan pagu anggaran telah dikunci');
+                'qr_token' => $updated->qr_token,
+            ], $message);
         } catch (PaguOverlimitException $e) {
             return $this->errorResponse('PAGU_OVERLIMIT', $e->getMessage(), null, 422);
         } catch (InvalidArgumentException $e) {
