@@ -146,8 +146,9 @@ class RekeningManagementApiController extends Controller
     {
         $user = $request->user();
         abort_if(! $user, 403, 'Autentikasi diperlukan.');
+        abort_if($user->isReadOnlyRole(), 403, 'Peran monitoring read-only tidak berwenang mengelola anggaran.');
 
-        if ($user->isSkpdWide()) {
+        if ($user->canInputCrossUnit()) {
             return null;
         }
 

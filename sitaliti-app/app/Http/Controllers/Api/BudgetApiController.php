@@ -322,7 +322,7 @@ class BudgetApiController extends Controller
         $user = $request->user();
         $query = AnggaranRekening::query();
 
-        if ($user && ! $user->isSkpdWide()) {
+        if ($user && (! $user->isSkpdWide() || ($request->boolean('for_input') && ! $user->canInputCrossUnit()))) {
             if ($user->unit_kerja_id) {
                 $query->where('unit_kerja_id', $user->unit_kerja_id);
             } else {

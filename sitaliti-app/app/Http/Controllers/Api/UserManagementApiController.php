@@ -97,7 +97,7 @@ class UserManagementApiController extends Controller
             'username' => ['required', 'string', 'max:60', 'regex:/^[a-zA-Z0-9._-]+$/', 'unique:users,username'],
             'email' => 'nullable|email|max:255|unique:users,email',
             'password' => 'required|string|min:8',
-            'role' => ['required', 'string', Rule::in(['OPERATOR', 'BPP', 'PPTK', 'VERIFIKATOR', 'LURAH', 'KPA'])],
+            'role' => ['required', 'string', Rule::in(['BPP', 'BP', 'PPTK', 'VERIFIKATOR', 'LURAH', 'KPA'])],
             'unit_kerja_id' => ['required', Rule::exists('master_unit_kerja', 'id')->where('is_active', true)],
             'nip' => 'nullable|string|max:50',
             'jabatan' => 'nullable|string|max:100',
@@ -153,7 +153,7 @@ class UserManagementApiController extends Controller
             'username' => ['required', 'string', 'max:60', 'regex:/^[a-zA-Z0-9._-]+$/', Rule::unique('users', 'username')->ignore($user->id)],
             'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'password' => 'nullable|string|min:8',
-            'role' => ['required', 'string', Rule::in(['OPERATOR', 'BPP', 'PPTK', 'VERIFIKATOR', 'LURAH', 'KPA'])],
+            'role' => ['required', 'string', Rule::in(['BPP', 'BP', 'PPTK', 'VERIFIKATOR', 'LURAH', 'KPA'])],
             'unit_kerja_id' => ['required', Rule::exists('master_unit_kerja', 'id')->where('is_active', true)],
             'nip' => 'nullable|string|max:50',
             'jabatan' => 'nullable|string|max:100',
@@ -258,7 +258,7 @@ class UserManagementApiController extends Controller
     private function ensureSkpdAdmin(Request $request): ?JsonResponse
     {
         $user = $request->user();
-        if (! $user || $user->isKelurahanScoped() || ! $user->isSkpdWide()) {
+        if (! $user || $user->isReadOnlyRole() || $user->isKelurahanScoped() || ! $user->isSkpdWide() || ! $user->can('user.manage')) {
             return response()->json([
                 'success' => false,
                 'error' => [
@@ -275,15 +275,15 @@ class UserManagementApiController extends Controller
     {
         $unit = UnitKerja::findOrFail($unitKerjaId);
 
-        if (in_array($role, ['VERIFIKATOR', 'KPA'], true) && $unit->tipe === 'KELURAHAN') {
+        if (in_array($role, ['BP', 'VERIFIKATOR', 'KPA'], true) && $unit->tipe !== 'KECAMATAN') {
             throw ValidationException::withMessages([
-                'role' => ['Peran VERIFIKATOR atau KPA hanya dapat ditetapkan pada unit kerja tipe KECAMATAN.'],
+                'role' => ['Peran BP, VERIFIKATOR, atau KPA hanya dapat ditetapkan pada unit kerja tipe KECAMATAN.'],
             ]);
         }
 
-        if ($role === 'LURAH' && $unit->tipe === 'KECAMATAN') {
+        if (in_array($role, ['BPP', 'LURAH'], true) && $unit->tipe !== 'KELURAHAN') {
             throw ValidationException::withMessages([
-                'role' => ['Peran LURAH hanya dapat ditetapkan pada unit kerja tipe KELURAHAN.'],
+                'role' => ['Peran BPP atau LURAH hanya dapat ditetapkan pada unit kerja tipe KELURAHAN.'],
             ]);
         }
     }
