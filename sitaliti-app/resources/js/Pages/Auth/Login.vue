@@ -47,7 +47,7 @@ const submit = () => {
                     class="mt-1.5 block w-full"
                     :class="{ 'border-semantic-danger focus:border-semantic-danger focus:ring-semantic-danger': form.errors.username }"
                     v-model="form.username"
-                    placeholder="operator.pataruman"
+                    placeholder="bpp.pataruman"
                     required
                     autofocus
                     autocomplete="username"

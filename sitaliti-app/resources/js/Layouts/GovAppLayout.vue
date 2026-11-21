@@ -21,22 +21,20 @@ defineProps({
 
 const page = usePage();
 const user = computed(() => page.props.auth?.user || {
-    name: 'Operator SPJ',
-    email: 'operator@tarogongkidul.garutkab.go.id',
-    role: 'OPERATOR'
+    name: 'Bendahara',
+    email: 'bpp@tarkid.garutkab.go.id',
+    role: 'BPP'
 });
 
 const isSidebarOpen = ref(true);
 
 const roleDisplayName = computed(() => {
-    if (user.value?.role === 'LURAH') return 'Lurah (KPA Kelurahan)';
-    if (user.value?.role === 'BPP') {
-        return user.value?.is_kelurahan_bpp ? 'Bendahara Pengeluaran Pembantu (BPP)' : 'Bendahara Pengeluaran (BP)';
-    }
+    if (user.value?.role === 'LURAH') return 'Lurah (Monitoring)';
+    if (user.value?.role === 'BPP') return 'Bendahara Pengeluaran Pembantu (BPP)';
+    if (user.value?.role === 'BP') return 'Bendahara Pengeluaran (BP)';
     if (user.value?.role === 'PPTK') return 'Pejabat Pelaksana Teknis (PPTK)';
     if (user.value?.role === 'VERIFIKATOR') return 'Kasubag Keuangan (PPK)';
-    if (user.value?.role === 'KPA') return 'Camat / KPA';
-    if (user.value?.role === 'OPERATOR') return 'Operator SPJ';
+    if (user.value?.role === 'KPA') return 'Camat / KPA (Monitoring)';
     return user.value?.role || 'Pegawai';
 });
 
@@ -46,44 +44,44 @@ const allNavItems = [
         name: 'Dashboard Anggaran',
         route: 'dashboard',
         icon: 'dashboard',
-        roles: ['OPERATOR', 'PPTK', 'VERIFIKATOR', 'BPP', 'KPA', 'LURAH'],
+        roles: ['BPP', 'BP', 'PPTK', 'VERIFIKATOR', 'KPA', 'LURAH'],
     },
     {
         name: 'Daftar Kuitansi',
         route: 'receipts.index',
         icon: 'table',
-        roles: ['OPERATOR', 'PPTK', 'VERIFIKATOR', 'BPP', 'KPA', 'LURAH'],
+        roles: ['BPP', 'BP', 'PPTK', 'VERIFIKATOR', 'KPA', 'LURAH'],
     },
     {
         name: 'Input Kuitansi',
         route: 'receipts.create',
         icon: 'receipt',
-        roles: ['OPERATOR'],
+        roles: ['BPP', 'BP', 'VERIFIKATOR'],
     },
     {
         name: 'Workspace Verifikasi',
         route: 'verification.index',
         icon: 'verification',
-        roles: ['PPTK', 'VERIFIKATOR', 'LURAH'],
+        roles: ['BP', 'VERIFIKATOR', 'PPTK'],
     },
     {
         name: 'Bundel SPP (GU/TU/LS)',
         route: 'bundles.index',
         icon: 'bundle',
-        roles: ['BPP', 'KPA', 'VERIFIKATOR', 'LURAH'],
+        roles: ['BPP', 'BP', 'KPA', 'VERIFIKATOR', 'LURAH'],
     },
     {
         name: 'Kelola Pengguna & PPTK',
         route: 'users.index',
         icon: 'users',
-        roles: ['VERIFIKATOR', 'KPA'],
+        roles: ['VERIFIKATOR'],
         skpdOnly: true,
     },
     {
         name: 'Kelola Anggaran (RAK)',
         route: 'budget-management.index',
         icon: 'table',
-        roles: ['VERIFIKATOR', 'KPA', 'LURAH', 'OPERATOR'],
+        roles: ['VERIFIKATOR', 'BP', 'BPP'],
     },
 ];
 

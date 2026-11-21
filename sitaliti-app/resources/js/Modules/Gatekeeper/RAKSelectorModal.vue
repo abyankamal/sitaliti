@@ -20,7 +20,7 @@ const emit = defineEmits(['close', 'select']);
 
 const page = usePage();
 const currentUser = computed(() => page.props.auth?.user);
-const isUnitScoped = computed(() => !currentUser.value?.is_skpd_wide);
+const isUnitScoped = computed(() => !currentUser.value?.can_input_cross_unit);
 
 const units = ref([]);
 const subActivities = ref([]);

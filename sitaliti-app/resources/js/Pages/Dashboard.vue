@@ -16,7 +16,7 @@ import RAKSelectorModal from '@/Modules/Gatekeeper/RAKSelectorModal.vue';
 const page = usePage();
 const currentUser = computed(() => page.props.auth?.user);
 const isKelurahan = computed(() => currentUser.value?.is_kelurahan_scoped);
-const canCreateReceipt = computed(() => currentUser.value?.role === 'OPERATOR');
+const canCreateReceipt = computed(() => ['BPP', 'BP', 'VERIFIKATOR'].includes(currentUser.value?.role));
 
 const loading = ref(true);
 const dashboardData = ref(null);
