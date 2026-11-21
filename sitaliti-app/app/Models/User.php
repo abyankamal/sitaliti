@@ -57,20 +57,31 @@ class User extends Authenticatable
     public static function defaultRolePermissions(?string $role = null): array
     {
         $all = [
-            'OPERATOR' => [
+            'BPP' => [
                 'kuitansi.view',
                 'kuitansi.create',
                 'kuitansi.edit',
                 'kuitansi.submit_pptk',
                 'kuitansi.recall',
+                'bundle.view',
+                'bundle.create',
+                'bundle.unbundle',
                 'budget.manage',
             ],
-            'BPP' => [
+            'BP' => [
                 'kuitansi.view',
+                'kuitansi.create',
+                'kuitansi.edit',
+                'kuitansi.submit_pptk',
+                'verification.queue',
+                'verification.audit',
+                'verification.process_action',
+                'verification.generate_qr',
                 'bundle.view',
                 'bundle.create',
                 'bundle.unbundle',
                 'bundle.record_sp2d',
+                'budget.manage',
             ],
             'PPTK' => [
                 'kuitansi.view',
@@ -81,33 +92,28 @@ class User extends Authenticatable
             ],
             'VERIFIKATOR' => [
                 'kuitansi.view',
-                'bundle.view',
+                'kuitansi.create',
+                'kuitansi.edit',
+                'kuitansi.submit_pptk',
                 'verification.queue',
                 'verification.audit',
                 'verification.process_action',
                 'verification.generate_qr',
+                'bundle.view',
                 'user.manage',
                 'budget.manage',
+                'dashboard.view_all',
             ],
             'LURAH' => [
                 'kuitansi.view',
-                'kuitansi.lurah_approve',
-                'kuitansi.lurah_reject',
                 'bundle.view',
                 'budget.view',
-                'budget.manage',
-                'verification.queue',
-                'verification.audit',
             ],
             'KPA' => [
                 'kuitansi.view',
                 'bundle.view',
-                'bundle.create',
-                'bundle.unbundle',
-                'bundle.record_sp2d',
+                'budget.view',
                 'dashboard.view_all',
-                'user.manage',
-                'budget.manage',
             ],
         ];
 
@@ -155,7 +161,7 @@ class User extends Authenticatable
      * @var array<string, mixed>
      */
     protected $attributes = [
-        'role' => 'OPERATOR',
+        'role' => 'BPP',
     ];
 
     /**
@@ -231,19 +237,43 @@ class User extends Authenticatable
     }
 
     /**
-     * Apakah pengguna memiliki akses lintas seluruh SKPD (Verifikator, KPA Camat, BP Kecamatan).
+     * Apakah pengguna memiliki akses baca/monitoring lintas seluruh SKPD (Verifikator, KPA Camat, BP Kecamatan).
      */
     public function isSkpdWide(): bool
     {
-        if (in_array($this->role, ['VERIFIKATOR', 'KPA'], true)) {
-            return true;
-        }
+        return in_array($this->role, ['VERIFIKATOR', 'KPA', 'BP'], true);
+    }
 
-        if ($this->role === 'BPP') {
-            return $this->unitKerja?->tipe !== 'KELURAHAN';
-        }
+    /**
+     * Apakah pengguna dapat menginput kuitansi dan mengelola pagu lintas seluruh unit kerja (Kasubag Keuangan).
+     */
+    public function canInputCrossUnit(): bool
+    {
+        return $this->role === 'VERIFIKATOR';
+    }
 
-        return false;
+    /**
+     * Apakah kuitansi yang diajukan oleh pengguna langsung berstatus final (LOLOS_VERIFIKASI).
+     */
+    public function canAutoFinalizeReceipt(): bool
+    {
+        return in_array($this->role, ['BP', 'VERIFIKATOR'], true);
+    }
+
+    /**
+     * Apakah pengguna berwenang memverifikasi kuitansi BPP Kelurahan.
+     */
+    public function canVerifyReceipt(): bool
+    {
+        return in_array($this->role, ['BP', 'VERIFIKATOR'], true);
+    }
+
+    /**
+     * Apakah pengguna merupakan peran monitoring read-only murni (Lurah atau Camat/KPA).
+     */
+    public function isReadOnlyRole(): bool
+    {
+        return in_array($this->role, ['LURAH', 'KPA'], true);
     }
 
     /**
@@ -252,6 +282,66 @@ class User extends Authenticatable
     public function isKelurahanBpp(): bool
     {
         return $this->role === 'BPP' && $this->unitKerja?->tipe === 'KELURAHAN';
+    }
+
+    /**
+     * Apakah pengguna berhak membuat/mengubah/mengajukan suatu kuitansi (write scope).
+     */
+    public function canMutateReceipt(Kuitansi $kuitansi): bool
+    {
+        if ($this->isReadOnlyRole()) {
+            return false;
+        }
+
+        if ($this->canInputCrossUnit()) {
+            return true;
+        }
+
+        if (! in_array($this->role, ['BPP', 'BP'], true) || $this->unit_kerja_id === null) {
+            return false;
+        }
+
+        return (int) $this->unit_kerja_id === (int) $kuitansi->unit_kerja_id;
+    }
+
+    /**
+     * Apakah pengguna berhak menginput kuitansi pada suatu rekening anggaran (write scope).
+     */
+    public function canInputRekening(AnggaranRekening $rekening): bool
+    {
+        if ($this->isReadOnlyRole()) {
+            return false;
+        }
+
+        if ($this->canInputCrossUnit()) {
+            return true;
+        }
+
+        if (! in_array($this->role, ['BPP', 'BP'], true) || $this->unit_kerja_id === null) {
+            return false;
+        }
+
+        return (int) $this->unit_kerja_id === (int) $rekening->unit_kerja_id;
+    }
+
+    /**
+     * Apakah pengguna berhak mengelola pagu/rekening pada unit kerja tertentu.
+     */
+    public function canManageUnitBudget(int $unitId): bool
+    {
+        if ($this->isReadOnlyRole()) {
+            return false;
+        }
+
+        if ($this->canInputCrossUnit()) {
+            return true;
+        }
+
+        if (! in_array($this->role, ['BPP', 'BP'], true) || $this->unit_kerja_id === null) {
+            return false;
+        }
+
+        return (int) $this->unit_kerja_id === $unitId;
     }
 
     /**
@@ -298,10 +388,6 @@ class User extends Authenticatable
 
         if ((int) $this->unit_kerja_id !== $unitId) {
             return false;
-        }
-
-        if (($this->hasRole('OPERATOR') || $this->role === 'OPERATOR') && $kuitansi->status === 'DRAFT') {
-            return (int) $kuitansi->user_id === (int) $this->id;
         }
 
         return true;
