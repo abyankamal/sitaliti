@@ -92,10 +92,10 @@ class VerificationApiController extends Controller
         ]);
 
         $user = $request->user();
-        if ($user && ($user->role !== 'VERIFIKATOR' || ! $user->can('verification.process_action'))) {
+        if ($user && (! $user->canVerifyReceipt() || ! $user->can('verification.process_action'))) {
             return $this->errorResponse(
                 'FORBIDDEN',
-                'Hanya Verifikator yang berwenang memproses keputusan verifikasi.',
+                'Hanya BP Kecamatan atau Kasubag Keuangan (Verifikator) yang berwenang memproses keputusan verifikasi.',
                 null,
                 403
             );

@@ -51,17 +51,8 @@ class VerificationService implements VerificationServiceInterface
                 'REVISI_MINOR',
                 'LOLOS_VERIFIKASI',
             ]);
-        } elseif ($role === 'LURAH') {
-            // Khusus Lurah (KPA Kelurahan), default antrean mencakup MENUNGGU_LURAH
-            $query->whereIn('status', [
-                'MENUNGGU_LURAH',
-                'MENUNGGU_VERIFIKASI',
-                'REVISI_MINOR',
-                'REVISI_MAYOR',
-                'LOLOS_VERIFIKASI',
-            ]);
         } else {
-            // Default antrean verifikator/lainnya mengecualikan DRAFT, MENUNGGU_PPTK, dan MENUNGGU_LURAH
+            // Default antrean verifikator/BP mengecualikan DRAFT, MENUNGGU_PPTK, dan MENUNGGU_LURAH
             $query->whereIn('status', [
                 'MENUNGGU_VERIFIKASI',
                 'REVISI_MINOR',

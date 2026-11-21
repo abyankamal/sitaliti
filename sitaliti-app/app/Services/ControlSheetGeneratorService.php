@@ -57,7 +57,10 @@ class ControlSheetGeneratorService implements ControlSheetGeneratorServiceInterf
             'nominal_neto' => (float) $kuitansi->nominal_neto,
             'qr_token' => $kuitansi->qr_token,
             'verification_url' => $kuitansi->qr_token ? url("/verify/{$kuitansi->qr_token}") : null,
-            'catatan_verifikasi' => $kuitansi->catatan_verifikasi,
+            'catatan_verifikasi' => $kuitansi->catatan_verifikasi ?? ($kuitansi->checklistVerifikasi->isEmpty()
+                ? 'Difinalisasi otomatis saat pengajuan oleh pejabat berwenang.'
+                : null),
+            'is_auto_finalized' => $kuitansi->checklistVerifikasi->isEmpty(),
             'unit_kerja' => $kuitansi->unitKerja,
             'rekening' => $kuitansi->rekening,
             'items' => $kuitansi->items,
