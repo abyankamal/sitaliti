@@ -353,30 +353,8 @@ async function handleAuthSubmit() {
                                         </Link>
                                     </div>
 
-                                    <!-- Aksi Spesifik LURAH jika status MENUNGGU_LURAH -->
+                                    <!-- Aksi Spesifik LURAH jika status MENUNGGU_LURAH (historis) -->
                                     <div v-else-if="item.status === 'MENUNGGU_LURAH'" class="flex items-center justify-center gap-1.5">
-                                        <button
-                                            v-if="userRole === 'LURAH'"
-                                            @click="openAuthModal(item, 'LURAH', 'APPROVE')"
-                                            class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
-                                            title="Otorisasi dan teruskan ke Verifikator Kecamatan"
-                                        >
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                            </svg>
-                                            Otorisasi
-                                        </button>
-                                        <button
-                                            v-if="userRole === 'LURAH'"
-                                            @click="openAuthModal(item, 'LURAH', 'REJECT')"
-                                            class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-600 text-white hover:bg-rose-700 shadow-sm"
-                                            title="Tolak dan pulihkan pagu kas"
-                                        >
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                            </svg>
-                                            Tolak
-                                        </button>
                                         <Link
                                             :href="route('verification.workspace', { id: item.id })"
                                             class="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200"

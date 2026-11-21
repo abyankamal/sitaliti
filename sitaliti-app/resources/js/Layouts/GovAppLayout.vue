@@ -87,7 +87,7 @@ const allNavItems = [
 
 // Filter navigasi berdasarkan peran aktif pengguna
 const navItems = computed(() => {
-    const userRole = user.value?.role || 'OPERATOR';
+    const userRole = user.value?.role || 'BPP';
     const isSkpd = !user.value?.is_kelurahan_scoped;
     return allNavItems.filter(item => {
         if (item.roles && !item.roles.includes(userRole)) return false;

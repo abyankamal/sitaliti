@@ -9,19 +9,19 @@ const page = usePage();
 const currentUser = computed(() => page.props.auth?.user);
 
 const ROLES = [
-    { value: 'OPERATOR', label: 'Operator SPJ' },
+    { value: 'BPP', label: 'BPP Kelurahan' },
+    { value: 'BP', label: 'Bendahara Pengeluaran (BP Kecamatan)' },
     { value: 'PPTK', label: 'PPTK' },
-    { value: 'LURAH', label: 'Lurah (KPA Kelurahan)' },
-    { value: 'BPP', label: 'Bendahara Pengeluaran / BPP' },
-    { value: 'VERIFIKATOR', label: 'Verifikator / PPK' },
-    { value: 'KPA', label: 'KPA / Camat' },
+    { value: 'LURAH', label: 'Lurah (Monitoring)' },
+    { value: 'VERIFIKATOR', label: 'Kasubag Keuangan (Verifikator)' },
+    { value: 'KPA', label: 'Camat / KPA (Monitoring)' },
 ];
 
 const ROLE_BADGE_MAP = {
-    OPERATOR: 'slate',
+    BPP: 'emerald',
+    BP: 'emerald',
     PPTK: 'indigo',
     LURAH: 'amber',
-    BPP: 'emerald',
     VERIFIKATOR: 'navy',
     KPA: 'navy',
 };
@@ -63,7 +63,7 @@ const form = ref({
     username: '',
     email: '',
     password: '',
-    role: 'OPERATOR',
+    role: 'BPP',
     unit_kerja_id: '',
     nip: '',
     jabatan: '',
@@ -157,7 +157,7 @@ function openCreateModal() {
         username: '',
         email: '',
         password: '',
-        role: 'OPERATOR',
+        role: 'BPP',
         unit_kerja_id: units.value[0]?.id ?? '',
         nip: '',
         jabatan: '',
@@ -179,7 +179,7 @@ function openEditModal(user) {
         username: user.username ?? '',
         email: user.email ?? '',
         password: '',
-        role: user.role ?? 'OPERATOR',
+        role: user.role ?? 'BPP',
         unit_kerja_id: user.unit_kerja_id ?? '',
         nip: user.nip ?? '',
         jabatan: user.jabatan ?? '',

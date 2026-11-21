@@ -11,7 +11,7 @@ import { BUDGET_CATEGORIES } from '@/Constants/budgetCategories';
 
 const page = usePage();
 const currentUser = computed(() => page.props.auth?.user || {});
-const isSkpdWide = computed(() => ['VERIFIKATOR', 'KPA'].includes(currentUser.value?.role));
+const isSkpdWide = computed(() => !!currentUser.value?.can_input_cross_unit);
 const userUnitId = computed(() => currentUser.value?.unit_kerja_id ?? '');
 
 const categoryOptions = Object.values(BUDGET_CATEGORIES);

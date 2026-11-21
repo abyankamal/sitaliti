@@ -16,24 +16,24 @@ const isKelurahanBpp = computed(() => !!currentUser.value?.is_kelurahan_bpp || (
 const isLurah = computed(() => userRole.value === 'LURAH');
 const isKpa = computed(() => userRole.value === 'KPA');
 const isVerifikator = computed(() => userRole.value === 'VERIFIKATOR');
-const isBp = computed(() => userRole.value === 'BENDAHARA_PENGELUARAN' || (userRole.value === 'BPP' && !isKelurahanScoped.value));
+const isBp = computed(() => userRole.value === 'BP');
 const isBpp = computed(() => userRole.value === 'BPP' && isKelurahanScoped.value);
 
 const canCreateBundle = computed(() => {
-    if (isLurah.value) return false;
-    return isBp.value || isBpp.value || isKpa.value;
+    if (isLurah.value || isKpa.value) return false;
+    return isBp.value || isBpp.value;
 });
 
 const canApprovePpk = computed(() => isVerifikator.value);
 
 const canRecordSp2d = computed(() => {
-    if (isKelurahanScoped.value) return false;
-    return isBp.value || isKpa.value || userRole.value === 'CAMAT';
+    if (isKelurahanScoped.value || isKpa.value) return false;
+    return isBp.value;
 });
 
 const canUnbundle = computed(() => {
-    if (isLurah.value) return false;
-    return isBp.value || isBpp.value || isKpa.value;
+    if (isLurah.value || isKpa.value) return false;
+    return isBp.value || isBpp.value;
 });
 
 const bundles = ref([]);

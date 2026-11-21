@@ -22,8 +22,8 @@ const props = defineProps({
 const page = usePage();
 const currentUser = computed(() => page.props.auth?.user || {});
 const userRole = computed(() => currentUser.value.role || '');
-const isVerifikator = computed(() => userRole.value === 'VERIFIKATOR');
-const isLurah = computed(() => userRole.value === 'LURAH');
+const isVerifikator = computed(() => ['BP', 'VERIFIKATOR'].includes(userRole.value));
+const isLurah = computed(() => false);
 const isPptk = computed(() => userRole.value === 'PPTK');
 
 const detail = ref(null);
