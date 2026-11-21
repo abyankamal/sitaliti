@@ -66,15 +66,9 @@ class DatabaseSeeder extends Seeder
         $officialUsers = [
             // --- Akun Tingkat Kecamatan ---
             [
-                'name' => 'Operator SPJ Kecamatan',
-                'email' => 'operator@tarkid.garutkab.go.id',
-                'role' => 'OPERATOR',
-                'unit_kerja_id' => $kecamatan?->id,
-            ],
-            [
                 'name' => 'Bendahara Pengeluaran (BP) Kecamatan',
                 'email' => 'bp@tarkid.garutkab.go.id',
-                'role' => 'BPP',
+                'role' => 'BP',
                 'unit_kerja_id' => $kecamatan?->id,
             ],
             [
@@ -101,12 +95,6 @@ class DatabaseSeeder extends Seeder
                 'role' => 'KPA',
                 'unit_kerja_id' => $kecamatan?->id,
             ],
-            [
-                'name' => 'Test User',
-                'email' => 'test@example.com',
-                'role' => 'OPERATOR',
-                'unit_kerja_id' => $kecamatan?->id,
-            ],
 
             // --- Akun Tingkat Kelurahan Pataruman ---
             [
@@ -128,12 +116,6 @@ class DatabaseSeeder extends Seeder
                 'role' => 'PPTK',
                 'unit_kerja_id' => $pataruman?->id,
                 'assignment_subkegiatan' => '7.01.03.2.02.0003',
-            ],
-            [
-                'name' => 'Operator Kelurahan Pataruman',
-                'email' => 'operator.pataruman@tarkid.garutkab.go.id',
-                'role' => 'OPERATOR',
-                'unit_kerja_id' => $pataruman?->id,
             ],
             [
                 'name' => 'Bendahara Pengeluaran Pembantu (BPP) Kelurahan Pataruman',
