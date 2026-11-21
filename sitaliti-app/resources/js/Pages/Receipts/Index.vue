@@ -12,7 +12,7 @@ import { formatTanggalIndo, NAMA_BULAN } from '@/Utils/date';
 const page = usePage();
 const currentUser = computed(() => page.props.auth?.user);
 const isUnitScoped = computed(() => !currentUser.value?.is_skpd_wide);
-const canCreate = computed(() => currentUser.value?.role === 'OPERATOR');
+const canCreate = computed(() => ['BPP', 'BP', 'VERIFIKATOR'].includes(currentUser.value?.role));
 
 const props = defineProps({
     receipts: {

@@ -639,7 +639,9 @@ async function confirmDeleteAttachment() {
                                 ? 'Memproses...'
                                 : isMinorRevision
                                   ? 'Simpan & Kirim Ulang ke Verifikator'
-                                  : 'Simpan & Ajukan ke PPTK'
+                                  : $page.props.auth?.user?.can_auto_finalize_receipt
+                                    ? 'Simpan & Finalisasi'
+                                    : 'Simpan & Ajukan Verifikasi'
                         }}
                     </GovButton>
                 </div>

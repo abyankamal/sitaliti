@@ -24,7 +24,19 @@ const emit = defineEmits(['close', 'refresh']);
 
 const page = usePage();
 const currentUser = computed(() => page.props.auth?.user || {});
-const userRole = computed(() => currentUser.value?.role || 'OPERATOR');
+const userRole = computed(() => currentUser.value?.role || '');
+
+const canMutateReceipt = computed(() => {
+    if (!receipt.value) return false;
+    if (['LURAH', 'KPA'].includes(userRole.value)) return false;
+    if (userRole.value === 'VERIFIKATOR') return true;
+    if (['BPP', 'BP'].includes(userRole.value)) {
+        return Number(receipt.value.unit_kerja_id) === Number(currentUser.value?.unit_kerja_id);
+    }
+    return false;
+});
+
+const canVerifyReceipt = computed(() => ['BP', 'VERIFIKATOR'].includes(userRole.value));
 
 const receipt = ref(null);
 const isLoading = ref(false);
@@ -513,9 +525,9 @@ function getStatusBadge(status) {
                         </GovButton>
 
                         <div class="flex flex-wrap items-center justify-end gap-2">
-                            <!-- Aksi Operator: Edit / Revisi untuk DRAFT, REVISI_MINOR, REVISI_MAYOR -->
+                            <!-- Aksi Penginput (BPP / BP / Kasubag): Edit / Revisi untuk DRAFT, REVISI_MINOR, REVISI_MAYOR -->
                             <Link
-                                v-if="userRole === 'OPERATOR' && ['DRAFT', 'REVISI_MINOR', 'REVISI_MAYOR'].includes(receipt.status)"
+                                v-if="canMutateReceipt && ['DRAFT', 'REVISI_MINOR', 'REVISI_MAYOR'].includes(receipt.status)"
                                 :href="`/receipts/${receipt.id}/edit`"
                             >
                                 <GovButton variant="secondary" size="sm">
@@ -523,23 +535,23 @@ function getStatusBadge(status) {
                                 </GovButton>
                             </Link>
 
-                            <!-- Aksi Operator: Submit jika DRAFT -->
+                            <!-- Aksi Penginput (BPP / BP / Kasubag): Submit jika DRAFT -->
                             <GovButton
-                                v-if="userRole === 'OPERATOR' && receipt.status === 'DRAFT'"
+                                v-if="canMutateReceipt && receipt.status === 'DRAFT'"
                                 @click="openActionModal('SUBMIT_PPTK')"
                                 variant="primary"
                                 size="sm"
                                 :disabled="isActionLoading"
                                 class="shadow-sm"
                             >
-                                {{ isActionLoading ? 'Memproses...' : 'Ajukan ke PPTK' }}
+                                {{ isActionLoading ? 'Memproses...' : (currentUser?.can_auto_finalize_receipt ? 'Ajukan & Finalisasi' : 'Ajukan Verifikasi') }}
                             </GovButton>
 
-                            <!-- Aksi Operator: Self-Recall ke DRAFT jika milik sendiri & belum masuk siklus SLA Revisi Minor -->
+                            <!-- Aksi BPP: Self-Recall ke DRAFT jika milik unit sendiri & belum masuk siklus SLA Revisi Minor -->
                             <GovButton
                                 v-if="
-                                    userRole === 'OPERATOR'
-                                    && Number(receipt.user_id) === Number(currentUser.id)
+                                    userRole === 'BPP'
+                                    && canMutateReceipt
                                     && (['MENUNGGU_PPTK', 'MENUNGGU_LURAH'].includes(receipt.status) || (receipt.status === 'MENUNGGU_VERIFIKASI' && !receipt.tenggat_sla))
                                 "
                                 @click="openActionModal('RECALL_DRAFT')"
@@ -572,31 +584,9 @@ function getStatusBadge(status) {
                                 </GovButton>
                             </template>
 
-                            <!-- Aksi Lurah: Otorisasi & Tolak jika MENUNGGU_LURAH -->
-                            <template v-if="userRole === 'LURAH' && receipt.status === 'MENUNGGU_LURAH'">
-                                <GovButton
-                                    @click="openRejectModal('LURAH')"
-                                    variant="danger"
-                                    size="sm"
-                                    :disabled="isActionLoading"
-                                >
-                                    Tolak / Kembalikan
-                                </GovButton>
-
-                                <GovButton
-                                    @click="openActionModal('LURAH_APPROVE')"
-                                    variant="primary"
-                                    size="sm"
-                                    :disabled="isActionLoading"
-                                    class="bg-emerald-600 hover:bg-emerald-700 text-white"
-                                >
-                                    {{ isActionLoading ? 'Memproses...' : 'Otorisasi Lurah' }}
-                                </GovButton>
-                            </template>
-
-                        <!-- Aksi Verifikator: Tautan ke Workspace Verifikasi -->
+                        <!-- Aksi Verifikator (BP Kecamatan / Kasubag Keuangan): Tautan ke Workspace Verifikasi -->
                         <Link
-                            v-if="userRole === 'VERIFIKATOR' && ['MENUNGGU_VERIFIKASI', 'REVISI_MINOR'].includes(receipt.status)"
+                            v-if="canVerifyReceipt && ['MENUNGGU_VERIFIKASI', 'REVISI_MINOR'].includes(receipt.status)"
                             :href="route('verification.workspace', receipt.id)"
                         >
                             <GovButton variant="primary" size="sm">
@@ -627,7 +617,7 @@ function getStatusBadge(status) {
                     <h3 class="font-bold text-slate-900 text-base">
                         {{
                             actionModalMode === 'SUBMIT_PPTK'
-                                ? 'Ajukan Kuitansi ke PPTK'
+                                ? (currentUser?.can_auto_finalize_receipt ? 'Ajukan & Finalisasi Kuitansi' : 'Ajukan Kuitansi untuk Verifikasi')
                                 : actionModalMode === 'RECALL_DRAFT'
                                     ? 'Tarik Kembali Kuitansi ke Draft'
                                     : actionModalMode === 'PPTK_APPROVE'
@@ -638,7 +628,9 @@ function getStatusBadge(status) {
                     <p class="text-xs text-slate-500 mt-1">
                         {{
                             actionModalMode === 'SUBMIT_PPTK'
-                                ? `Ajukan kuitansi ${receipt?.nomor_kuitansi} ke PPTK? Pagu anggaran kas akan otomatis dikunci.`
+                                ? (currentUser?.can_auto_finalize_receipt
+                                    ? `Ajukan kuitansi ${receipt?.nomor_kuitansi}? Pagu anggaran kas akan otomatis dikunci dan kuitansi langsung berstatus LOLOS_VERIFIKASI.`
+                                    : `Ajukan kuitansi ${receipt?.nomor_kuitansi} ke antrean verifikasi? Pagu anggaran kas akan otomatis dikunci.`)
                                 : actionModalMode === 'RECALL_DRAFT'
                                     ? `Tarik kuitansi ${receipt?.nomor_kuitansi} kembali ke DRAFT? Pagu anggaran yang terkunci akan dilepas otomatis dan persetujuan sebelumnya dibatalkan.`
                                     : actionModalMode === 'PPTK_APPROVE'

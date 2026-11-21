@@ -310,7 +310,7 @@ async function handleSubmitDraft() {
                         :disabled="isExceedingBudget || totalNilaiBelanja === 0"
                         @click="handleSubmitDraft"
                     >
-                        Simpan & Ajukan Verifikasi
+                        {{ $page.props.auth?.user?.can_auto_finalize_receipt ? 'Simpan & Finalisasi' : 'Simpan & Ajukan Verifikasi' }}
                     </GovButton>
                 </div>
             </div>
