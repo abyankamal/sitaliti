@@ -66,7 +66,7 @@ class ReceiptWebController extends Controller
     public function edit(Request $request, string|int $id): Response
     {
         $kuitansi = Kuitansi::resolveOrFailByIdOrNumber($id);
-        if (! $request->user()->canAccessReceipt($kuitansi)) {
+        if (! $request->user()->canMutateReceipt($kuitansi)) {
             abort(403, 'Anda tidak memiliki hak akses untuk mengedit kuitansi ini.');
         }
 

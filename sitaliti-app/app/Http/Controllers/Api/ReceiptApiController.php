@@ -105,7 +105,7 @@ class ReceiptApiController extends Controller
 
         $user = $request->user();
         $rekening = AnggaranRekening::find($validated['anggaran_rekening_id']);
-        if ($user && $rekening && ! $user->canAccessRekening($rekening)) {
+        if ($user && $rekening && ! $user->canInputRekening($rekening)) {
             return $this->errorResponse('FORBIDDEN', 'Anda tidak berwenang memeriksa kuota RAK atau simulasi draft untuk rekening unit kerja lain.', null, 403);
         }
 
@@ -146,11 +146,9 @@ class ReceiptApiController extends Controller
         ]);
 
         $user = $request->user();
-        if ($user && ($user->hasRole('OPERATOR') || $user->role === 'OPERATOR')) {
-            $rekening = AnggaranRekening::find($validated['anggaran_rekening_id']);
-            if ($user->unit_kerja_id && $rekening && $rekening->unit_kerja_id !== $user->unit_kerja_id) {
-                return $this->errorResponse('FORBIDDEN', 'Anda tidak berwenang membuat kuitansi dengan kode rekening dari unit kerja lain.', null, 403);
-            }
+        $rekening = AnggaranRekening::find($validated['anggaran_rekening_id']);
+        if ($user && $rekening && ! $user->canInputRekening($rekening)) {
+            return $this->errorResponse('FORBIDDEN', 'Anda tidak berwenang membuat kuitansi dengan kode rekening dari unit kerja lain.', null, 403);
         }
 
         $attachments = $this->extractAttachmentsFromRequest($request);
@@ -299,7 +297,7 @@ class ReceiptApiController extends Controller
         $user = $request->user();
         if (! empty($validated['anggaran_rekening_id'])) {
             $targetRekening = AnggaranRekening::find($validated['anggaran_rekening_id']);
-            if ($user && $targetRekening && ! $user->canAccessRekening($targetRekening)) {
+            if ($user && $targetRekening && ! $user->canInputRekening($targetRekening)) {
                 return $this->errorResponse('FORBIDDEN', 'Anda tidak berwenang memindahkan kuitansi ke rekening unit kerja lain.', null, 403);
             }
         }

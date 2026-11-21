@@ -20,12 +20,8 @@ trait AuthorizesOperatorReceipt
         }
 
         $user = $request->user();
-        if ($user && ! $user->canAccessReceipt($kuitansi)) {
+        if ($user && ! $user->canMutateReceipt($kuitansi)) {
             return $this->errorResponse('FORBIDDEN', 'Anda tidak memiliki hak akses untuk mengubah kuitansi ini.', null, 403);
-        }
-
-        if ($user && ($user->hasRole('OPERATOR') || $user->role === 'OPERATOR') && (int) $kuitansi->user_id !== (int) $user->id) {
-            return $this->errorResponse('FORBIDDEN', 'Kuitansi ini hanya dapat diubah oleh operator pembuatnya.', null, 403);
         }
 
         return $kuitansi;
