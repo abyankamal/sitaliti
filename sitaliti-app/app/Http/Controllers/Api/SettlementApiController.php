@@ -47,8 +47,8 @@ class SettlementApiController extends Controller
         ]);
 
         $user = $request->user();
-        if ($user && $user->role === 'LURAH') {
-            return $this->errorResponse('FORBIDDEN', 'Lurah hanya memiliki akses baca (read-only) terhadap bundel SPJ.', null, 403);
+        if ($user && $user->isReadOnlyRole()) {
+            return $this->errorResponse('FORBIDDEN', 'Peran monitoring read-only (Lurah/Camat) hanya memiliki akses baca terhadap bundel SPJ.', null, 403);
         }
 
         try {
@@ -90,8 +90,8 @@ class SettlementApiController extends Controller
     public function unbundle(Request $request, int|string $id, int|string $kuitansiId): JsonResponse
     {
         $user = $request->user();
-        if ($user && $user->role === 'LURAH') {
-            return $this->errorResponse('FORBIDDEN', 'Lurah hanya memiliki akses baca (read-only) dan tidak berwenang mengeluarkan kuitansi dari bundel.', null, 403);
+        if ($user && $user->isReadOnlyRole()) {
+            return $this->errorResponse('FORBIDDEN', 'Peran monitoring read-only (Lurah/Camat) tidak berwenang mengeluarkan kuitansi dari bundel.', null, 403);
         }
 
         try {
@@ -116,8 +116,8 @@ class SettlementApiController extends Controller
     public function submitPpk(Request $request, int|string $id): JsonResponse
     {
         $user = $request->user();
-        if ($user && $user->role === 'LURAH') {
-            return $this->errorResponse('FORBIDDEN', 'Lurah hanya memiliki akses baca (read-only) terhadap bundel SPJ.', null, 403);
+        if ($user && $user->isReadOnlyRole()) {
+            return $this->errorResponse('FORBIDDEN', 'Peran monitoring read-only (Lurah/Camat) hanya memiliki akses baca terhadap bundel SPJ.', null, 403);
         }
 
         try {
@@ -173,8 +173,8 @@ class SettlementApiController extends Controller
     public function recordSp2d(Request $request, int|string $id): JsonResponse
     {
         $user = $request->user();
-        if ($user && $user->isKelurahanScoped()) {
-            return $this->errorResponse('FORBIDDEN', 'Pengguna kelurahan tidak berwenang mencatat nomor SP2D SIPD-RI.', null, 403);
+        if ($user && ($user->isReadOnlyRole() || $user->isKelurahanScoped())) {
+            return $this->errorResponse('FORBIDDEN', 'Hanya BP Kecamatan yang berwenang mencatat nomor SP2D SIPD-RI.', null, 403);
         }
 
         $validated = $request->validate([

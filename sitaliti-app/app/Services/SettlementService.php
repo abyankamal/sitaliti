@@ -52,8 +52,8 @@ class SettlementService implements SettlementServiceInterface
             throw new InvalidArgumentException('Bundel pengajuan SPJ wajib menyertakan minimal 1 kuitansi.');
         }
 
-        if ($user->role === 'LURAH') {
-            throw new InvalidArgumentException('Lurah hanya memiliki akses baca (read-only) terhadap bundel SPJ.');
+        if ($user->isReadOnlyRole()) {
+            throw new InvalidArgumentException('Peran monitoring read-only (Lurah/Camat) hanya memiliki akses baca terhadap bundel SPJ.');
         }
 
         $tahun = (int) ($data['tahun_anggaran'] ?? date('Y'));
@@ -213,8 +213,8 @@ class SettlementService implements SettlementServiceInterface
      */
     public function unbundleReceipt(int|string $bundleId, int|string $kuitansiId, ?string $reason = null, ?User $actor = null): bool
     {
-        if ($actor && $actor->role === 'LURAH') {
-            throw new InvalidArgumentException('Lurah hanya memiliki akses baca (read-only) dan tidak berwenang mengeluarkan kuitansi dari bundel.');
+        if ($actor && $actor->isReadOnlyRole()) {
+            throw new InvalidArgumentException('Peran monitoring read-only (Lurah/Camat) tidak berwenang mengeluarkan kuitansi dari bundel.');
         }
 
         return DB::transaction(function () use ($bundleId, $kuitansiId, $reason, $actor) {
@@ -343,8 +343,8 @@ class SettlementService implements SettlementServiceInterface
      */
     public function recordSipdSp2d(int|string $bundleId, string $nomorSp2d, ?string $nomorSpp = null, ?string $tanggalSp2d = null, ?User $actor = null): PengajuanSpj
     {
-        if ($actor && $actor->isKelurahanScoped()) {
-            throw new InvalidArgumentException('Pengguna kelurahan tidak berwenang mencatat nomor SP2D SIPD-RI.');
+        if ($actor && ($actor->isReadOnlyRole() || $actor->isKelurahanScoped())) {
+            throw new InvalidArgumentException('Hanya BP Kecamatan yang berwenang mencatat nomor SP2D SIPD-RI.');
         }
 
         return DB::transaction(function () use ($bundleId, $nomorSp2d, $nomorSpp, $tanggalSp2d, $actor) {
