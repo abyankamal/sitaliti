@@ -21,7 +21,8 @@ class ReceiptQueryService
         return $query->with(['rekening.unitKerja', 'lampiran', 'pajak', 'pptkUser'])
             ->orderBy('tanggal_transaksi', 'desc')
             ->orderBy('id', 'desc')
-            ->paginate($perPage);
+            ->paginate($perPage)
+            ->withQueryString();
     }
 
     /**
@@ -83,12 +84,31 @@ class ReceiptQueryService
             $query->where('bulan_anggaran', (int) $filters['bulan_anggaran']);
         }
 
-        // 5. Filter Kategori Belanja (B.1 s.d. B.6)
-        if (! empty($filters['kategori_belanja'])) {
-            $kategori = $filters['kategori_belanja'];
-            $query->whereHas('rekening', function (Builder $q) use ($kategori) {
-                $q->where('kategori_belanja', $kategori);
+        // 5. Filter Relasi Rekening (Kategori Belanja, Sub Kegiatan, Kode Rekening) dalam satu whereHas
+        $hasRekeningFilters = ! empty($filters['kategori_belanja'])
+            || ! empty($filters['kode_sub_kegiatan'])
+            || ! empty($filters['kode_rekening']);
+
+        if ($hasRekeningFilters) {
+            $query->whereHas('rekening', function (Builder $q) use ($filters) {
+                if (! empty($filters['kategori_belanja'])) {
+                    $q->where('kategori_belanja', $filters['kategori_belanja']);
+                }
+                if (! empty($filters['kode_sub_kegiatan'])) {
+                    $q->where('kode_sub_kegiatan', $filters['kode_sub_kegiatan']);
+                }
+                if (! empty($filters['kode_rekening'])) {
+                    $q->where('kode_rekening', $filters['kode_rekening']);
+                }
             });
+        }
+
+        // 6. Filter Rentang Waktu (tanggal_transaksi langsung agar index kolom DATE terpakai)
+        if (! empty($filters['tanggal_dari'])) {
+            $query->where('tanggal_transaksi', '>=', $filters['tanggal_dari']);
+        }
+        if (! empty($filters['tanggal_sampai'])) {
+            $query->where('tanggal_transaksi', '<=', $filters['tanggal_sampai']);
         }
 
         // 6. Pencarian Teks (Nomor Kuitansi / Uraian / Nama Rekanan)

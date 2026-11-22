@@ -270,7 +270,7 @@ class ReceiptLifecycleEndToEndTest extends TestCase
 
         // Langkah 8: Ekspor Rekapitulasi CSV dan Rekonsiliasi Data
         $exportRes = $this->actingAs($this->bpp)
-            ->getJson("/api/v1/receipts/export?month={$bulan}");
+            ->getJson("/api/v1/receipts/export?format=csv&month={$bulan}");
         $exportRes->assertStatus(200);
 
         $csvContent = $exportRes->streamedContent();

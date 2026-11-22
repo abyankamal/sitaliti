@@ -39,6 +39,14 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    subKegiatanList: {
+        type: Array,
+        default: () => [],
+    },
+    rekeningList: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 // State Filter
@@ -48,6 +56,66 @@ const searchQuery = ref(props.filters.search || '');
 const selectedUnit = ref(props.filters.unit_kerja_id || '');
 const selectedKategori = ref(props.filters.kategori_belanja || '');
 const selectedBulan = ref(props.filters.bulan_anggaran || '');
+const selectedSubKegiatan = ref(props.filters.kode_sub_kegiatan || '');
+const selectedRekening = ref(props.filters.kode_rekening || '');
+const tanggalDari = ref(props.filters.tanggal_dari || '');
+const tanggalSampai = ref(props.filters.tanggal_sampai || '');
+const isExporting = ref(false);
+
+const dateRangeError = computed(() => {
+    if (tanggalDari.value && tanggalSampai.value && tanggalSampai.value < tanggalDari.value) {
+        return 'Tanggal sampai tidak boleh lebih awal dari tanggal dari.';
+    }
+    return '';
+});
+
+const filteredSubKegiatanList = computed(() => {
+    const unitId = selectedUnit.value ? Number(selectedUnit.value) : null;
+    const seen = new Set();
+    return props.subKegiatanList.filter((item) => {
+        if (unitId && Number(item.unit_kerja_id) !== unitId) return false;
+        if (seen.has(item.kode_sub_kegiatan)) return false;
+        seen.add(item.kode_sub_kegiatan);
+        return true;
+    });
+});
+
+const filteredRekeningList = computed(() => {
+    const unitId = selectedUnit.value ? Number(selectedUnit.value) : null;
+    const subKode = selectedSubKegiatan.value || null;
+    const seen = new Set();
+    return props.rekeningList.filter((item) => {
+        if (unitId && Number(item.unit_kerja_id) !== unitId) return false;
+        if (subKode && item.kode_sub_kegiatan !== subKode) return false;
+        if (seen.has(item.kode_rekening)) return false;
+        seen.add(item.kode_rekening);
+        return true;
+    });
+});
+
+watch(selectedUnit, () => {
+    if (
+        selectedSubKegiatan.value &&
+        !filteredSubKegiatanList.value.some((i) => i.kode_sub_kegiatan === selectedSubKegiatan.value)
+    ) {
+        selectedSubKegiatan.value = '';
+    }
+    if (
+        selectedRekening.value &&
+        !filteredRekeningList.value.some((i) => i.kode_rekening === selectedRekening.value)
+    ) {
+        selectedRekening.value = '';
+    }
+});
+
+watch(selectedSubKegiatan, () => {
+    if (
+        selectedRekening.value &&
+        !filteredRekeningList.value.some((i) => i.kode_rekening === selectedRekening.value)
+    ) {
+        selectedRekening.value = '';
+    }
+});
 
 // Konfigurasi Tab Status
 const tabs = computed(() => {
@@ -85,11 +153,17 @@ const kategoriOptions = [
 let searchDebounceTimeout = null;
 
 function applyFilter() {
+    if (dateRangeError.value) return;
+
     router.get(route('receipts.index'), {
         status: activeTab.value || undefined,
         unit_kerja_id: selectedUnit.value || undefined,
         kategori_belanja: selectedKategori.value || undefined,
         bulan_anggaran: selectedBulan.value || undefined,
+        kode_sub_kegiatan: selectedSubKegiatan.value || undefined,
+        kode_rekening: selectedRekening.value || undefined,
+        tanggal_dari: tanggalDari.value || undefined,
+        tanggal_sampai: tanggalSampai.value || undefined,
         search: searchQuery.value || undefined,
     }, {
         preserveState: true,
@@ -116,24 +190,37 @@ function resetFilter() {
     selectedUnit.value = isUnitScoped.value ? (currentUser.value?.unit_kerja_id || '') : '';
     selectedKategori.value = '';
     selectedBulan.value = '';
+    selectedSubKegiatan.value = '';
+    selectedRekening.value = '';
+    tanggalDari.value = '';
+    tanggalSampai.value = '';
     applyFilter();
 }
 
 // URL Ekspor Rekapitulasi Data
-const exportUrl = computed(() => {
+function buildExportUrl(format) {
     const params = new URLSearchParams();
+    params.append('format', format);
     if (activeTab.value) params.append('status', activeTab.value);
     if (selectedUnit.value) params.append('unit_kerja_id', selectedUnit.value);
     if (selectedKategori.value) params.append('kategori_belanja', selectedKategori.value);
     if (selectedBulan.value) params.append('bulan_anggaran', selectedBulan.value);
+    if (selectedSubKegiatan.value) params.append('kode_sub_kegiatan', selectedSubKegiatan.value);
+    if (selectedRekening.value) params.append('kode_rekening', selectedRekening.value);
+    if (tanggalDari.value) params.append('tanggal_dari', tanggalDari.value);
+    if (tanggalSampai.value) params.append('tanggal_sampai', tanggalSampai.value);
     if (searchQuery.value) params.append('search', searchQuery.value);
 
-    const qs = params.toString();
-    return `/api/v1/receipts/export${qs ? '?' + qs : ''}`;
-});
+    return `/api/v1/receipts/export?${params.toString()}`;
+}
 
-function handleExport() {
-    window.location.href = exportUrl.value;
+function handleExport(format) {
+    if (dateRangeError.value || isExporting.value) return;
+    isExporting.value = true;
+    window.location.href = buildExportUrl(format);
+    setTimeout(() => {
+        isExporting.value = false;
+    }, 1500);
 }
 
 // Mapping status badge variant
@@ -190,15 +277,27 @@ function openReceiptDetail(receipt) {
                     </p>
                 </div>
 
-                <div class="flex items-center gap-2.5">
+                <div class="flex flex-wrap items-center gap-2.5">
                     <GovButton
-                        @click="handleExport"
+                        @click="handleExport('xlsx')"
+                        :disabled="isExporting || Boolean(dateRangeError)"
                         variant="secondary"
                         size="sm"
-                        title="Unduh rekapitulasi data kuitansi dan perpajakan ke format spreadsheet CSV"
+                        title="Unduh rekapitulasi data kuitansi dan perpajakan ke format Excel (.xlsx)"
                     >
                         <Download class="w-4 h-4" :stroke-width="1.5" />
-                        Ekspor Rekapitulasi (.csv)
+                        Ekspor Excel (.xlsx)
+                    </GovButton>
+
+                    <GovButton
+                        @click="handleExport('pdf')"
+                        :disabled="isExporting || Boolean(dateRangeError)"
+                        variant="secondary"
+                        size="sm"
+                        title="Unduh laporan rekapitulasi kuitansi resmi berformat PDF"
+                    >
+                        <FileText class="w-4 h-4" :stroke-width="1.5" />
+                        Ekspor PDF (.pdf)
                     </GovButton>
 
                     <Link v-if="canCreate" :href="route('receipts.create')">
@@ -299,8 +398,77 @@ function openReceiptDetail(receipt) {
                     </div>
                 </div>
 
+                <!-- Filter Bar Tambahan: Sub Kegiatan, Kode Rekening, & Rentang Waktu -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-hairline">
+                    <!-- Dropdown Sub Kegiatan -->
+                    <div>
+                        <select
+                            v-model="selectedSubKegiatan"
+                            @change="applyFilter"
+                            aria-label="Filter Sub Kegiatan"
+                            class="w-full h-9 px-3 text-sm border border-hairline rounded-lg focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent bg-surface text-ink"
+                        >
+                            <option value="">Semua Sub Kegiatan</option>
+                            <option
+                                v-for="sub in filteredSubKegiatanList"
+                                :key="sub.kode_sub_kegiatan"
+                                :value="sub.kode_sub_kegiatan"
+                            >
+                                {{ sub.kode_sub_kegiatan }} — {{ sub.nama_sub_kegiatan }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <!-- Dropdown Kode Rekening Belanja -->
+                    <div>
+                        <select
+                            v-model="selectedRekening"
+                            @change="applyFilter"
+                            aria-label="Filter Kode Rekening Belanja"
+                            class="w-full h-9 px-3 text-sm border border-hairline rounded-lg focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent bg-surface text-ink"
+                        >
+                            <option value="">Semua Kode Rekening</option>
+                            <option
+                                v-for="rek in filteredRekeningList"
+                                :key="rek.kode_rekening"
+                                :value="rek.kode_rekening"
+                            >
+                                {{ rek.kode_rekening }} — {{ rek.nama_rekening }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <!-- Input Tanggal Dari -->
+                    <div>
+                        <input
+                            v-model="tanggalDari"
+                            @change="applyFilter"
+                            type="date"
+                            aria-label="Tanggal Transaksi Dari"
+                            title="Tanggal Transaksi Dari"
+                            class="w-full h-9 px-3 text-sm border border-hairline rounded-lg bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
+                        />
+                    </div>
+
+                    <!-- Input Tanggal Sampai -->
+                    <div>
+                        <input
+                            v-model="tanggalSampai"
+                            @change="applyFilter"
+                            type="date"
+                            aria-label="Tanggal Transaksi Sampai"
+                            title="Tanggal Transaksi Sampai"
+                            class="w-full h-9 px-3 text-sm border border-hairline rounded-lg bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
+                        />
+                    </div>
+                </div>
+
+                <p v-if="dateRangeError" class="text-xs text-semantic-danger font-medium">
+                    {{ dateRangeError }}
+                </p>
+
                 <!-- Tombol Reset Filter jika ada parameter aktif -->
-                <div v-if="selectedUnit || selectedKategori || selectedBulan || searchQuery || activeTab" class="flex items-center justify-between text-xs text-ink-muted pt-2 border-t border-hairline">
+                <div v-if="selectedUnit || selectedKategori || selectedBulan || selectedSubKegiatan || selectedRekening || tanggalDari || tanggalSampai || searchQuery || activeTab" class="flex items-center justify-between text-xs text-ink-muted pt-2 border-t border-hairline">
                     <span>
                         Menampilkan hasil filter kuitansi belanja
                     </span>

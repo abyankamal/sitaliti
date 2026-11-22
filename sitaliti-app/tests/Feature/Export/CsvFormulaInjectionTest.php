@@ -68,7 +68,7 @@ class CsvFormulaInjectionTest extends TestCase
             'status' => 'DRAFT',
         ]);
 
-        $response = $this->actingAs($user)->get('/api/v1/receipts/export');
+        $response = $this->actingAs($user)->get('/api/v1/receipts/export?format=csv');
         $response->assertStatus(200);
 
         $csv = $response->streamedContent();

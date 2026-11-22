@@ -67,7 +67,7 @@ class ReceiptExportTest extends TestCase
         ]);
 
         // Rekening Belanja ATK (B.1)
-        $this->rekeningAtk = AnggaranRekening::create([
+        $this->rekeningAtktk = AnggaranRekening::create([
             'unit_kerja_id' => $this->unitA->id,
             'kode_sub_kegiatan' => '7.01.01.2.01.0001',
             'nama_sub_kegiatan' => 'Administrasi Perkantoran',
@@ -92,7 +92,7 @@ class ReceiptExportTest extends TestCase
 
         for ($b = 1; $b <= 12; $b++) {
             AnggaranKasBulanan::create([
-                'anggaran_rekening_id' => $this->rekeningAtk->id,
+                'anggaran_rekening_id' => $this->rekeningAtktk->id,
                 'bulan' => $b,
                 'alokasi_pagu' => 1500000.00,
                 'terkunci_bulan' => 0.00,
@@ -119,7 +119,7 @@ class ReceiptExportTest extends TestCase
     {
         $kuitansi = Kuitansi::create([
             'unit_kerja_id' => $this->unitA->id,
-            'anggaran_rekening_id' => $this->rekeningAtk->id,
+            'anggaran_rekening_id' => $this->rekeningAtktk->id,
             'user_id' => $this->operatorA->id,
             'nomor_kuitansi' => 'KW-EXP-HEADERS',
             'bulan_anggaran' => 1,
@@ -133,7 +133,7 @@ class ReceiptExportTest extends TestCase
             'status' => 'TERVERIFIKASI',
         ]);
 
-        $response = $this->actingAs($this->verifikator)->get('/api/v1/receipts/export');
+        $response = $this->actingAs($this->verifikator)->get('/api/v1/receipts/export?format=csv');
 
         $response->assertStatus(200);
         $this->assertStringContainsString('text/csv', $response->headers->get('Content-Type'));
@@ -173,7 +173,7 @@ class ReceiptExportTest extends TestCase
         // 1. ATK <= 2.000.000 (PMK 59/2022: PPN=0, PPh 22=0, Neto=Bruto)
         $kuitansiKecil = Kuitansi::create([
             'unit_kerja_id' => $this->unitA->id,
-            'anggaran_rekening_id' => $this->rekeningAtk->id,
+            'anggaran_rekening_id' => $this->rekeningAtktk->id,
             'user_id' => $this->operatorA->id,
             'nomor_kuitansi' => 'KW-EXP-PMK59-UNDER',
             'bulan_anggaran' => 2,
@@ -190,7 +190,7 @@ class ReceiptExportTest extends TestCase
         // 2. ATK > 2.000.000 (PPN 11% Rp 220.000, PPh 22 Rp 30.000)
         $kuitansiBesar = Kuitansi::create([
             'unit_kerja_id' => $this->unitA->id,
-            'anggaran_rekening_id' => $this->rekeningAtk->id,
+            'anggaran_rekening_id' => $this->rekeningAtktk->id,
             'user_id' => $this->operatorA->id,
             'nomor_kuitansi' => 'KW-EXP-PMK59-TAX',
             'bulan_anggaran' => 2,
@@ -227,7 +227,7 @@ class ReceiptExportTest extends TestCase
         // 3. Transaksi > 5.000.000 dengan Bea Meterai Rp 10.000 (UU 10/2020: Bea Meterai TIDAK potong Neto)
         $kuitansiMeterai = Kuitansi::create([
             'unit_kerja_id' => $this->unitA->id,
-            'anggaran_rekening_id' => $this->rekeningAtk->id,
+            'anggaran_rekening_id' => $this->rekeningAtktk->id,
             'user_id' => $this->operatorA->id,
             'nomor_kuitansi' => 'KW-EXP-METERAI',
             'bulan_anggaran' => 2,
@@ -325,7 +325,7 @@ class ReceiptExportTest extends TestCase
             'nominal' => 50000.00,
         ]);
 
-        $response = $this->actingAs($this->verifikator)->get('/api/v1/receipts/export');
+        $response = $this->actingAs($this->verifikator)->get('/api/v1/receipts/export?format=csv');
         $content = $response->streamedContent();
 
         // Verifikasi baris kuitansi kecil (Neto = Bruto)
@@ -371,7 +371,7 @@ class ReceiptExportTest extends TestCase
         // Kuitansi 1: Unit A (Draft milik Operator A)
         Kuitansi::create([
             'unit_kerja_id' => $this->unitA->id,
-            'anggaran_rekening_id' => $this->rekeningAtk->id,
+            'anggaran_rekening_id' => $this->rekeningAtktk->id,
             'user_id' => $this->operatorA->id,
             'nomor_kuitansi' => 'KW-SCOPE-DRAFT-A',
             'bulan_anggaran' => 3,
@@ -401,14 +401,14 @@ class ReceiptExportTest extends TestCase
         ]);
 
         // Operator A mengekspor: HANYA boleh memuat kuitansi dari Unit A
-        $resA = $this->actingAs($this->operatorA)->get('/api/v1/receipts/export');
+        $resA = $this->actingAs($this->operatorA)->get('/api/v1/receipts/export?format=csv');
         $contentA = $resA->streamedContent();
 
         $this->assertStringContainsString('KW-SCOPE-DRAFT-A', $contentA);
         $this->assertStringNotContainsString('KW-SCOPE-SUB-B', $contentA);
 
         // Verifikator mengekspor: Melihat lintas Unit A dan Unit B
-        $resVerif = $this->actingAs($this->verifikator)->get('/api/v1/receipts/export');
+        $resVerif = $this->actingAs($this->verifikator)->get('/api/v1/receipts/export?format=csv');
         $contentVerif = $resVerif->streamedContent();
 
         $this->assertStringContainsString('KW-SCOPE-DRAFT-A', $contentVerif);
@@ -419,7 +419,7 @@ class ReceiptExportTest extends TestCase
     {
         Kuitansi::create([
             'unit_kerja_id' => $this->unitA->id,
-            'anggaran_rekening_id' => $this->rekeningAtk->id,
+            'anggaran_rekening_id' => $this->rekeningAtktk->id,
             'user_id' => $this->operatorA->id,
             'nomor_kuitansi' => 'KW-FILTER-MATCH',
             'bulan_anggaran' => 4,
@@ -434,7 +434,7 @@ class ReceiptExportTest extends TestCase
 
         Kuitansi::create([
             'unit_kerja_id' => $this->unitA->id,
-            'anggaran_rekening_id' => $this->rekeningAtk->id,
+            'anggaran_rekening_id' => $this->rekeningAtktk->id,
             'user_id' => $this->operatorA->id,
             'nomor_kuitansi' => 'KW-FILTER-DIFF-STATUS',
             'bulan_anggaran' => 4,
@@ -448,6 +448,7 @@ class ReceiptExportTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->verifikator)->get('/api/v1/receipts/export?'.http_build_query([
+            'format' => 'csv',
             'status' => 'TERVERIFIKASI',
             'bulan_anggaran' => 4,
         ]));
@@ -462,7 +463,7 @@ class ReceiptExportTest extends TestCase
     {
         $kuitansi = Kuitansi::create([
             'unit_kerja_id' => $this->unitA->id,
-            'anggaran_rekening_id' => $this->rekeningAtk->id,
+            'anggaran_rekening_id' => $this->rekeningAtktk->id,
             'user_id' => $this->operatorA->id,
             'nomor_kuitansi' => 'KW-EXP-SP2D',
             'bulan_anggaran' => 5,
@@ -497,10 +498,195 @@ class ReceiptExportTest extends TestCase
             'status_item' => 'AKTIF',
         ]);
 
-        $response = $this->actingAs($this->verifikator)->get('/api/v1/receipts/export');
+        $response = $this->actingAs($this->verifikator)->get('/api/v1/receipts/export?format=csv');
         $content = $response->streamedContent();
 
         $this->assertStringContainsString('KW-EXP-SP2D', $content);
         $this->assertStringContainsString('SP2D/2026/05/999888', $content);
+    }
+
+    public function test_default_export_returns_xlsx_with_headings_and_total_row(): void
+    {
+        Kuitansi::create([
+            'unit_kerja_id' => $this->unitA->id,
+            'anggaran_rekening_id' => AnggaranRekening::where('unit_kerja_id', $this->unitA->id)->firstOrFail()->id,
+            'user_id' => $this->operatorA->id,
+            'nomor_kuitansi' => 'KW-XLSX-01',
+            'tanggal_transaksi' => '2026-04-10',
+            'bulan_anggaran' => 4,
+            'uraian' => 'Belanja Kertas HVS',
+            'nominal_bruto' => 1000000,
+            'total_pajak' => 0,
+            'nominal_neto' => 1000000,
+            'nama_penerima' => 'Toko Kertas',
+            'npwp_penerima' => '01.234.567.8-443.000',
+            'status' => 'LOLOS_VERIFIKASI',
+        ]);
+
+        $response = $this->actingAs($this->verifikator)->get('/api/v1/receipts/export');
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+        $tmpFile = tempnam(sys_get_temp_dir(), 'xlsx_test_').'.xlsx';
+        file_put_contents($tmpFile, $response->streamedContent());
+
+        try {
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($tmpFile);
+            $sheet = $spreadsheet->getActiveSheet();
+
+            $this->assertSame('Nomor Kuitansi', $sheet->getCell('A4')->getValue());
+            $this->assertSame('KW-XLSX-01', $sheet->getCell('A5')->getValue());
+            $this->assertSame(
+                \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING,
+                $sheet->getCell('Q5')->getDataType()
+            );
+            $this->assertSame('01.234.567.8-443.000', $sheet->getCell('Q5')->getValue());
+            $this->assertSame('TOTAL', $sheet->getCell('A6')->getValue());
+            $this->assertEquals(1000000.0, (float) $sheet->getCell('G6')->getValue());
+            $this->assertEquals(1000000.0, (float) $sheet->getCell('O6')->getValue());
+        } finally {
+            @unlink($tmpFile);
+        }
+    }
+
+    public function test_xlsx_export_prevents_formula_injection_and_preserves_dash(): void
+    {
+        Kuitansi::create([
+            'unit_kerja_id' => $this->unitA->id,
+            'anggaran_rekening_id' => AnggaranRekening::where('unit_kerja_id', $this->unitA->id)->firstOrFail()->id,
+            'user_id' => $this->operatorA->id,
+            'nomor_kuitansi' => 'KW-INJ-01',
+            'tanggal_transaksi' => '2026-04-11',
+            'bulan_anggaran' => 4,
+            'uraian' => '=SUM(1,1)',
+            'nominal_bruto' => 250000,
+            'total_pajak' => 0,
+            'nominal_neto' => 250000,
+            'nama_penerima' => '@CMD',
+            'npwp_penerima' => '-',
+            'status' => 'DRAFT',
+        ]);
+
+        $response = $this->actingAs($this->verifikator)->get('/api/v1/receipts/export?format=xlsx');
+        $response->assertStatus(200);
+
+        $tmpFile = tempnam(sys_get_temp_dir(), 'xlsx_inj_').'.xlsx';
+        file_put_contents($tmpFile, $response->streamedContent());
+
+        try {
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($tmpFile);
+            $sheet = $spreadsheet->getActiveSheet();
+
+            $this->assertSame(
+                \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING,
+                $sheet->getCell('F5')->getDataType()
+            );
+            $this->assertSame("'=SUM(1,1)", $sheet->getCell('F5')->getValue());
+            $this->assertSame("'@CMD", $sheet->getCell('P5')->getValue());
+            $this->assertSame('-', $sheet->getCell('Q5')->getValue());
+        } finally {
+            @unlink($tmpFile);
+        }
+    }
+
+    public function test_pdf_export_returns_valid_pdf_response(): void
+    {
+        Kuitansi::create([
+            'unit_kerja_id' => $this->unitA->id,
+            'anggaran_rekening_id' => AnggaranRekening::where('unit_kerja_id', $this->unitA->id)->firstOrFail()->id,
+            'user_id' => $this->operatorA->id,
+            'nomor_kuitansi' => 'KW-PDF-01',
+            'tanggal_transaksi' => '2026-04-12',
+            'bulan_anggaran' => 4,
+            'uraian' => 'Belanja Cetak Dokumen',
+            'nominal_bruto' => 500000,
+            'total_pajak' => 0,
+            'nominal_neto' => 500000,
+            'nama_penerima' => 'Percetakan Garut',
+            'status' => 'LOLOS_VERIFIKASI',
+        ]);
+
+        $response = $this->actingAs($this->verifikator)->get('/api/v1/receipts/export?format=pdf');
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF-', $response->getContent());
+    }
+
+    public function test_export_supports_sub_kegiatan_kode_rekening_and_date_range_filters(): void
+    {
+        $rekeningSub2 = AnggaranRekening::create([
+            'unit_kerja_id' => $this->unitA->id,
+            'kode_sub_kegiatan' => '7.01.01.2.01.0099',
+            'nama_sub_kegiatan' => 'Pemeliharaan Gedung',
+            'kode_rekening' => '5.1.02.03.03.0001',
+            'nama_rekening' => 'Belanja Pemeliharaan Bangunan',
+            'pagu_murni' => 20000000,
+            'pagu_perubahan' => 20000000,
+            'kategori_belanja' => 'B.5',
+            'is_leaf' => true,
+        ]);
+
+        Kuitansi::create([
+            'unit_kerja_id' => $this->unitA->id,
+            'anggaran_rekening_id' => AnggaranRekening::where('unit_kerja_id', $this->unitA->id)->firstOrFail()->id,
+            'user_id' => $this->operatorA->id,
+            'nomor_kuitansi' => 'KW-FLT-APRIL',
+            'tanggal_transaksi' => '2026-04-15',
+            'bulan_anggaran' => 4,
+            'uraian' => 'ATK April',
+            'nominal_bruto' => 100000,
+            'total_pajak' => 0,
+            'nominal_neto' => 100000,
+            'nama_penerima' => 'Toko ATK April',
+            'status' => 'LOLOS_VERIFIKASI',
+        ]);
+
+        Kuitansi::create([
+            'unit_kerja_id' => $this->unitA->id,
+            'anggaran_rekening_id' => $rekeningSub2->id,
+            'user_id' => $this->operatorA->id,
+            'nomor_kuitansi' => 'KW-FLT-MEI',
+            'tanggal_transaksi' => '2026-05-20',
+            'bulan_anggaran' => 5,
+            'uraian' => 'Pemeliharaan Mei',
+            'nominal_bruto' => 200000,
+            'total_pajak' => 0,
+            'nominal_neto' => 200000,
+            'nama_penerima' => 'CV Kontraktor Mei',
+            'status' => 'DRAFT',
+        ]);
+
+        $res = $this->actingAs($this->verifikator)->get('/api/v1/receipts/export?'.http_build_query([
+            'format' => 'csv',
+            'kode_sub_kegiatan' => '7.01.01.2.01.0099',
+            'kode_rekening' => '5.1.02.03.03.0001',
+            'tanggal_dari' => '2026-05-01',
+            'tanggal_sampai' => '2026-05-31',
+        ]));
+
+        $res->assertStatus(200);
+        $csv = $res->streamedContent();
+        $this->assertStringContainsString('KW-FLT-MEI', $csv);
+        $this->assertStringNotContainsString('KW-FLT-APRIL', $csv);
+
+        // Single-bound tanggal_sampai tanpa tanggal_dari tetap valid
+        $singleBound = $this->actingAs($this->verifikator)->getJson('/api/v1/receipts/export?format=csv&tanggal_sampai=2026-04-30');
+        $singleBound->assertStatus(200);
+        $this->assertStringContainsString('KW-FLT-APRIL', $singleBound->streamedContent());
+        $this->assertStringNotContainsString('KW-FLT-MEI', $singleBound->streamedContent());
+
+        // tanggal_sampai < tanggal_dari ditolak 422
+        $invalidRange = $this->actingAs($this->verifikator)->getJson('/api/v1/receipts/export?tanggal_dari=2026-05-10&tanggal_sampai=2026-05-01');
+        $invalidRange->assertStatus(422);
+    }
+
+    public function test_empty_dataset_export_returns_200_for_xlsx_and_pdf(): void
+    {
+        $xlsx = $this->actingAs($this->verifikator)->get('/api/v1/receipts/export?format=xlsx&tanggal_dari=2099-01-01');
+        $xlsx->assertStatus(200);
+
+        $pdf = $this->actingAs($this->verifikator)->get('/api/v1/receipts/export?format=pdf&tanggal_dari=2099-01-01');
+        $pdf->assertStatus(200);
+        $this->assertStringStartsWith('%PDF-', $pdf->getContent());
     }
 }

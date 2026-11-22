@@ -369,7 +369,7 @@ class KelurahanBudgetDashboardScopeTest extends TestCase
         ]);
 
         // Lurah Pataruman export: berisi kuitansi Pataruman, TIDAK ada kuitansi Kecamatan
-        $responseLurah = $this->actingAs($this->lurahPataruman)->get('/api/v1/receipts/export');
+        $responseLurah = $this->actingAs($this->lurahPataruman)->get('/api/v1/receipts/export?format=csv');
         $responseLurah->assertStatus(200);
         $contentLurah = $responseLurah->streamedContent();
         $this->assertStringContainsString('KW-PAT-SARPRAS-01', $contentLurah);
@@ -377,7 +377,7 @@ class KelurahanBudgetDashboardScopeTest extends TestCase
         $this->assertStringNotContainsString('KW-KEC-OPERASIONAL-01', $contentLurah);
 
         // PPTK Sarpras export: HANYA berisi Sarpras Pataruman
-        $responsePptk = $this->actingAs($this->pptkSarpras)->get('/api/v1/receipts/export');
+        $responsePptk = $this->actingAs($this->pptkSarpras)->get('/api/v1/receipts/export?format=csv');
         $responsePptk->assertStatus(200);
         $contentPptk = $responsePptk->streamedContent();
         $this->assertStringContainsString('KW-PAT-SARPRAS-01', $contentPptk);

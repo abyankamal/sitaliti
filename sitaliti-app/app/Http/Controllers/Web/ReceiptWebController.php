@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Models\AnggaranRekening;
 use App\Models\Kuitansi;
 use App\Models\UnitKerja;
 use App\Services\ReceiptQueryService;
@@ -21,12 +22,25 @@ class ReceiptWebController extends Controller
      */
     public function index(Request $request): Response
     {
+        $dateRules = [
+            'tanggal_dari' => ['nullable', 'date'],
+            'tanggal_sampai' => ['nullable', 'date'],
+        ];
+        if ($request->filled('tanggal_dari')) {
+            $dateRules['tanggal_sampai'][] = 'after_or_equal:tanggal_dari';
+        }
+        $request->validate($dateRules);
+
         $user = $request->user();
         $filters = $request->only([
             'status',
             'unit_kerja_id',
             'bulan_anggaran',
             'kategori_belanja',
+            'kode_sub_kegiatan',
+            'kode_rekening',
+            'tanggal_dari',
+            'tanggal_sampai',
             'search',
         ]);
         $perPage = (int) $request->input('per_page', 15);
@@ -42,21 +56,46 @@ class ReceiptWebController extends Controller
             ->select('id', 'kode_unit', 'nama_unit', 'tipe')
             ->orderBy('id', 'asc');
 
+        $rekeningBaseQuery = AnggaranRekening::query();
+
         if ($user && ! $user->isSkpdWide()) {
             if ($user->unit_kerja_id) {
                 $unitKerjaQuery->where('id', $user->unit_kerja_id);
+                $rekeningBaseQuery->where('unit_kerja_id', $user->unit_kerja_id);
             } else {
                 $unitKerjaQuery->whereRaw('1 = 0');
+                $rekeningBaseQuery->whereRaw('1 = 0');
+            }
+
+            if ($user->hasRole('PPTK') || $user->role === 'PPTK') {
+                $assignedCodes = $user->assignedSubkegiatanCodes();
+                if (! empty($assignedCodes)) {
+                    $rekeningBaseQuery->whereIn('kode_sub_kegiatan', $assignedCodes);
+                }
             }
         }
 
         $unitKerjaList = $unitKerjaQuery->get();
+
+        $subKegiatanList = (clone $rekeningBaseQuery)
+            ->selectRaw('unit_kerja_id, kode_sub_kegiatan, MIN(nama_sub_kegiatan) as nama_sub_kegiatan')
+            ->groupBy('unit_kerja_id', 'kode_sub_kegiatan')
+            ->orderBy('kode_sub_kegiatan')
+            ->get();
+
+        $rekeningList = (clone $rekeningBaseQuery)
+            ->selectRaw('unit_kerja_id, kode_sub_kegiatan, kode_rekening, MIN(nama_rekening) as nama_rekening')
+            ->groupBy('unit_kerja_id', 'kode_sub_kegiatan', 'kode_rekening')
+            ->orderBy('kode_rekening')
+            ->get();
 
         return Inertia::render('Receipts/Index', [
             'receipts' => $receipts,
             'tabCounts' => $tabCounts,
             'filters' => $filters,
             'unitKerjaList' => $unitKerjaList,
+            'subKegiatanList' => $subKegiatanList,
+            'rekeningList' => $rekeningList,
         ]);
     }
 

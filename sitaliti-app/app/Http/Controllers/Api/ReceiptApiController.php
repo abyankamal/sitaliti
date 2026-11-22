@@ -17,7 +17,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
 class ReceiptApiController extends Controller
@@ -32,16 +32,22 @@ class ReceiptApiController extends Controller
     ) {}
 
     /**
-     * Endpoint ekspor rekapitulasi data kuitansi dan pajak streaming CSV (GET /api/v1/receipts/export).
+     * Endpoint ekspor rekapitulasi data kuitansi dan pajak (Excel .xlsx default, PDF, atau CSV).
      */
-    public function export(Request $request): StreamedResponse
+    public function export(Request $request): Response
     {
+        $this->validateReceiptFilters($request, withFormat: true);
+
         $user = $request->user();
         $filters = $request->only([
             'status',
             'unit_kerja_id',
             'bulan_anggaran',
             'kategori_belanja',
+            'kode_sub_kegiatan',
+            'kode_rekening',
+            'tanggal_dari',
+            'tanggal_sampai',
             'search',
         ]);
 
@@ -49,7 +55,13 @@ class ReceiptApiController extends Controller
             $filters['unit_kerja_id'] = $user->unit_kerja_id;
         }
 
-        return $this->receiptExportService->streamExport($user, $filters);
+        $format = strtolower((string) $request->input('format', 'xlsx'));
+
+        return match ($format) {
+            'pdf' => $this->receiptExportService->downloadPdfExport($user, $filters),
+            'csv' => $this->receiptExportService->streamCsvExport($user, $filters),
+            default => $this->receiptExportService->streamExcelExport($user, $filters),
+        };
     }
 
     /**
@@ -57,12 +69,18 @@ class ReceiptApiController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        $this->validateReceiptFilters($request);
+
         $user = $request->user();
         $filters = $request->only([
             'status',
             'unit_kerja_id',
             'bulan_anggaran',
             'kategori_belanja',
+            'kode_sub_kegiatan',
+            'kode_rekening',
+            'tanggal_dari',
+            'tanggal_sampai',
             'search',
         ]);
 
@@ -381,5 +399,26 @@ class ReceiptApiController extends Controller
         }
 
         return $attachments;
+    }
+
+    /**
+     * Validasi parameter filter rentang tanggal dan format ekspor secara kondisional.
+     */
+    private function validateReceiptFilters(Request $request, bool $withFormat = false): void
+    {
+        $rules = [
+            'tanggal_dari' => ['nullable', 'date'],
+            'tanggal_sampai' => ['nullable', 'date'],
+        ];
+
+        if ($request->filled('tanggal_dari')) {
+            $rules['tanggal_sampai'][] = 'after_or_equal:tanggal_dari';
+        }
+
+        if ($withFormat) {
+            $rules['format'] = ['nullable', 'string', Rule::in(['xlsx', 'pdf', 'csv'])];
+        }
+
+        $request->validate($rules);
     }
 }
