@@ -80,7 +80,7 @@ function handleGatekeeperSelected(context) {
                     <Info class="w-4 h-4 text-accent mt-0.5 shrink-0" :stroke-width="1.5" />
                     <p class="text-xs text-ink-secondary leading-relaxed">
                         <span class="font-medium text-ink">Prinsip Pre-Audit:</span>
-                        SI-TALITI memverifikasi kepatuhan, keabsahan SSH/SBM, kelengkapan pajak, dan validasi pagu RAK. Penerbitan SP2D serta pencairan kas tetap menjadi otoritas SIPD-RI.
+                        E - Verifikatur Kecamatan Tarogong Kidul memverifikasi kepatuhan, keabsahan SSH/SBM, kelengkapan pajak, dan validasi pagu RAK. Penerbitan SP2D serta pencairan kas tetap menjadi otoritas SIPD-RI.
                     </p>
                 </div>
                 <div class="hidden lg:flex items-center gap-2 shrink-0 text-xs text-ink-secondary">

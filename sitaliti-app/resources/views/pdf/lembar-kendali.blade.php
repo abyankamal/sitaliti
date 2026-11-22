@@ -387,7 +387,7 @@
     </table>
 
     <div class="footer-note">
-        Dokumen Lembar Kendali ini diterbitkan secara elektronik oleh Sistem Informasi Tata Kelola Akuntabilitas & Verifikasi Kuitansi (SI-TALITI v2.0) Kecamatan Tarogong Kidul.<br>
+        Dokumen Lembar Kendali ini diterbitkan secara elektronik oleh E - Verifikatur Kecamatan Tarogong Kidul.<br>
         Keabsahan fisik dokumen dapat diuji melalui pemindaian QR Code di atas menggunakan aplikasi resmi Pemkab Garut tanpa memerlukan stempel basah.
     </div>
 

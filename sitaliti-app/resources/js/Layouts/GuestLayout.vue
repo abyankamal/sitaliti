@@ -15,7 +15,7 @@ import { Link } from '@inertiajs/vue3';
                 />
                 <div class="space-y-1">
                     <h1 class="text-lg font-semibold tracking-tight text-ink">
-                        SI-TALITI
+                        E - Verifikatur
                     </h1>
                     <p class="text-xs text-ink-muted">
                         Kecamatan Tarogong Kidul · Pre-Audit Gateway SPJ

@@ -114,7 +114,7 @@ function handlePrint() {
                         Jl. Suherman No. 27, Tarogong Kidul, Kabupaten Garut, Jawa Barat 44151
                     </p>
                     <p class="text-xs text-slate-500 font-mono mt-0.5">
-                        Sistem Informasi Tata Kelola, Asistensi, dan Verifikasi Akuntabilitas SPJ (SI-TALITI v2.0)
+                        E - Verifikatur Kecamatan Tarogong Kidul
                     </p>
                 </div>
 
@@ -229,7 +229,7 @@ function handlePrint() {
                     <div class="flex items-center gap-2">
                         <span class="w-3 h-3 rounded-md bg-emerald-500"></span>
                         <h4 class="text-xs font-bold  text-gov-navy-950">
-                            Kesimpulan Verifikasi Pre-Audit SI-TALITI:
+                            Kesimpulan Verifikasi Pre-Audit E - Verifikatur:
                         </h4>
                     </div>
                     <p class="text-xs font-bold text-emerald-800">

@@ -15,7 +15,7 @@ import {
 defineProps({
     title: {
         type: String,
-        default: 'SI-TALITI v2.0',
+        default: 'E - Verifikatur Kecamatan Tarogong Kidul',
     },
 });
 
@@ -120,7 +120,7 @@ const navItems = computed(() => {
                                 class="w-8 h-8 object-contain"
                             />
                             <div class="leading-tight">
-                                <span class="font-semibold tracking-tight text-ink text-base block">SI-TALITI</span>
+                                <span class="font-semibold tracking-tight text-ink text-base block">E - Verifikatur</span>
                                 <p class="text-xs text-ink-muted font-normal">
                                     {{ user.is_kelurahan_scoped && user.unit_kerja ? `${user.unit_kerja.nama_unit} • Kec. Tarogong Kidul` : 'Kecamatan Tarogong Kidul • Kab. Garut' }}
                                 </p>

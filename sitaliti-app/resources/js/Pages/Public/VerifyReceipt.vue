@@ -17,7 +17,7 @@ const props = defineProps({
 </script>
 
 <template>
-    <Head title="Verifikasi Keabsahan Dokumen SPJ - SI-TALITI Garut" />
+    <Head title="Verifikasi Keabsahan Dokumen SPJ - E - Verifikatur Kecamatan Tarogong Kidul" />
 
     <div class="min-h-screen bg-slate-100 flex flex-col justify-between font-sans text-slate-800">
         <!-- Header Resmi Pemerintah -->
@@ -35,7 +35,7 @@ const props = defineProps({
                     </div>
                 </div>
                 <span class="text-xs bg-raised text-ink-secondary px-2.5 py-1 rounded-md font-mono border border-hairline">
-                    SI-TALITI v2.0
+                    E - Verifikatur
                 </span>
             </div>
         </header>
@@ -156,7 +156,7 @@ const props = defineProps({
                 </div>
                 <h2 class="text-lg font-bold text-slate-900 mb-2">QR Code Tidak Valid</h2>
                 <p class="text-xs text-slate-600 max-w-sm mx-auto mb-6">
-                    {{ error || 'Dokumen Lembar Kendali tidak ditemukan dalam database resmi SI-TALITI Kabupaten Garut. Mohon pastikan dokumen fisik asli dan diterbitkan secara resmi.' }}
+                    {{ error || 'Dokumen Lembar Kendali tidak ditemukan dalam database resmi E - Verifikatur Kecamatan Tarogong Kidul. Mohon pastikan dokumen fisik asli dan diterbitkan secara resmi.' }}
                 </p>
                 <Link
                     href="/"
@@ -169,7 +169,7 @@ const props = defineProps({
 
         <!-- Footer -->
         <footer class="py-4 text-center text-xs text-slate-400">
-            Sistem Informasi Tata Kelola, Asistensi, dan Verifikasi Akuntabilitas SPJ (SI-TALITI v2.0)<br/>
+            E - Verifikatur Kecamatan Tarogong Kidul<br/>
             Kecamatan Tarogong Kidul & 5 Kelurahan — Kabupaten Garut © 2026
         </footer>
     </div>

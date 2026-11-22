@@ -31,7 +31,7 @@ const submit = () => {
 
 <template>
     <GuestLayout>
-        <Head title="Masuk — SI-TALITI" />
+        <Head title="Masuk — E - Verifikatur Kecamatan Tarogong Kidul" />
 
         <div v-if="status" class="mb-4 text-sm font-medium text-semantic-success">
             {{ status }}
