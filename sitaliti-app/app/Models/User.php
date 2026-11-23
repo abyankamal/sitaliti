@@ -82,6 +82,7 @@ class User extends Authenticatable
                 'bundle.unbundle',
                 'bundle.record_sp2d',
                 'budget.manage',
+                'rekap_belanja_operasi.manage',
             ],
             'PPTK' => [
                 'kuitansi.view',
@@ -102,6 +103,7 @@ class User extends Authenticatable
                 'bundle.view',
                 'user.manage',
                 'budget.manage',
+                'rekap_belanja_operasi.manage',
                 'dashboard.view_all',
             ],
             'LURAH' => [
