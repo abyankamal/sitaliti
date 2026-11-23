@@ -21,12 +21,16 @@ class ReceiptService
 {
     protected AuditTrailService $auditTrailService;
 
+    protected SppdScheduleService $sppdService;
+
     public function __construct(
         protected TaxCalculationServiceInterface $taxService,
         protected BudgetReservationServiceInterface $budgetService,
-        ?AuditTrailService $auditTrailService = null
+        ?AuditTrailService $auditTrailService = null,
+        ?SppdScheduleService $sppdService = null
     ) {
         $this->auditTrailService = $auditTrailService ?? app(AuditTrailService::class);
+        $this->sppdService = $sppdService ?? app(SppdScheduleService::class);
     }
 
     /**
@@ -147,6 +151,15 @@ class ReceiptService
                     $this->syncReceiptItemsAndTaxes($kuitansi, $itemsToSave, $taxCalc);
                     $this->storeAttachments($kuitansi, $rekening->id, $processedAttachments, $tahun, $bulanStr);
 
+                    if ($this->sppdService->isSppdRekening($rekening) && $this->hasSppdPayload($data)) {
+                        $this->sppdService->syncParticipantsAndPhotos(
+                            $kuitansi,
+                            is_array($data['sppd_peserta'] ?? null) ? $data['sppd_peserta'] : [],
+                            ($data['sppd_foto'] ?? null) instanceof UploadedFile ? $data['sppd_foto'] : null,
+                            filter_var($data['sppd_foto_remove'] ?? false, FILTER_VALIDATE_BOOLEAN)
+                        );
+                    }
+
                     $this->auditTrailService->log(
                         $kuitansi,
                         'DRAFT_CREATED',
@@ -161,7 +174,7 @@ class ReceiptService
                         ]
                     );
 
-                    return $kuitansi->load(['items', 'pajak', 'lampiran', 'rekening', 'unitKerja']);
+                    return $kuitansi->load(['items', 'pajak', 'lampiran', 'rekening', 'unitKerja', 'sppdPeserta.pegawai']);
                 });
             } catch (QueryException $e) {
                 if (! $isAutoNumber || $attempt >= $maxAttempts || ! $this->isAutoNumberUniqueViolation($e, 'nomor_kuitansi')) {
@@ -272,6 +285,19 @@ class ReceiptService
             $bulanStr = str_pad((string) $targetBulan, 2, '0', STR_PAD_LEFT);
             $this->storeAttachments($kuitansi, $rekening->id, $processedAttachments, $tahun, $bulanStr);
 
+            if ($this->sppdService->isSppdRekening($rekening)) {
+                if ($this->hasSppdPayload($data)) {
+                    $this->sppdService->syncParticipantsAndPhotos(
+                        $kuitansi,
+                        is_array($data['sppd_peserta'] ?? null) ? $data['sppd_peserta'] : [],
+                        ($data['sppd_foto'] ?? null) instanceof UploadedFile ? $data['sppd_foto'] : null,
+                        filter_var($data['sppd_foto_remove'] ?? false, FILTER_VALIDATE_BOOLEAN)
+                    );
+                }
+            } else {
+                $this->clearSppdDataWhenNonSppd($kuitansi);
+            }
+
             $this->auditTrailService->log(
                 $kuitansi,
                 'RECEIPT_UPDATED',
@@ -286,8 +312,47 @@ class ReceiptService
                 ]
             );
 
-            return $kuitansi->load(['items', 'pajak', 'lampiran', 'rekening', 'unitKerja']);
+            return $kuitansi->load(['items', 'pajak', 'lampiran', 'rekening', 'unitKerja', 'sppdPeserta.pegawai']);
         });
+    }
+
+    private function hasSppdPayload(array $data): bool
+    {
+        return array_key_exists('sppd_peserta', $data)
+            || filter_var($data['sppd_peserta_synced'] ?? false, FILTER_VALIDATE_BOOLEAN)
+            || ($data['sppd_foto'] ?? null) instanceof UploadedFile
+            || filter_var($data['sppd_foto_remove'] ?? false, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    private function clearSppdDataWhenNonSppd(Kuitansi $kuitansi): void
+    {
+        $paths = $kuitansi->sppdPeserta()->whereNotNull('foto_path')->pluck('foto_path')->all();
+        if ($kuitansi->sppd_foto_path) {
+            $paths[] = $kuitansi->sppd_foto_path;
+        }
+
+        if ($kuitansi->sppdPeserta()->exists()) {
+            $kuitansi->sppdPeserta()->delete();
+        }
+
+        if ($kuitansi->sppd_foto_path) {
+            $kuitansi->update([
+                'sppd_foto_path' => null,
+                'sppd_foto_name' => null,
+                'sppd_foto_size' => null,
+                'sppd_foto_mime' => null,
+            ]);
+        }
+
+        if (! empty($paths)) {
+            DB::afterCommit(function () use ($paths) {
+                foreach (array_unique($paths) as $path) {
+                    if ($path && Storage::disk('local')->exists($path)) {
+                        Storage::disk('local')->delete($path);
+                    }
+                }
+            });
+        }
     }
 
     /**

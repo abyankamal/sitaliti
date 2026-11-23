@@ -140,6 +140,7 @@ class VerificationService implements VerificationServiceInterface
             'pajak',
             'lampiran',
             'checklistVerifikasi.checklistItem',
+            'sppdPeserta.pegawai',
         ]);
 
         $kategori = $kuitansi->rekening?->kategori_belanja ?? 'B.1';
@@ -190,6 +191,19 @@ class VerificationService implements VerificationServiceInterface
             'items' => $kuitansi->items,
             'pajak' => $kuitansi->pajak,
             'lampiran' => $kuitansi->lampiran,
+            'sppd_foto_url' => $kuitansi->sppd_foto_url,
+            'sppd_peserta' => $kuitansi->sppdPeserta->map(function ($peserta) use ($kuitansi) {
+                return [
+                    'id' => $peserta->id,
+                    'pegawai_id' => $peserta->pegawai_id,
+                    'pegawai' => $peserta->pegawai,
+                    'tanggal_berangkat' => $peserta->tanggal_berangkat?->format('Y-m-d'),
+                    'tanggal_pulang' => $peserta->tanggal_pulang?->format('Y-m-d'),
+                    'tujuan' => $peserta->tujuan,
+                    'foto_url' => $peserta->foto_url,
+                    'effective_foto_url' => $peserta->foto_url ?? $kuitansi->sppd_foto_url,
+                ];
+            })->values()->all(),
             'checklist' => $checklistSummary,
         ];
     }

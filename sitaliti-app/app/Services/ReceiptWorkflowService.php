@@ -13,11 +13,15 @@ class ReceiptWorkflowService
 {
     protected AuditTrailService $auditTrailService;
 
+    protected SppdScheduleService $sppdService;
+
     public function __construct(
         protected BudgetReservationServiceInterface $budgetService,
-        ?AuditTrailService $auditTrailService = null
+        ?AuditTrailService $auditTrailService = null,
+        ?SppdScheduleService $sppdService = null
     ) {
         $this->auditTrailService = $auditTrailService ?? app(AuditTrailService::class);
+        $this->sppdService = $sppdService ?? app(SppdScheduleService::class);
     }
 
     /**
@@ -36,6 +40,8 @@ class ReceiptWorkflowService
                 throw new InvalidArgumentException('Kuitansi wajib memiliki minimal 1 lampiran bukti sebelum dikirim ulang ke Verifikator.');
             }
 
+            $this->sppdService->validateReadyForSubmission($kuitansi);
+
             $kuitansi->update([
                 'status' => 'MENUNGGU_VERIFIKASI',
             ]);
@@ -53,7 +59,7 @@ class ReceiptWorkflowService
                 ]
             );
 
-            return $kuitansi->load(['items', 'pajak', 'lampiran', 'rekening', 'unitKerja']);
+            return $kuitansi->load(['items', 'pajak', 'lampiran', 'rekening', 'unitKerja', 'sppdPeserta.pegawai']);
         });
     }
 
@@ -72,6 +78,8 @@ class ReceiptWorkflowService
             if ($kuitansi->lampiran()->count() === 0) {
                 throw new InvalidArgumentException('Kuitansi wajib memiliki minimal 1 lampiran bukti sebelum diajukan ke PPTK.');
             }
+
+            $this->sppdService->validateReadyForSubmission($kuitansi);
 
             $statusLama = $kuitansi->status;
 
