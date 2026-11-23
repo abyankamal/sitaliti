@@ -64,6 +64,14 @@ Route::middleware('auth')->group(function () {
         return Inertia::render('Bundles/Index');
     })->middleware('permission:bundle.view')->name('bundles.index');
 
+    // Routes Master Pegawai (BP, BPP, & Kasubag / VERIFIKATOR)
+    Route::get('/pegawai', function (Request $request) {
+        $user = $request->user();
+        abort_if(! $user || (! $user->isSkpdWide() && $user->unit_kerja_id === null), 403, 'Akun Anda belum terhubung dengan unit kerja.');
+
+        return Inertia::render('Pegawai/Index');
+    })->middleware('permission:kuitansi.create|user.manage')->name('pegawai.index');
+
     // Routes Manajemen Pengguna & Penugasan PPTK (Kecamatan Administrator / Kepegawaian)
     Route::get('/users', function (Request $request) {
         $user = $request->user();

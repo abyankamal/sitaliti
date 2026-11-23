@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\BudgetApiController;
 use App\Http\Controllers\Api\MasterDataApiController;
+use App\Http\Controllers\Api\PegawaiApiController;
 use App\Http\Controllers\Api\ReceiptApiController;
 use App\Http\Controllers\Api\ReceiptWorkflowApiController;
 use App\Http\Controllers\Api\RekeningManagementApiController;
@@ -106,6 +107,20 @@ Route::prefix('v1')->group(function () {
         // Master Data Endpoints
         Route::prefix('master')->group(function () {
             Route::get('checklist/{category}', [MasterDataApiController::class, 'checklist']);
+        });
+
+        // Master Pegawai Endpoints (Dropdown terbuka untuk view/create; CRUD untuk BP, BPP, & Kasubag/VERIFIKATOR)
+        Route::prefix('pegawai')->group(function () {
+            Route::get('options', [PegawaiApiController::class, 'options'])
+                ->middleware('permission:kuitansi.view|kuitansi.create');
+            Route::get('/', [PegawaiApiController::class, 'index'])
+                ->middleware('permission:kuitansi.create|user.manage');
+            Route::post('/', [PegawaiApiController::class, 'store'])
+                ->middleware('permission:kuitansi.create|user.manage');
+            Route::put('{id}', [PegawaiApiController::class, 'update'])
+                ->middleware('permission:kuitansi.create|user.manage');
+            Route::delete('{id}', [PegawaiApiController::class, 'destroy'])
+                ->middleware('permission:kuitansi.create|user.manage');
         });
 
         // User Management & PPTK Assignment Endpoints (Kecamatan Administrator / Kepegawaian)
