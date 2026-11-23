@@ -102,6 +102,11 @@ Route::middleware('auth')->group(function () {
         return Inertia::render('MasterRekapBelanjaOperasi/Index');
     })->middleware('permission:rekap_belanja_operasi.manage')->name('master-rekap-belanja-operasi.index');
 
+    // Routes Laporan & Filterisasi Rekap Belanja Operasi
+    Route::get('/rekap-belanja-operasi', function () {
+        return Inertia::render('RekapBelanjaOperasi/Index');
+    })->name('rekap-belanja-operasi.index');
+
     // Profile Routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

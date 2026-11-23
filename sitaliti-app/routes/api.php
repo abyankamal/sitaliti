@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\MasterRekapBelanjaOperasiApiController;
 use App\Http\Controllers\Api\PegawaiApiController;
 use App\Http\Controllers\Api\ReceiptApiController;
 use App\Http\Controllers\Api\ReceiptWorkflowApiController;
+use App\Http\Controllers\Api\RekapBelanjaOperasiReportApiController;
 use App\Http\Controllers\Api\RekeningManagementApiController;
 use App\Http\Controllers\Api\SettlementApiController;
 use App\Http\Controllers\Api\SppdReportApiController;
@@ -30,6 +31,13 @@ Route::prefix('v1')->group(function () {
             Route::get('units', [BudgetApiController::class, 'units']);
             Route::get('sub-activities', [BudgetApiController::class, 'subActivities']);
             Route::get('rak-context/{rekeningId}', [BudgetApiController::class, 'rakContext']);
+        });
+
+        // Rekap & Filterisasi Belanja Operasi Endpoints (Scoping RBAC diterapkan di service)
+        Route::prefix('rekap-belanja-operasi')->group(function () {
+            Route::get('/', [RekapBelanjaOperasiReportApiController::class, 'index']);
+            Route::get('drilldown', [RekapBelanjaOperasiReportApiController::class, 'drilldown']);
+            Route::get('export', [RekapBelanjaOperasiReportApiController::class, 'export']);
         });
 
         // Receipts Endpoints
