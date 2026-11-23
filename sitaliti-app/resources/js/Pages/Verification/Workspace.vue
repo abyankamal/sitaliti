@@ -434,6 +434,43 @@ async function handleQuickAuthSubmit() {
                     </div>
 
                     <div
+                        v-if="(detail.sppd_peserta && detail.sppd_peserta.length > 0) || detail.sppd_foto_url"
+                        class="p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs space-y-2"
+                    >
+                        <div class="font-semibold text-gov-navy-900">
+                            Pelaksana SPPD ({{ detail.sppd_peserta?.length || 0 }} Orang) &amp; Foto Keberangkatan
+                        </div>
+                        <div class="space-y-1.5">
+                            <div
+                                v-for="peserta in detail.sppd_peserta || []"
+                                :key="peserta.id"
+                                class="flex items-center justify-between gap-2 bg-white p-2 rounded border border-slate-200"
+                            >
+                                <div class="min-w-0">
+                                    <div class="font-medium text-slate-800 truncate">{{ peserta.pegawai?.nama || '-' }}</div>
+                                    <div class="text-[11px] text-slate-500 font-mono tabular-nums">
+                                        {{ peserta.pegawai?.nip || '-' }} • {{ peserta.tanggal_berangkat }} s/d {{ peserta.tanggal_pulang }}
+                                    </div>
+                                    <div v-if="peserta.tujuan" class="text-[11px] text-slate-600 truncate">{{ peserta.tujuan }}</div>
+                                </div>
+                                <a
+                                    v-if="peserta.effective_foto_url"
+                                    :href="peserta.effective_foto_url"
+                                    target="_blank"
+                                    class="shrink-0"
+                                    title="Buka Foto Keberangkatan"
+                                >
+                                    <img
+                                        :src="peserta.effective_foto_url"
+                                        alt="Foto Keberangkatan"
+                                        class="w-10 h-10 rounded object-cover border border-slate-200"
+                                    />
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div
                         v-if="!detail.checklist || detail.checklist.length === 0"
                         class="p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800"
                     >

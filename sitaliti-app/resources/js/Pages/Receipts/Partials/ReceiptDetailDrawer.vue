@@ -493,6 +493,50 @@ function getStatusBadge(status) {
                             </div>
                         </div>
 
+                        <!-- 4b. Pelaksana & Foto Keberangkatan SPPD -->
+                        <div v-if="(receipt.sppd_peserta && receipt.sppd_peserta.length > 0) || receipt.sppd_foto_url" class="space-y-2">
+                            <h3 class="text-xs font-bold text-slate-500">
+                                Pelaksana Perjalanan Dinas (SPPD) &amp; Foto Keberangkatan
+                            </h3>
+                            <div class="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100 text-xs">
+                                <div
+                                    v-for="peserta in receipt.sppd_peserta || []"
+                                    :key="peserta.id"
+                                    class="p-3 flex items-center justify-between gap-3"
+                                >
+                                    <div class="min-w-0">
+                                        <div class="font-semibold text-slate-800 truncate">
+                                            {{ peserta.pegawai?.nama || `Pegawai #${peserta.pegawai_id}` }}
+                                        </div>
+                                        <div class="text-[11px] text-slate-500 font-mono tabular-nums">
+                                            NIP {{ peserta.pegawai?.nip || '-' }} •
+                                            {{ (peserta.tanggal_berangkat || '').slice(0, 10) }} s/d {{ (peserta.tanggal_pulang || '').slice(0, 10) }}
+                                        </div>
+                                        <div v-if="peserta.tujuan" class="text-[11px] text-slate-600 mt-0.5 truncate">
+                                            Tujuan: {{ peserta.tujuan }}
+                                        </div>
+                                    </div>
+                                    <a
+                                        v-if="peserta.foto_url || receipt.sppd_foto_url"
+                                        :href="peserta.foto_url || receipt.sppd_foto_url"
+                                        target="_blank"
+                                        class="shrink-0 group"
+                                        title="Buka Foto Keberangkatan"
+                                    >
+                                        <img
+                                            :src="peserta.foto_url || receipt.sppd_foto_url"
+                                            alt="Foto Keberangkatan"
+                                            class="w-11 h-11 rounded-md object-cover border border-slate-200 group-hover:ring-2 group-hover:ring-gov-navy-700"
+                                        />
+                                    </a>
+                                </div>
+                                <div v-if="receipt.sppd_foto_url && (!receipt.sppd_peserta || receipt.sppd_peserta.length === 0)" class="p-3 flex items-center justify-between">
+                                    <span class="text-slate-600">Foto Keberangkatan Rombongan</span>
+                                    <a :href="receipt.sppd_foto_url" target="_blank" class="text-gov-navy-700 font-medium underline">Lihat Foto</a>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- 5. Jejak Audit BPK (Timeline) -->
                         <div class="space-y-3 pt-2">
                             <h3 class="text-xs font-bold text-slate-500 ">
