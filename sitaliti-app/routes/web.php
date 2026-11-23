@@ -4,6 +4,7 @@ use App\Http\Controllers\ControlSheetPdfController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Public\QrVerificationPublicController;
 use App\Http\Controllers\ReceiptAttachmentController;
+use App\Http\Controllers\SppdPhotoController;
 use App\Http\Controllers\Web\ReceiptWebController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -58,6 +59,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/receipts/{kuitansiId}/attachments/{attachmentId}/preview', [ReceiptAttachmentController::class, 'preview'])
         ->middleware('permission:kuitansi.view')
         ->name('receipts.attachments.preview');
+
+    Route::get('/sppd/photo/{kuitansiId}/{pesertaId?}', [SppdPhotoController::class, 'preview'])
+        ->middleware('permission:kuitansi.view')
+        ->name('sppd.photo.preview');
 
     // Routes Bundles / SPP
     Route::get('/bundles', function () {

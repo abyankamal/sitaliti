@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\ApiResponseTrait;
 use App\Models\AnggaranRekening;
 use App\Models\Kuitansi;
+use App\Models\Pegawai;
 use App\Services\ReceiptExportService;
 use App\Services\ReceiptQueryService;
 use App\Services\ReceiptService;
@@ -161,7 +162,15 @@ class ReceiptApiController extends Controller
             'lampiran.*' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
             'checklist_codes.*' => ['nullable', 'string', 'max:50'],
             'nama_dokumen.*' => ['nullable', 'string', 'max:255'],
+            ...$this->sppdValidationRules(),
         ]);
+
+        if ($inactiveError = $this->validateActiveNewPegawai($validated['sppd_peserta'] ?? [])) {
+            return $inactiveError;
+        }
+
+        $validated['sppd_peserta_synced'] = $request->boolean('sppd_peserta_synced');
+        $validated['sppd_foto_remove'] = $request->boolean('sppd_foto_remove');
 
         $user = $request->user();
         $rekening = AnggaranRekening::find($validated['anggaran_rekening_id']);
@@ -184,8 +193,12 @@ class ReceiptApiController extends Controller
                 'kuitansi' => $kuitansi,
             ], 'Draft kuitansi dan berkas pendukung berhasil disimpan', 201);
         } catch (ValidationException $e) {
+            $errorCode = array_key_exists('sppd_peserta', $e->errors())
+                ? 'SPPD_SCHEDULE_CONFLICT'
+                : 'DUPLICATE_RECEIPT_ATTACHMENT';
+
             return $this->errorResponse(
-                'DUPLICATE_RECEIPT_ATTACHMENT',
+                $errorCode,
                 $e->getMessage(),
                 $e->errors(),
                 422
@@ -210,6 +223,7 @@ class ReceiptApiController extends Controller
             'pptkUser',
             'creator',
             'riwayat.user',
+            'sppdPeserta.pegawai',
         ]);
 
         if (! $kuitansi) {
@@ -310,7 +324,15 @@ class ReceiptApiController extends Controller
             'lampiran.*' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
             'checklist_codes.*' => ['nullable', 'string', 'max:50'],
             'nama_dokumen.*' => ['nullable', 'string', 'max:255'],
+            ...$this->sppdValidationRules(),
         ]);
+
+        if ($inactiveError = $this->validateActiveNewPegawai($validated['sppd_peserta'] ?? [], $kuitansi)) {
+            return $inactiveError;
+        }
+
+        $validated['sppd_peserta_synced'] = $request->boolean('sppd_peserta_synced');
+        $validated['sppd_foto_remove'] = $request->boolean('sppd_foto_remove');
 
         $user = $request->user();
         if (! empty($validated['anggaran_rekening_id'])) {
@@ -335,7 +357,11 @@ class ReceiptApiController extends Controller
                 'kuitansi' => $updated,
             ], 'Kuitansi berhasil diperbarui');
         } catch (ValidationException $e) {
-            return $this->errorResponse('VALIDATION_ERROR', $e->getMessage(), $e->errors(), 422);
+            $errorCode = array_key_exists('sppd_peserta', $e->errors())
+                ? 'SPPD_SCHEDULE_CONFLICT'
+                : 'VALIDATION_ERROR';
+
+            return $this->errorResponse($errorCode, $e->getMessage(), $e->errors(), 422);
         } catch (InvalidArgumentException $e) {
             return $this->errorResponse('INVALID_RECEIPT_STATE', $e->getMessage(), null, 422);
         } catch (Throwable $e) {
@@ -420,5 +446,73 @@ class ReceiptApiController extends Controller
         }
 
         $request->validate($rules);
+    }
+
+    /**
+     * Aturan validasi payload peserta dan foto keberangkatan SPPD.
+     *
+     * @return array<string, mixed>
+     */
+    private function sppdValidationRules(): array
+    {
+        return [
+            'sppd_peserta_synced' => ['nullable', 'boolean'],
+            'sppd_peserta' => ['nullable', 'array'],
+            'sppd_peserta.*.pegawai_id' => ['required_with:sppd_peserta', 'integer', 'exists:pegawai,id'],
+            'sppd_peserta.*.tanggal_berangkat' => ['required_with:sppd_peserta', 'date'],
+            'sppd_peserta.*.tanggal_pulang' => ['required_with:sppd_peserta', 'date', 'after_or_equal:sppd_peserta.*.tanggal_berangkat'],
+            'sppd_peserta.*.tujuan' => ['nullable', 'string', 'max:255'],
+            'sppd_peserta.*.foto' => ['nullable', 'file', 'mimes:jpg,jpeg,png', 'max:10240'],
+            'sppd_peserta.*.remove_foto' => ['nullable', 'boolean'],
+            'sppd_foto' => ['nullable', 'file', 'mimes:jpg,jpeg,png', 'max:10240'],
+            'sppd_foto_remove' => ['nullable', 'boolean'],
+        ];
+    }
+
+    /**
+     * Memastikan pegawai baru yang ditambahkan ke SPPD berstatus aktif.
+     *
+     * @param  array<int, array<string, mixed>>  $participants
+     */
+    private function validateActiveNewPegawai(array $participants, ?Kuitansi $existingKuitansi = null): ?JsonResponse
+    {
+        if (empty($participants)) {
+            return null;
+        }
+
+        $existingPegawaiIds = $existingKuitansi
+            ? $existingKuitansi->sppdPeserta()->pluck('pegawai_id')->map(fn ($id) => (int) $id)->all()
+            : [];
+
+        $newPegawaiIds = collect($participants)
+            ->pluck('pegawai_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->reject(fn (int $id) => in_array($id, $existingPegawaiIds, true))
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($newPegawaiIds)) {
+            return null;
+        }
+
+        $inactiveNames = Pegawai::whereIn('id', $newPegawaiIds)
+            ->where('is_active', false)
+            ->pluck('nama')
+            ->all();
+
+        if (! empty($inactiveNames)) {
+            $list = implode(', ', $inactiveNames);
+
+            return $this->errorResponse(
+                'INACTIVE_PEGAWAI',
+                "Pegawai berstatus nonaktif tidak dapat ditambahkan ke SPPD baru: {$list}.",
+                ['sppd_peserta' => ["Pegawai nonaktif: {$list}."]],
+                422
+            );
+        }
+
+        return null;
     }
 }

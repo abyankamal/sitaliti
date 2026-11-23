@@ -11,6 +11,7 @@ use App\Services\ReceiptWorkflowService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use Throwable;
 
@@ -42,6 +43,8 @@ class ReceiptWorkflowApiController extends Controller
                 'nomor_kuitansi' => $updated->nomor_kuitansi,
                 'status' => $updated->status,
             ], 'Kuitansi revisi minor berhasil dikirim ulang ke Verifikator');
+        } catch (ValidationException $e) {
+            return $this->errorResponse('SPPD_SCHEDULE_CONFLICT', $e->getMessage(), $e->errors(), 422);
         } catch (InvalidArgumentException $e) {
             return $this->errorResponse('INVALID_RECEIPT_STATE', $e->getMessage(), null, 422);
         } catch (Throwable $e) {
@@ -115,6 +118,8 @@ class ReceiptWorkflowApiController extends Controller
             ], $message);
         } catch (PaguOverlimitException $e) {
             return $this->errorResponse('PAGU_OVERLIMIT', $e->getMessage(), null, 422);
+        } catch (ValidationException $e) {
+            return $this->errorResponse('SPPD_SCHEDULE_CONFLICT', $e->getMessage(), $e->errors(), 422);
         } catch (InvalidArgumentException $e) {
             return $this->errorResponse('INVALID_RECEIPT_STATE', $e->getMessage(), null, 422);
         } catch (Throwable $e) {

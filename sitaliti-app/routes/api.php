@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\ReceiptApiController;
 use App\Http\Controllers\Api\ReceiptWorkflowApiController;
 use App\Http\Controllers\Api\RekeningManagementApiController;
 use App\Http\Controllers\Api\SettlementApiController;
+use App\Http\Controllers\Api\SppdReportApiController;
 use App\Http\Controllers\Api\UserManagementApiController;
 use App\Http\Controllers\Api\VerificationApiController;
 use App\Http\Controllers\ControlSheetPdfController;
@@ -107,6 +108,12 @@ Route::prefix('v1')->group(function () {
         // Master Data Endpoints
         Route::prefix('master')->group(function () {
             Route::get('checklist/{category}', [MasterDataApiController::class, 'checklist']);
+        });
+
+        // SPPD Schedule Conflict Pre-Check Endpoint
+        Route::prefix('sppd')->group(function () {
+            Route::post('check-conflict', [SppdReportApiController::class, 'checkConflict'])
+                ->middleware('permission:kuitansi.create|kuitansi.edit');
         });
 
         // Master Pegawai Endpoints (Dropdown terbuka untuk view/create; CRUD untuk BP, BPP, & Kasubag/VERIFIKATOR)
