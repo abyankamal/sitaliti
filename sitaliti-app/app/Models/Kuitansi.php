@@ -25,6 +25,13 @@ class Kuitansi extends Model
     /**
      * @var list<string>
      */
+    protected $appends = [
+        'sppd_foto_url',
+    ];
+
+    /**
+     * @var list<string>
+     */
     protected $fillable = [
         'nomor_kuitansi',
         'unit_kerja_id',
@@ -51,6 +58,10 @@ class Kuitansi extends Model
         'catatan_pptk',
         'catatan_lurah',
         'catatan_verifikasi',
+        'sppd_foto_path',
+        'sppd_foto_name',
+        'sppd_foto_size',
+        'sppd_foto_mime',
         'tenggat_sla',
         'tanggal_submit',
         'tanggal_pptk_approve',
@@ -71,6 +82,7 @@ class Kuitansi extends Model
             'nominal_bruto' => 'decimal:2',
             'total_pajak' => 'decimal:2',
             'nominal_neto' => 'decimal:2',
+            'sppd_foto_size' => 'integer',
             'tenggat_sla' => 'datetime',
             'tanggal_submit' => 'datetime',
             'tanggal_pptk_approve' => 'datetime',
@@ -166,5 +178,24 @@ class Kuitansi extends Model
     public function riwayat(): HasMany
     {
         return $this->hasMany(KuitansiRiwayat::class, 'kuitansi_id');
+    }
+
+    public function sppdPeserta(): HasMany
+    {
+        return $this->hasMany(KuitansiSppdPeserta::class, 'kuitansi_id');
+    }
+
+    /**
+     * URL preview foto keberangkatan rombongan SPPD.
+     */
+    protected function sppdFotoUrl(): Attribute
+    {
+        return Attribute::get(function (): ?string {
+            if (! $this->id || ! $this->sppd_foto_path) {
+                return null;
+            }
+
+            return "/sppd/photo/{$this->id}";
+        });
     }
 }
