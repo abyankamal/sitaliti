@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\BudgetApiController;
 use App\Http\Controllers\Api\MasterDataApiController;
+use App\Http\Controllers\Api\MasterRekapBelanjaOperasiApiController;
 use App\Http\Controllers\Api\PegawaiApiController;
 use App\Http\Controllers\Api\ReceiptApiController;
 use App\Http\Controllers\Api\ReceiptWorkflowApiController;
@@ -108,6 +109,16 @@ Route::prefix('v1')->group(function () {
         // Master Data Endpoints
         Route::prefix('master')->group(function () {
             Route::get('checklist/{category}', [MasterDataApiController::class, 'checklist']);
+
+            Route::prefix('rekap-belanja-operasi')
+                ->middleware('permission:rekap_belanja_operasi.manage')
+                ->group(function () {
+                    Route::get('/', [MasterRekapBelanjaOperasiApiController::class, 'index']);
+                    Route::get('rekening-options', [MasterRekapBelanjaOperasiApiController::class, 'rekeningOptions']);
+                    Route::post('/', [MasterRekapBelanjaOperasiApiController::class, 'store']);
+                    Route::put('{id}', [MasterRekapBelanjaOperasiApiController::class, 'update']);
+                    Route::delete('{id}', [MasterRekapBelanjaOperasiApiController::class, 'destroy']);
+                });
         });
 
         // SPPD Schedule Conflict Pre-Check & Report Endpoints

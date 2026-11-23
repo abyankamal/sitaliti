@@ -97,6 +97,11 @@ Route::middleware('auth')->group(function () {
         return Inertia::render('Budget/Manage');
     })->middleware('permission:budget.manage')->name('budget-management.index');
 
+    // Routes Master Rekap Belanja Operasi (Khusus BP & Kasubag Keuangan / VERIFIKATOR Kecamatan)
+    Route::get('/master-rekap-belanja-operasi', function () {
+        return Inertia::render('MasterRekapBelanjaOperasi/Index');
+    })->middleware('permission:rekap_belanja_operasi.manage')->name('master-rekap-belanja-operasi.index');
+
     // Profile Routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
