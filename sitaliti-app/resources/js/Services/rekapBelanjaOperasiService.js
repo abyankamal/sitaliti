@@ -29,4 +29,27 @@ export const rekapBelanjaOperasiService = {
         const response = await axios.delete(`/api/v1/master/rekap-belanja-operasi/${id}`);
         return response.data;
     },
+
+    async getReport(params = {}) {
+        const response = await axios.get('/api/v1/rekap-belanja-operasi', { params });
+        return response.data?.data ?? { summary: {}, rows: [], filters: {} };
+    },
+
+    async getDrilldown(params = {}) {
+        const response = await axios.get('/api/v1/rekap-belanja-operasi/drilldown', { params });
+        return response.data?.data ?? { rekenings: [], kuitansi: [] };
+    },
+
+    getExportUrl(params = {}, format = 'xlsx') {
+        const searchParams = new URLSearchParams();
+        searchParams.set('format', format);
+
+        Object.entries(params).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && String(value).trim() !== '') {
+                searchParams.set(key, String(value));
+            }
+        });
+
+        return `/api/v1/rekap-belanja-operasi/export?${searchParams.toString()}`;
+    },
 };
