@@ -105,8 +105,8 @@ class RekapBelanjaOperasiExportService
             ],
         ]);
 
-        $sheet->getStyle("E".($headerRow + 1).":H{$rowIndex}")->getNumberFormat()->setFormatCode('#,##0');
-        $sheet->getStyle("I".($headerRow + 1).":I{$rowIndex}")->getNumberFormat()->setFormatCode('0.00"%"');
+        $sheet->getStyle('E'.($headerRow + 1).":H{$rowIndex}")->getNumberFormat()->setFormatCode('#,##0');
+        $sheet->getStyle('I'.($headerRow + 1).":I{$rowIndex}")->getNumberFormat()->setFormatCode('0.00"%"');
 
         foreach (range(1, count(self::HEADINGS)) as $colIdx) {
             $colLetter = Coordinate::stringFromColumnIndex($colIdx);
