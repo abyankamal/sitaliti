@@ -64,6 +64,10 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:kuitansi.view')
         ->name('sppd.photo.preview');
 
+    Route::get('/sppd-report', function () {
+        return Inertia::render('Sppd/Index');
+    })->middleware('permission:kuitansi.view')->name('sppd.report.index');
+
     // Routes Bundles / SPP
     Route::get('/bundles', function () {
         return Inertia::render('Bundles/Index');

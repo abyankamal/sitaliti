@@ -53,6 +53,12 @@ const allNavItems = [
         roles: ['BPP', 'BP', 'PPTK', 'VERIFIKATOR', 'KPA', 'LURAH'],
     },
     {
+        name: 'Laporan SPPD',
+        route: 'sppd.report.index',
+        icon: 'table',
+        roles: ['BPP', 'BP', 'PPTK', 'VERIFIKATOR', 'KPA', 'LURAH'],
+    },
+    {
         name: 'Input Kuitansi',
         route: 'receipts.create',
         icon: 'receipt',

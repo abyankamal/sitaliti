@@ -110,10 +110,14 @@ Route::prefix('v1')->group(function () {
             Route::get('checklist/{category}', [MasterDataApiController::class, 'checklist']);
         });
 
-        // SPPD Schedule Conflict Pre-Check Endpoint
+        // SPPD Schedule Conflict Pre-Check & Report Endpoints
         Route::prefix('sppd')->group(function () {
             Route::post('check-conflict', [SppdReportApiController::class, 'checkConflict'])
                 ->middleware('permission:kuitansi.create|kuitansi.edit');
+            Route::get('report', [SppdReportApiController::class, 'index'])
+                ->middleware('permission:kuitansi.view');
+            Route::get('report/export', [SppdReportApiController::class, 'export'])
+                ->middleware('permission:kuitansi.view');
         });
 
         // Master Pegawai Endpoints (Dropdown terbuka untuk view/create; CRUD untuk BP, BPP, & Kasubag/VERIFIKATOR)
