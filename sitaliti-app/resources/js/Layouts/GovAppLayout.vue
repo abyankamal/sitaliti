@@ -78,6 +78,12 @@ const allNavItems = [
         skpdOnly: true,
     },
     {
+        name: 'Master Pegawai',
+        route: 'pegawai.index',
+        icon: 'users',
+        roles: ['VERIFIKATOR', 'BP', 'BPP'],
+    },
+    {
         name: 'Kelola Anggaran (RAK)',
         route: 'budget-management.index',
         icon: 'table',
