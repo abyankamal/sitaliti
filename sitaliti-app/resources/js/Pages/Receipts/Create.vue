@@ -7,6 +7,7 @@ import GovButton from '@/Components/UI/GovButton.vue';
 import GovInput from '@/Components/UI/GovInput.vue';
 import GovCurrencyInput from '@/Components/UI/GovCurrencyInput.vue';
 import DynamicChecklistTable from '@/Modules/Checklist/DynamicChecklistTable.vue';
+import SppdParticipantsSection from '@/Components/SppdParticipantsSection.vue';
 import { formatRupiah } from '@/Utils/currency';
 import { receiptService } from '@/Services/receiptService';
 
@@ -34,7 +35,27 @@ const form = ref({
     ],
 });
 
-const categoryCode = computed(() => budgetContext.value?.account?.kategori || 'B.1');
+const categoryCode = computed(() => {
+    const raw = String(budgetContext.value?.account?.kategori || 'B.1').toUpperCase();
+    if (raw.startsWith('B1')) return 'B.1';
+    if (raw.startsWith('B2')) return 'B.2';
+    if (raw.startsWith('B3')) return 'B.3';
+    if (raw.startsWith('B4')) return 'B.4';
+    if (raw.startsWith('B5')) return 'B.5';
+    if (raw.startsWith('B6')) return 'B.6';
+    return budgetContext.value?.account?.kategori || 'B.1';
+});
+
+const isSppdCategory = computed(() => {
+    if (categoryCode.value === 'B.4') return true;
+    const kode = String(budgetContext.value?.account?.kode_rekening || '');
+    return kode.startsWith('5.1.02.04');
+});
+
+const sppdPeserta = ref([]);
+const sppdGroupPhoto = ref(null);
+const sppdRemoveGroupPhoto = ref(false);
+const sppdHasConflict = ref(false);
 
 function showFeedback(type, title, message) {
     feedbackBanner.value = { type, title, message };
@@ -162,7 +183,7 @@ function removeItemRow(index) {
     }
 }
 
-async function handleSubmitDraft() {
+async function handleSubmitDraft(andSubmit = true) {
     feedbackBanner.value = null;
 
     if (!budgetContext.value?.account?.id) {
@@ -175,17 +196,19 @@ async function handleSubmitDraft() {
         return;
     }
 
-    const missingMandatory = checklistItems.value
-        .filter((doc) => doc.required && !doc.file)
-        .map((doc) => doc.name);
+    if (andSubmit) {
+        const missingMandatory = checklistItems.value
+            .filter((doc) => doc.required && !doc.file)
+            .map((doc) => doc.name);
 
-    if (missingMandatory.length > 0) {
-        showFeedback(
-            'error',
-            'Dokumen Wajib Belum Lengkap',
-            `Harap unggah berkas wajib berikut: ${missingMandatory.join(', ')}.`
-        );
-        return;
+        if (missingMandatory.length > 0) {
+            showFeedback(
+                'error',
+                'Dokumen Wajib Belum Lengkap',
+                `Harap unggah berkas wajib berikut: ${missingMandatory.join(', ')}.`
+            );
+            return;
+        }
     }
 
     isSubmitting.value = true;
@@ -240,6 +263,27 @@ async function handleSubmitDraft() {
             }
         });
 
+        if (isSppdCategory.value) {
+            formData.append('sppd_peserta_synced', '1');
+            formData.append('sppd_foto_remove', sppdRemoveGroupPhoto.value ? '1' : '0');
+            if (sppdGroupPhoto.value) {
+                formData.append('sppd_foto', sppdGroupPhoto.value);
+            }
+            sppdPeserta.value.forEach((peserta, idx) => {
+                if (!peserta.pegawai_id) return;
+                formData.append(`sppd_peserta[${idx}][pegawai_id]`, peserta.pegawai_id);
+                formData.append(`sppd_peserta[${idx}][tanggal_berangkat]`, peserta.tanggal_berangkat || form.value.tanggal_bukti);
+                formData.append(`sppd_peserta[${idx}][tanggal_pulang]`, peserta.tanggal_pulang || peserta.tanggal_berangkat || form.value.tanggal_bukti);
+                if (peserta.tujuan) {
+                    formData.append(`sppd_peserta[${idx}][tujuan]`, peserta.tujuan);
+                }
+                formData.append(`sppd_peserta[${idx}][remove_foto]`, peserta.remove_foto ? '1' : '0');
+                if (peserta.foto) {
+                    formData.append(`sppd_peserta[${idx}][foto]`, peserta.foto);
+                }
+            });
+        }
+
         let receiptId = savedReceiptId.value;
         if (!receiptId) {
             const saveRes = await receiptService.storeReceipt(formData);
@@ -259,16 +303,22 @@ async function handleSubmitDraft() {
             }
         });
 
-        await receiptService.submitReceipt(receiptId);
+        if (andSubmit) {
+            await receiptService.submitReceipt(receiptId);
+        }
         router.visit(route('receipts.index'));
     } catch (err) {
         const errData = err.response?.data?.error;
+        const details = errData?.details || err.response?.data?.errors;
         if (errData?.code === 'DUPLICATE_RECEIPT_ATTACHMENT') {
             showFeedback(
                 'error',
                 'Peringatan Duplikasi Nota Kembar (SHA-256)',
                 `${errData.message} Berkas lampiran yang sama persis telah terdaftar pada sistem.`
             );
+        } else if (details && typeof details === 'object') {
+            const detailText = Object.values(details).flat().join(' ');
+            showFeedback('error', errData?.message || 'Validasi Gagal', detailText || errData?.message);
         } else {
             const errMsg = errData?.message || err.response?.data?.message || err.message || 'Terjadi kesalahan saat menyimpan draft.';
             showFeedback('error', 'Gagal Menyimpan Kuitansi', errMsg);
@@ -304,11 +354,20 @@ async function handleSubmitDraft() {
                         Batal
                     </GovButton>
                     <GovButton
+                        variant="secondary"
+                        size="sm"
+                        :loading="isSubmitting"
+                        :disabled="isExceedingBudget || totalNilaiBelanja === 0"
+                        @click="handleSubmitDraft(false)"
+                    >
+                        Simpan Draft
+                    </GovButton>
+                    <GovButton
                         variant="gold"
                         size="sm"
                         :loading="isSubmitting"
                         :disabled="isExceedingBudget || totalNilaiBelanja === 0"
-                        @click="handleSubmitDraft"
+                        @click="handleSubmitDraft(true)"
                     >
                         {{ $page.props.auth?.user?.can_auto_finalize_receipt ? 'Simpan & Finalisasi' : 'Simpan & Ajukan Verifikasi' }}
                     </GovButton>
@@ -650,6 +709,16 @@ async function handleSubmitDraft() {
                     </div>
                 </div>
             </div>
+
+            <!-- Form Bagian 3b: Pelaksana & Foto Keberangkatan SPPD (Khusus B.4) -->
+            <SppdParticipantsSection
+                v-if="isSppdCategory"
+                v-model="sppdPeserta"
+                v-model:group-photo="sppdGroupPhoto"
+                v-model:remove-group-photo="sppdRemoveGroupPhoto"
+                :default-date="form.tanggal_bukti"
+                @conflict-change="sppdHasConflict = $event"
+            />
 
             <!-- Form Bagian 4: Dynamic Checklist Dokumen B.1 - B.6 -->
             <DynamicChecklistTable

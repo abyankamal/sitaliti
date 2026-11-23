@@ -9,6 +9,7 @@ import GovInput from '@/Components/UI/GovInput.vue';
 import GovCurrencyInput from '@/Components/UI/GovCurrencyInput.vue';
 import GovBadge from '@/Components/UI/GovBadge.vue';
 import DynamicChecklistTable from '@/Modules/Checklist/DynamicChecklistTable.vue';
+import SppdParticipantsSection from '@/Components/SppdParticipantsSection.vue';
 import { formatRupiah } from '@/Utils/currency';
 import { STATUS_LABELS } from '@/Constants/workflowStatus';
 import { receiptService } from '@/Services/receiptService';
@@ -59,6 +60,16 @@ const normalizedCategory = computed(() => {
     return raw;
 });
 
+const isSppdCategory = computed(() => {
+    if (normalizedCategory.value === 'B.4') return true;
+    return String(receipt.value?.rekening?.kode_rekening || '').startsWith('5.1.02.04');
+});
+
+const sppdPeserta = ref([]);
+const sppdGroupPhoto = ref(null);
+const sppdRemoveGroupPhoto = ref(false);
+const sppdHasConflict = ref(false);
+
 const statusMeta = computed(() => {
     const status = receipt.value?.status || 'DRAFT';
     const variants = {
@@ -106,6 +117,20 @@ async function loadReceiptData() {
         const res = await axios.get(`/api/v1/receipts/${props.id}`);
         const data = res.data?.data;
         receipt.value = data;
+
+        sppdPeserta.value = Array.isArray(data.sppd_peserta)
+            ? data.sppd_peserta.map((p) => ({
+                  pegawai_id: p.pegawai_id,
+                  tanggal_berangkat: (p.tanggal_berangkat || '').slice(0, 10),
+                  tanggal_pulang: (p.tanggal_pulang || '').slice(0, 10),
+                  tujuan: p.tujuan || '',
+                  foto: null,
+                  foto_url: p.foto_url || null,
+                  remove_foto: false,
+              }))
+            : [];
+        sppdGroupPhoto.value = null;
+        sppdRemoveGroupPhoto.value = false;
 
         form.value = {
             bulan_anggaran: Number(data.bulan_anggaran || 1),
@@ -286,13 +311,35 @@ function buildUpdateFormData() {
             formData.append(`nama_dokumen[${idx}]`, doc.name);
         });
 
+    if (isSppdCategory.value) {
+        formData.append('sppd_peserta_synced', '1');
+        formData.append('sppd_foto_remove', sppdRemoveGroupPhoto.value ? '1' : '0');
+        if (sppdGroupPhoto.value) {
+            formData.append('sppd_foto', sppdGroupPhoto.value);
+        }
+        sppdPeserta.value.forEach((peserta, idx) => {
+            if (!peserta.pegawai_id) return;
+            formData.append(`sppd_peserta[${idx}][pegawai_id]`, peserta.pegawai_id);
+            formData.append(`sppd_peserta[${idx}][tanggal_berangkat]`, peserta.tanggal_berangkat || form.value.tanggal_transaksi);
+            formData.append(`sppd_peserta[${idx}][tanggal_pulang]`, peserta.tanggal_pulang || peserta.tanggal_berangkat || form.value.tanggal_transaksi);
+            if (peserta.tujuan) {
+                formData.append(`sppd_peserta[${idx}][tujuan]`, peserta.tujuan);
+            }
+            formData.append(`sppd_peserta[${idx}][remove_foto]`, peserta.remove_foto ? '1' : '0');
+            if (peserta.foto) {
+                formData.append(`sppd_peserta[${idx}][foto]`, peserta.foto);
+            }
+        });
+    }
+
     return formData;
 }
 
 function formatApiError(error) {
     const data = error.response?.data;
-    if (data?.errors) {
-        return Object.values(data.errors).flat().join(' ');
+    const details = data?.error?.details || data?.errors;
+    if (details && typeof details === 'object') {
+        return Object.values(details).flat().join(' ');
     }
     return data?.error?.message || data?.message || 'Terjadi kesalahan saat menyimpan perubahan kuitansi.';
 }
@@ -512,6 +559,18 @@ async function confirmDeleteAttachment() {
                         </label>
                     </div>
                 </GovCard>
+
+                <!-- Pelaksana & Foto Keberangkatan SPPD (Khusus B.4) -->
+                <SppdParticipantsSection
+                    v-if="isSppdCategory"
+                    v-model="sppdPeserta"
+                    v-model:group-photo="sppdGroupPhoto"
+                    v-model:remove-group-photo="sppdRemoveGroupPhoto"
+                    :existing-group-photo-url="receipt?.sppd_foto_url || null"
+                    :exclude-kuitansi-id="receipt?.id || null"
+                    :default-date="form.tanggal_transaksi"
+                    @conflict-change="sppdHasConflict = $event"
+                />
 
                 <!-- Rincian Item & Simulasi Pajak -->
                 <GovCard title="Rincian Item Belanja & Simulasi Pajak">
