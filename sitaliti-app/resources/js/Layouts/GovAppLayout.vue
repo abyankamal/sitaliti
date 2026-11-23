@@ -95,6 +95,13 @@ const allNavItems = [
         icon: 'table',
         roles: ['VERIFIKATOR', 'BP', 'BPP'],
     },
+    {
+        name: 'Master Rekap Belanja Operasi',
+        route: 'master-rekap-belanja-operasi.index',
+        icon: 'table',
+        roles: ['VERIFIKATOR', 'BP'],
+        skpdOnly: true,
+    },
 ];
 
 // Filter navigasi berdasarkan peran aktif pengguna
