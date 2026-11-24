@@ -7,6 +7,11 @@ import GovBadge from '@/Components/UI/GovBadge.vue';
 import GovButton from '@/Components/UI/GovButton.vue';
 import { settlementService } from '@/Services/settlementService';
 import { formatRupiah } from '@/Utils/currency';
+import { useToast } from '@/Composables/useToast';
+import { useConfirm } from '@/Composables/useConfirm';
+
+const toast = useToast();
+const { confirm } = useConfirm();
 
 const page = usePage();
 const currentUser = computed(() => page.props.auth?.user || {});
@@ -77,11 +82,6 @@ const newBundleForm = ref({
     selected_kuitansi_ids: [],
 });
 
-function showFeedback(type, title, message) {
-    feedbackBanner.value = { type, title, message };
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
 function formatApiError(err, fallback) {
     const data = err.response?.data;
     if (data?.errors) {
@@ -99,7 +99,7 @@ async function loadBundles() {
     try {
         bundles.value = await settlementService.getBundles();
     } catch (err) {
-        showFeedback('error', 'Gagal Memuat Bundel', formatApiError(err, 'Tidak dapat memuat daftar bundel dari server.'));
+        toast.error('Gagal Memuat Bundel', formatApiError(err, 'Tidak dapat memuat daftar bundel dari server.'));
     } finally {
         loading.value = false;
     }
@@ -122,7 +122,7 @@ async function openCreateModal() {
         verifiedReceipts.value = rows.filter((item) => item.status === 'LOLOS_VERIFIKASI');
     } catch (err) {
         verifiedReceipts.value = [];
-        showFeedback('error', 'Gagal Memuat Kuitansi', formatApiError(err, 'Tidak dapat memuat kuitansi lolos verifikasi.'));
+        toast.error('Gagal Memuat Kuitansi', formatApiError(err, 'Tidak dapat memuat kuitansi lolos verifikasi.'));
     } finally {
         loadingReceipts.value = false;
     }
@@ -130,7 +130,7 @@ async function openCreateModal() {
 
 async function handleCreateBundle() {
     if (newBundleForm.value.selected_kuitansi_ids.length === 0) {
-        showFeedback('error', 'Kuitansi Belum Dipilih', 'Pilih minimal satu kuitansi lolos verifikasi untuk dibundel.');
+        toast.error('Kuitansi Belum Dipilih', 'Pilih minimal satu kuitansi lolos verifikasi untuk dibundel.');
         return;
     }
 
@@ -146,9 +146,9 @@ async function handleCreateBundle() {
         showCreateModal.value = false;
         newBundleForm.value.selected_kuitansi_ids = [];
         await loadBundles();
-        showFeedback('success', 'Bundel Dibuat', res.message || 'Bundel berhasil dibuat.');
+        toast.success('Bundel Dibuat', res.message || 'Bundel berhasil dibuat.');
     } catch (err) {
-        showFeedback('error', 'Gagal Membuat Bundel', formatApiError(err, 'Gagal membuat bundel SPP.'));
+        toast.error('Gagal Membuat Bundel', formatApiError(err, 'Gagal membuat bundel SPP.'));
     } finally {
         isSubmitting.value = false;
     }
@@ -164,76 +164,79 @@ function openSp2dModal(bundle) {
     showSp2dModal.value = true;
 }
 
-function handleRecordSp2d() {
+async function handleRecordSp2d() {
     if (!sp2dForm.value.nomor_sp2d?.trim()) {
-        showFeedback('error', 'Nomor SP2D Wajib', 'Nomor SP2D SIPD-RI wajib diisi.');
+        toast.error('Nomor SP2D Wajib', 'Nomor SP2D SIPD-RI wajib diisi.');
         return;
     }
 
-    actionModal.value = {
-        open: true,
-        type: 'CONFIRM_SP2D',
+    await confirm({
         title: 'Konfirmasi Pembukuan SP2D',
         message: `Catat SP2D ${sp2dForm.value.nomor_sp2d}? Tindakan ini akan memindahkan anggaran terkunci menjadi realisasi belanja definitif di sistem.`,
-        confirmLabel: 'Ya, Catat SP2D',
-        variant: 'success',
-        requireReason: false,
-        reason: '',
-        bundle: selectedBundleForSp2d.value,
-        kuitansi: null,
-    };
+        variant: 'primary',
+        confirmText: 'Ya, Catat SP2D',
+        onConfirm: async () => {
+            const res = await settlementService.recordSp2d(selectedBundleForSp2d.value.id, sp2dForm.value);
+            showSp2dModal.value = false;
+            toast.success('SP2D Dicatat', res.message || 'Nomor SP2D SIPD-RI berhasil dicatat.');
+            await loadBundles();
+        },
+    });
 }
 
-function openSubmitPpkModal(bundle) {
-    actionModal.value = {
-        open: true,
-        type: 'SUBMIT_PPK',
+async function openSubmitPpkModal(bundle) {
+    await confirm({
         title: 'Ajukan Bundel ke PPK',
         message: `Ajukan bundel ${bundle.nomor_spp || bundle.nomor_bundel} ke PPK untuk pengesahan sebelum pencatatan SP2D?`,
-        confirmLabel: 'Ajukan ke PPK',
         variant: 'primary',
-        requireReason: false,
-        reason: '',
-        bundle,
-        kuitansi: null,
-    };
+        confirmText: 'Ajukan ke PPK',
+        onConfirm: async () => {
+            const res = await settlementService.submitPpk(bundle.id);
+            toast.success('Diajukan ke PPK', res.message || 'Bundel berhasil diajukan ke PPK.');
+            await loadBundles();
+        },
+    });
 }
 
-function openApprovePpkModal(bundle) {
-    actionModal.value = {
-        open: true,
-        type: 'APPROVE_PPK',
+async function openApprovePpkModal(bundle) {
+    await confirm({
         title: 'Sahkan Bundel (PPK)',
         message: `Sahkan bundel ${bundle.nomor_spp || bundle.nomor_bundel} sebagai PPK? Setelah disahkan, Bendahara dapat mencatat SP2D SIPD-RI.`,
-        confirmLabel: 'Sahkan Bundel',
-        variant: 'success',
-        requireReason: false,
-        reason: '',
-        bundle,
-        kuitansi: null,
-    };
+        variant: 'primary',
+        confirmText: 'Sahkan Bundel',
+        onConfirm: async () => {
+            const res = await settlementService.approvePpk(bundle.id);
+            toast.success('Disahkan PPK', res.message || 'Bundel berhasil disahkan PPK.');
+            await loadBundles();
+        },
+    });
 }
 
-function handleUnbundle(bundle, kw) {
+async function handleUnbundle(bundle, kw) {
     const nomor = kw.nomor_kuitansi || kw.id || kw.kuitansi_id;
-    actionModal.value = {
-        open: true,
-        type: 'UNBUNDLE',
+    const kuitansiId = kw.kuitansi_id || kw.id;
+
+    await confirm({
         title: `Keluarkan Kuitansi ${nomor}`,
         message: `Masukkan alasan mengeluarkan kuitansi ${nomor} dari bundel ini. Status kuitansi akan kembali menjadi Lolos Verifikasi.`,
-        confirmLabel: 'Keluarkan Kuitansi',
         variant: 'danger',
+        confirmText: 'Keluarkan Kuitansi',
         requireReason: true,
-        reason: 'Penyesuaian berkas SPP',
-        bundle,
-        kuitansi: kw,
-    };
+        reasonLabel: 'Alasan Pengeluaran Kuitansi',
+        reasonPlaceholder: 'Tuliskan alasan pengeluaran kuitansi dari bundel...',
+        minReasonLength: 3,
+        onConfirm: async (reason) => {
+            const res = await settlementService.unbundleReceipt(bundle.id, kuitansiId, reason);
+            toast.success('Kuitansi Dikeluarkan', res.message || 'Kuitansi berhasil dikeluarkan dari bundel.');
+            await loadBundles();
+        },
+    });
 }
 
 async function executeActionModal() {
     const modal = actionModal.value;
     if (modal.requireReason && !modal.reason.trim()) {
-        showFeedback('error', 'Alasan Wajib Diisi', 'Mohon isi alasan sebelum melanjutkan.');
+        toast.error('Alasan Wajib Diisi', 'Mohon isi alasan sebelum melanjutkan.');
         return;
     }
 
@@ -241,26 +244,26 @@ async function executeActionModal() {
     try {
         if (modal.type === 'SUBMIT_PPK') {
             const res = await settlementService.submitPpk(modal.bundle.id);
-            showFeedback('success', 'Diajukan ke PPK', res.message || 'Bundel berhasil diajukan ke PPK.');
+            toast.success('Diajukan ke PPK', res.message || 'Bundel berhasil diajukan ke PPK.');
         } else if (modal.type === 'APPROVE_PPK') {
             const res = await settlementService.approvePpk(modal.bundle.id);
-            showFeedback('success', 'Disahkan PPK', res.message || 'Bundel berhasil disahkan PPK.');
+            toast.success('Disahkan PPK', res.message || 'Bundel berhasil disahkan PPK.');
         } else if (modal.type === 'UNBUNDLE') {
             const kuitansiId = modal.kuitansi.kuitansi_id || modal.kuitansi.id;
             const res = await settlementService.unbundleReceipt(modal.bundle.id, kuitansiId, modal.reason.trim());
-            showFeedback('success', 'Kuitansi Dikeluarkan', res.message || 'Kuitansi berhasil dikeluarkan dari bundel.');
+            toast.success('Kuitansi Dikeluarkan', res.message || 'Kuitansi berhasil dikeluarkan dari bundel.');
         } else if (modal.type === 'CONFIRM_SP2D') {
             isSubmittingSp2d.value = true;
             const res = await settlementService.recordSp2d(modal.bundle.id, sp2dForm.value);
             showSp2dModal.value = false;
-            showFeedback('success', 'SP2D Dicatat', res.message || 'Nomor SP2D SIPD-RI berhasil dicatat.');
+            toast.success('SP2D Dicatat', res.message || 'Nomor SP2D SIPD-RI berhasil dicatat.');
         }
 
         actionModal.value.open = false;
         await loadBundles();
     } catch (err) {
         actionModal.value.open = false;
-        showFeedback('error', 'Operasi Gagal', formatApiError(err, 'Gagal memproses aksi bundel.'));
+        toast.error('Operasi Gagal', formatApiError(err, 'Gagal memproses aksi bundel.'));
     } finally {
         isProcessingAction.value = false;
         isSubmittingSp2d.value = false;

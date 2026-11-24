@@ -11,6 +11,11 @@ import { receiptService } from '@/Services/receiptService';
 import { formatRupiah } from '@/Utils/currency';
 import { formatTanggalIndo } from '@/Utils/date';
 import { STATUS_LABELS, STATUS_VARIANTS } from '@/Constants/workflowStatus';
+import { useToast } from '@/Composables/useToast';
+import { useConfirm } from '@/Composables/useConfirm';
+
+const toast = useToast();
+const { confirm } = useConfirm();
 
 const props = defineProps({
     id: {
@@ -32,16 +37,6 @@ const activeAttachmentIndex = ref(0);
 const activeTab = ref('checklist'); // 'checklist' | 'timeline'
 const auditHistory = ref([]);
 const loadingHistory = ref(false);
-
-// Notification State
-const notification = ref({ show: false, type: 'success', message: '' });
-
-function showNotification(message, type = 'success') {
-    notification.value = { show: true, type, message };
-    setTimeout(() => {
-        notification.value.show = false;
-    }, 6000);
-}
 
 // Modal Revision & Otorisasi State
 const showRevisionModal = ref(false);
@@ -147,18 +142,13 @@ function openRevisionModal(type) {
 async function handleActionSubmit(payload) {
     showRevisionModal.value = false;
     const res = await verificationService.submitAction(detail.value.id, payload);
-    showNotification(res.message || 'Aksi verifikasi berhasil diproses.');
-    setTimeout(() => {
-        router.visit(route('verification.index'));
-    }, 1000);
+    toast.success(res.message || 'Aksi verifikasi berhasil diproses.');
+    router.visit(route('verification.index'));
 }
 
 async function handleApprove() {
     if (!allMandatoryVerified.value) {
-        showNotification(
-            'Seluruh butir checklist wajib harus berstatus Lolos dan minimal 1 lampiran harus tersedia.',
-            'error'
-        );
+        toast.error('Seluruh butir checklist wajib harus berstatus Lolos dan minimal 1 lampiran harus tersedia.');
         return;
     }
 
@@ -168,26 +158,62 @@ async function handleApprove() {
         notes: item.catatan || 'Sesuai dengan ketentuan regulasi dan bukti fisik.',
     }));
 
-    try {
-        const res = await verificationService.submitAction(detail.value.id, {
-            action: 'VERIFIED',
-            notes: 'Semua kelengkapan dokumen telah diteliti dan valid.',
-            checklist_results: checklistResults,
-        });
-        showNotification(res.message || 'Kuitansi dinyatakan Lolos Verifikasi Akuntabel.');
-        setTimeout(() => {
+    await confirm({
+        title: 'Sahkan Lolos Verifikasi?',
+        message: 'Kuitansi akan dinyatakan Lolos Verifikasi Akuntabel dan siap dibundel SPP.',
+        details: detail.value.nomor_bukti ? `No. Bukti: ${detail.value.nomor_bukti}` : '',
+        variant: 'primary',
+        confirmText: 'Ya, Lolos Verifikasi',
+        onConfirm: async () => {
+            const res = await verificationService.submitAction(detail.value.id, {
+                action: 'VERIFIED',
+                notes: 'Semua kelengkapan dokumen telah diteliti dan valid.',
+                checklist_results: checklistResults,
+            });
+            toast.success(res.message || 'Kuitansi dinyatakan Lolos Verifikasi Akuntabel.');
             router.visit(route('control-sheet.show', { id: detail.value.id }));
-        }, 1200);
-    } catch (err) {
-        showNotification(err.response?.data?.error?.message || err.message || 'Gagal memproses verifikasi.', 'error');
-    }
+        },
+    });
 }
 
 // Quick Auth (Lurah / PPTK) dari Workspace
-function openQuickAuth(type) {
-    quickAuthType.value = type;
-    quickAuthNotes.value = '';
-    showQuickAuthModal.value = true;
+async function openQuickAuth(type) {
+    if (!detail.value) return;
+    const isReject = type === 'REJECT';
+    const targetId = detail.value.id;
+
+    await confirm({
+        title: isReject ? 'Tolak Kuitansi?' : 'Setujui Kuitansi?',
+        message: isReject
+            ? 'Kuitansi akan dikembalikan ke draf Operator.'
+            : 'Kuitansi akan disetujui dan diteruskan ke tahapan selanjutnya.',
+        variant: isReject ? 'danger' : 'primary',
+        confirmText: isReject ? 'Tolak & Kembalikan' : 'Ya, Setujui',
+        requireReason: isReject,
+        reasonLabel: 'Alasan Penolakan',
+        reasonPlaceholder: 'Cantumkan alasan penolakan minimal 3 karakter...',
+        minReasonLength: 3,
+        onConfirm: async (reason) => {
+            if (detail.value.status === 'MENUNGGU_LURAH' && isLurah.value) {
+                if (!isReject) {
+                    await receiptService.approveByLurah(targetId, 'Disetujui dan diotorisasi oleh Lurah.');
+                    toast.success('Kuitansi berhasil diotorisasi Lurah dan diteruskan ke Tim Verifikator Kecamatan.');
+                } else {
+                    await receiptService.rejectByLurah(targetId, reason);
+                    toast.success('Kuitansi dikembalikan oleh Lurah ke draf Operator.');
+                }
+            } else if (detail.value.status === 'MENUNGGU_PPTK' && isPptk.value) {
+                if (!isReject) {
+                    await receiptService.approveByPptk(targetId, '');
+                    toast.success('Kuitansi disetujui PPTK dan diteruskan ke tahapan selanjutnya.');
+                } else {
+                    await receiptService.rejectByPptk(targetId, reason);
+                    toast.success('Kuitansi ditolak oleh PPTK dan dikembalikan ke draf Operator.');
+                }
+            }
+            router.visit(route('verification.index'));
+        },
+    });
 }
 
 async function handleQuickAuthSubmit() {
@@ -330,16 +356,6 @@ async function handleQuickAuthSubmit() {
                 </template>
             </div>
         </header>
-
-        <!-- Notification Toast In-App -->
-        <div
-            v-if="notification.show"
-            class="mx-6 mt-3 p-3 rounded-lg text-xs font-semibold flex items-center justify-between border shadow-sm transition-colors duration-150 ease-unslop"
-            :class="notification.type === 'error' ? 'bg-rose-50 text-rose-800 border-rose-200' : 'bg-emerald-50 text-emerald-800 border-emerald-200'"
-        >
-            <span>{{ notification.message }}</span>
-            <button @click="notification.show = false" class="text-slate-400 hover:text-slate-600 ml-4">&times;</button>
-        </div>
 
         <!-- Main Split-Screen Workspace (55% Kiri / 45% Kanan) -->
         <div v-if="detail" class="flex-1 flex overflow-hidden p-3 gap-3">

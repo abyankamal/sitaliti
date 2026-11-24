@@ -10,6 +10,11 @@ import { receiptService } from '@/Services/receiptService';
 import { formatRupiah } from '@/Utils/currency';
 import { formatTanggalIndo } from '@/Utils/date';
 import { STATUS_LABELS, STATUS_VARIANTS } from '@/Constants/workflowStatus';
+import { useToast } from '@/Composables/useToast';
+import { useConfirm } from '@/Composables/useConfirm';
+
+const toast = useToast();
+const { confirm } = useConfirm();
 
 const page = usePage();
 const user = computed(() => page.props.auth?.user || {});
@@ -19,16 +24,6 @@ const isKelurahan = computed(() => user.value.is_kelurahan_scoped);
 const queue = ref([]);
 const loading = ref(true);
 const activeTab = ref('ALL'); // ALL, MENUNGGU_PPTK, MENUNGGU_LURAH, MENUNGGU_VERIFIKASI, REVISI_MINOR, LOLOS_VERIFIKASI
-
-// Notification Banner (In-App)
-const notification = ref({ show: false, type: 'success', message: '' });
-
-function showNotification(message, type = 'success') {
-    notification.value = { show: true, type, message };
-    setTimeout(() => {
-        notification.value.show = false;
-    }, 6000);
-}
 
 // Modal Otorisasi (PPTK / Lurah)
 const showAuthModal = ref(false);
@@ -67,12 +62,49 @@ const countVerifikasi = computed(() => queue.value.filter(item => item.status ==
 const countRevisi = computed(() => queue.value.filter(item => item.status === 'REVISI_MINOR').length);
 const countLolos = computed(() => queue.value.filter(item => item.status === 'LOLOS_VERIFIKASI').length);
 
-function openAuthModal(item, role, action) {
-    selectedItem.value = item;
-    authActionRole.value = role;
-    authActionType.value = action;
-    authNotes.value = '';
-    showAuthModal.value = true;
+async function openAuthModal(item, role, action) {
+    const targetId = item.kuitansi_id || item.id;
+    const isReject = action === 'REJECT';
+
+    await confirm({
+        title: isReject
+            ? role === 'LURAH'
+                ? 'Tolak Kuitansi (Lurah)?'
+                : 'Tolak Kuitansi (PPTK)?'
+            : role === 'LURAH'
+              ? 'Otorisasi Kuitansi (Lurah)?'
+              : 'Setujui Kuitansi (PPTK)?',
+        message: isReject
+            ? 'Kuitansi akan dikembalikan ke draf Operator dan pagu anggaran kas dipulihkan.'
+            : role === 'LURAH'
+              ? 'Kuitansi akan diotorisasi dan diteruskan ke Tim Verifikator Kecamatan.'
+              : 'Kuitansi akan disetujui dan diteruskan ke tahapan selanjutnya.',
+        details: item.nomor_bukti ? `No. Bukti: ${item.nomor_bukti}` : '',
+        variant: isReject ? 'danger' : 'primary',
+        confirmText: isReject ? 'Tolak & Kembalikan' : 'Ya, Lanjutkan',
+        requireReason: isReject,
+        reasonLabel: 'Alasan Penolakan',
+        reasonPlaceholder: 'Cantumkan alasan penolakan minimal 3 karakter...',
+        minReasonLength: 3,
+        onConfirm: async (reason) => {
+            if (role === 'LURAH') {
+                if (!isReject) {
+                    await receiptService.approveByLurah(targetId, 'Disetujui dan diotorisasi oleh Lurah.');
+                    toast.success('Kuitansi berhasil diotorisasi Lurah dan diteruskan ke Tim Verifikator Kecamatan.');
+                } else {
+                    await receiptService.rejectByLurah(targetId, reason);
+                    toast.success('Kuitansi dikembalikan oleh Lurah ke draf Operator dan pagu kas dipulihkan.');
+                }
+            } else if (!isReject) {
+                await receiptService.approveByPptk(targetId, '');
+                toast.success('Kuitansi berhasil disetujui PPTK dan diteruskan ke tahapan selanjutnya.');
+            } else {
+                await receiptService.rejectByPptk(targetId, reason);
+                toast.success('Kuitansi ditolak oleh PPTK dan dikembalikan ke draf Operator.');
+            }
+            await loadQueue();
+        },
+    });
 }
 
 async function handleAuthSubmit() {
@@ -139,24 +171,6 @@ async function handleAuthSubmit() {
         </template>
 
         <div class="space-y-4">
-            <!-- In-App Notification Banner -->
-            <div
-                v-if="notification.show"
-                class="p-3.5 rounded-xl text-xs font-semibold flex items-center justify-between shadow-sm transition-colors duration-150 ease-unslop border"
-                :class="notification.type === 'error' ? 'bg-rose-50 text-rose-800 border-rose-200' : 'bg-emerald-50 text-emerald-800 border-emerald-200'"
-            >
-                <div class="flex items-center gap-2">
-                    <svg v-if="notification.type === 'error'" class="w-4 h-4 text-rose-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <svg v-else class="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>{{ notification.message }}</span>
-                </div>
-                <button @click="notification.show = false" class="text-slate-400 hover:text-slate-600 ml-4">&times;</button>
-            </div>
-
             <!-- Filter Tabs -->
             <div class="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto text-xs font-medium">
                 <button
