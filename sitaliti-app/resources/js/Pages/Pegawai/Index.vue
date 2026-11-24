@@ -6,6 +6,8 @@ import GovBadge from '@/Components/UI/GovBadge.vue';
 import GovButton from '@/Components/UI/GovButton.vue';
 import { sppdService } from '@/Services/sppdService';
 import { budgetService } from '@/Services/budgetService';
+import { useToast } from '@/Composables/useToast';
+import { useConfirm } from '@/Composables/useConfirm';
 import { Plus, Search, Pencil, Trash2, X, Users, Power } from 'lucide-vue-next';
 
 const page = usePage();
@@ -23,17 +25,8 @@ const searchQuery = ref('');
 const filterUnitId = ref('');
 const filterStatus = ref('');
 
-// State Toast Non-Intrusif
-const toast = ref({ show: false, type: 'success', message: '' });
-let toastTimer = null;
-
-function showToast(message, type = 'success') {
-    if (toastTimer) clearTimeout(toastTimer);
-    toast.value = { show: true, type, message };
-    toastTimer = setTimeout(() => {
-        toast.value.show = false;
-    }, 4500);
-}
+const toast = useToast();
+const { confirm } = useConfirm();
 
 // State Modal Form (<dialog>)
 const formDialogRef = ref(null);
@@ -51,12 +44,6 @@ const form = ref({
     unit_kerja_id: '',
     is_active: true,
 });
-
-// State Modal Konfirmasi Hapus (<dialog>)
-const deleteDialogRef = ref(null);
-const pegawaiToDelete = ref(null);
-const deleting = ref(false);
-const deleteError = ref('');
 
 async function loadUnits() {
     if (!isSkpdWide.value) return;
@@ -83,7 +70,7 @@ async function fetchPegawai(pageNumber = 1) {
             total: res.total ?? 0,
         };
     } catch {
-        showToast('Gagal memuat daftar master pegawai.', 'error');
+        toast.error('Gagal memuat daftar master pegawai.');
     } finally {
         loading.value = false;
     }
@@ -144,10 +131,10 @@ async function submitForm() {
     try {
         if (isEditing.value && editingId.value) {
             await sppdService.updatePegawai(editingId.value, payload);
-            showToast('Data pegawai berhasil diperbarui.');
+            toast.success('Data pegawai berhasil diperbarui.');
         } else {
             await sppdService.createPegawai(payload);
-            showToast('Data pegawai berhasil ditambahkan.');
+            toast.success('Data pegawai berhasil ditambahkan.');
         }
         closeFormModal();
         await fetchPegawai(pagination.value.current_page);
@@ -172,39 +159,27 @@ async function toggleActiveStatus(item) {
             unit_kerja_id: item.unit_kerja_id,
             is_active: !item.is_active,
         });
-        showToast(item.is_active ? 'Pegawai dinonaktifkan.' : 'Pegawai diaktifkan kembali.');
+        toast.success(item.is_active ? 'Pegawai dinonaktifkan.' : 'Pegawai diaktifkan kembali.');
         await fetchPegawai(pagination.value.current_page);
     } catch (err) {
         const msg = err.response?.data?.error?.message || 'Gagal mengubah status pegawai.';
-        showToast(msg, 'error');
+        toast.error(msg);
     }
 }
 
-function openDeleteModal(item) {
-    pegawaiToDelete.value = item;
-    deleteError.value = '';
-    deleteDialogRef.value?.showModal();
-}
-
-function closeDeleteModal() {
-    deleteDialogRef.value?.close();
-    pegawaiToDelete.value = null;
-}
-
-async function confirmDelete() {
-    if (!pegawaiToDelete.value) return;
-    deleting.value = true;
-    deleteError.value = '';
-    try {
-        await sppdService.deletePegawai(pegawaiToDelete.value.id);
-        showToast('Data pegawai berhasil dihapus.');
-        closeDeleteModal();
-        await fetchPegawai(pagination.value.current_page);
-    } catch (err) {
-        deleteError.value = err.response?.data?.error?.message || err.response?.data?.message || 'Gagal menghapus data pegawai.';
-    } finally {
-        deleting.value = false;
-    }
+async function openDeleteModal(item) {
+    await confirm({
+        title: 'Hapus Data Pegawai?',
+        message: `Anda akan menghapus pegawai ${item.nama}. Tindakan ini tidak dapat dibatalkan.`,
+        details: item.nip ? `NIP: ${item.nip}` : '',
+        variant: 'danger',
+        confirmText: 'Hapus',
+        onConfirm: async () => {
+            await sppdService.deletePegawai(item.id);
+            toast.success('Data pegawai berhasil dihapus.');
+            await fetchPegawai(pagination.value.current_page);
+        },
+    });
 }
 
 function resetFilters() {
@@ -241,21 +216,6 @@ onMounted(async () => {
                 </GovButton>
             </div>
         </template>
-
-        <!-- Toast Notifikasi -->
-        <div
-            v-if="toast.show"
-            role="status"
-            class="mb-4 px-4 py-2.5 rounded-lg border text-xs font-medium flex items-center justify-between"
-            :class="toast.type === 'error'
-                ? 'bg-red-50 border-red-200 text-semantic-danger'
-                : 'bg-emerald-50 border-emerald-200 text-semantic-success'"
-        >
-            <span>{{ toast.message }}</span>
-            <button type="button" class="p-1 hover:opacity-75" aria-label="Tutup notifikasi" @click="toast.show = false">
-                <X class="w-3.5 h-3.5" />
-            </button>
-        </div>
 
         <!-- Filter Bar -->
         <div class="bg-surface border border-hairline rounded-xl p-4 mb-4">
@@ -502,28 +462,6 @@ onMounted(async () => {
                     </GovButton>
                 </div>
             </form>
-        </dialog>
-
-        <!-- Modal Konfirmasi Hapus (<dialog>) -->
-        <dialog
-            ref="deleteDialogRef"
-            aria-labelledby="delete-modal-title"
-            class="sppd-dialog w-full max-w-md rounded-xl bg-surface text-ink border border-hairline p-0 shadow-xl backdrop:bg-slate-900/50"
-        >
-            <div class="p-5 space-y-3">
-                <h2 id="delete-modal-title" class="text-sm font-semibold text-ink">Hapus Data Pegawai?</h2>
-                <p class="text-xs text-ink-secondary">
-                    Anda akan menghapus pegawai <strong class="text-ink">{{ pegawaiToDelete?.nama }}</strong>
-                    (<span class="font-mono">{{ pegawaiToDelete?.nip }}</span>). Tindakan ini tidak dapat dibatalkan.
-                </p>
-                <div v-if="deleteError" class="p-2.5 rounded-lg bg-red-50 border border-red-200 text-xs text-semantic-danger">
-                    {{ deleteError }}
-                </div>
-                <div class="pt-2 flex items-center justify-end gap-2">
-                    <GovButton type="button" variant="secondary" size="sm" autofocus @click="closeDeleteModal">Batal</GovButton>
-                    <GovButton type="button" variant="danger" size="sm" :loading="deleting" @click="confirmDelete">Hapus</GovButton>
-                </div>
-            </div>
         </dialog>
     </GovAppLayout>
 </template>
