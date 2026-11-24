@@ -219,7 +219,7 @@ async function openQuickAuth(type) {
 async function handleQuickAuthSubmit() {
     if (!detail.value) return;
     if (quickAuthType.value === 'REJECT' && (!quickAuthNotes.value || quickAuthNotes.value.trim().length < 3)) {
-        showNotification('Mohon cantumkan alasan penolakan secara jelas (minimal 3 karakter).', 'error');
+        toast.error('Mohon cantumkan alasan penolakan secara jelas (minimal 3 karakter).');
         return;
     }
 
@@ -230,28 +230,25 @@ async function handleQuickAuthSubmit() {
         if (detail.value.status === 'MENUNGGU_LURAH' && isLurah.value) {
             if (quickAuthType.value === 'APPROVE') {
                 await receiptService.approveByLurah(targetId, quickAuthNotes.value || 'Disetujui dan diotorisasi oleh Lurah.');
-                showNotification('Kuitansi berhasil diotorisasi Lurah dan diteruskan ke Tim Verifikator Kecamatan.');
+                toast.success('Kuitansi berhasil diotorisasi Lurah dan diteruskan ke Tim Verifikator Kecamatan.');
             } else {
                 await receiptService.rejectByLurah(targetId, quickAuthNotes.value);
-                showNotification('Kuitansi dikembalikan oleh Lurah ke draf Operator.');
+                toast.success('Kuitansi dikembalikan oleh Lurah ke draf Operator.');
             }
         } else if (detail.value.status === 'MENUNGGU_PPTK' && isPptk.value) {
             if (quickAuthType.value === 'APPROVE') {
                 await receiptService.approveByPptk(targetId, quickAuthNotes.value);
-                showNotification('Kuitansi disetujui PPTK dan diteruskan ke tahapan selanjutnya.');
+                toast.success('Kuitansi disetujui PPTK dan diteruskan ke tahapan selanjutnya.');
             } else {
                 await receiptService.rejectByPptk(targetId, quickAuthNotes.value);
-                showNotification('Kuitansi ditolak oleh PPTK dan dikembalikan ke draf Operator.');
+                toast.success('Kuitansi ditolak oleh PPTK dan dikembalikan ke draf Operator.');
             }
         }
         showQuickAuthModal.value = false;
-        setTimeout(() => {
-            router.visit(route('verification.index'));
-        }, 1200);
+        router.visit(route('verification.index'));
     } catch (err) {
-        showNotification(
-            err.response?.data?.error?.message || err.response?.data?.message || err.message || 'Gagal memproses otorisasi.',
-            'error'
+        toast.error(
+            err.response?.data?.error?.message || err.response?.data?.message || err.message || 'Gagal memproses otorisasi.'
         );
     } finally {
         isSubmittingQuickAuth.value = false;

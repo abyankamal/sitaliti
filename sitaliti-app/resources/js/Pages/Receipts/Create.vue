@@ -184,12 +184,12 @@ async function handleSubmitDraft(andSubmit = true) {
     feedbackBanner.value = null;
 
     if (!budgetContext.value?.account?.id) {
-        showFeedback('error', 'Rekening Tidak Valid', 'Silakan pilih rekening anggaran dari Dashboard terlebih dahulu.');
+        toast.error('Rekening Tidak Valid', 'Silakan pilih rekening anggaran dari Dashboard terlebih dahulu.');
         return;
     }
 
     if (!form.value.nama_penerima?.trim()) {
-        showFeedback('error', 'Data Penerima Kosong', 'Silakan isi Penerima / Nama Toko terlebih dahulu.');
+        toast.error('Data Penerima Kosong', 'Silakan isi Penerima / Nama Toko terlebih dahulu.');
         return;
     }
 

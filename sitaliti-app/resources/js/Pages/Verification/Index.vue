@@ -111,7 +111,7 @@ async function handleAuthSubmit() {
     if (!selectedItem.value) return;
 
     if (authActionType.value === 'REJECT' && (!authNotes.value || authNotes.value.trim().length < 3)) {
-        showNotification('Mohon cantumkan alasan penolakan secara jelas (minimal 3 karakter).', 'error');
+        toast.error('Mohon cantumkan alasan penolakan secara jelas (minimal 3 karakter).');
         return;
     }
 
@@ -122,27 +122,26 @@ async function handleAuthSubmit() {
         if (authActionRole.value === 'LURAH') {
             if (authActionType.value === 'APPROVE') {
                 await receiptService.approveByLurah(targetId, authNotes.value || 'Disetujui dan diotorisasi oleh Lurah.');
-                showNotification('Kuitansi berhasil diotorisasi Lurah dan diteruskan ke Tim Verifikator Kecamatan.');
+                toast.success('Kuitansi berhasil diotorisasi Lurah dan diteruskan ke Tim Verifikator Kecamatan.');
             } else {
                 await receiptService.rejectByLurah(targetId, authNotes.value);
-                showNotification('Kuitansi dikembalikan oleh Lurah ke draf Operator dan pagu kas dipulihkan.');
+                toast.success('Kuitansi dikembalikan oleh Lurah ke draf Operator dan pagu kas dipulihkan.');
             }
         } else {
             // PPTK
             if (authActionType.value === 'APPROVE') {
                 await receiptService.approveByPptk(targetId, authNotes.value);
-                showNotification('Kuitansi berhasil disetujui PPTK dan diteruskan ke tahapan selanjutnya.');
+                toast.success('Kuitansi berhasil disetujui PPTK dan diteruskan ke tahapan selanjutnya.');
             } else {
                 await receiptService.rejectByPptk(targetId, authNotes.value);
-                showNotification('Kuitansi ditolak oleh PPTK dan dikembalikan ke draf Operator.');
+                toast.success('Kuitansi ditolak oleh PPTK dan dikembalikan ke draf Operator.');
             }
         }
         showAuthModal.value = false;
         await loadQueue();
     } catch (err) {
-        showNotification(
-            err.response?.data?.error?.message || err.response?.data?.message || err.message || 'Terjadi kesalahan saat memproses otorisasi.',
-            'error'
+        toast.error(
+            err.response?.data?.error?.message || err.response?.data?.message || err.message || 'Terjadi kesalahan saat memproses otorisasi.'
         );
     } finally {
         isSubmittingAuth.value = false;
