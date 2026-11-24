@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -51,6 +52,32 @@ class HandleInertiaRequests extends Middleware
                     'assigned_sub_kegiatans' => $user->getAssignedSubkegiatanCodes(),
                 ]) : null,
             ],
+            'flash' => [
+                'success' => fn () => $this->flashPayload($request, 'success'),
+                'error' => fn () => $this->flashPayload($request, 'error'),
+                'warning' => fn () => $this->flashPayload($request, 'warning'),
+                'info' => fn () => $this->flashPayload($request, 'info'),
+                'status' => fn () => $this->flashPayload($request, 'status'),
+            ],
+        ];
+    }
+
+    /**
+     * Build a deduplicable flash payload with a unique ID per occurrence.
+     *
+     * @return array{id: string, message: string}|null
+     */
+    private function flashPayload(Request $request, string $key): ?array
+    {
+        $message = $request->session()->get($key);
+
+        if (! is_string($message) || $message === '') {
+            return null;
+        }
+
+        return [
+            'id' => (string) Str::uuid(),
+            'message' => $message,
         ];
     }
 }
