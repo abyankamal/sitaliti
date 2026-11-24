@@ -8,6 +8,7 @@ import GovCurrencyInput from '@/Components/UI/GovCurrencyInput.vue';
 import { formatRupiah } from '@/Utils/currency';
 import { NAMA_BULAN } from '@/Utils/date';
 import { BUDGET_CATEGORIES } from '@/Constants/budgetCategories';
+import { useToast } from '@/Composables/useToast';
 
 const page = usePage();
 const currentUser = computed(() => page.props.auth?.user || {});
@@ -27,17 +28,7 @@ const loadingSubActivities = ref(false);
 const filterUnitId = ref('');
 const searchQuery = ref('');
 
-// Toast
-const toast = ref({ show: false, type: 'success', message: '' });
-let toastTimer = null;
-
-function showToast(message, type = 'success') {
-    if (toastTimer) clearTimeout(toastTimer);
-    toast.value = { show: true, type, message };
-    toastTimer = setTimeout(() => {
-        toast.value.show = false;
-    }, 4500);
-}
+const toast = useToast();
 
 // Create Modal
 const showCreateModal = ref(false);
@@ -92,7 +83,7 @@ async function fetchRekenings(page = 1) {
             total: payload?.total ?? 0,
         };
     } catch {
-        showToast('Gagal memuat daftar rekening anggaran.', 'error');
+        toast.error('Gagal memuat daftar rekening anggaran.');
     } finally {
         loading.value = false;
     }
@@ -177,7 +168,7 @@ async function submitCreate() {
 
         await window.axios.post('/api/v1/budget-management/rekening', payload);
         showCreateModal.value = false;
-        showToast('Kode rekening & alokasi 12 bulan berhasil ditambahkan.');
+        toast.success('Kode rekening & alokasi 12 bulan berhasil ditambahkan.');
         await fetchRekenings(1);
     } catch (err) {
         if (err.response?.status === 422) {
@@ -249,7 +240,7 @@ async function submitEdit() {
             alokasi: editAlokasi.value.map((v) => Number(v || 0)),
         });
         showEditModal.value = false;
-        showToast('Alokasi pagu bulanan berhasil diperbarui.');
+        toast.success('Alokasi pagu bulanan berhasil diperbarui.');
         await fetchRekenings(pagination.value.current_page);
     } catch (err) {
         const errors = err.response?.data?.errors;
@@ -285,16 +276,6 @@ async function submitEdit() {
         </template>
 
         <div class="p-6 max-w-7xl mx-auto space-y-5">
-            <!-- Toast Notification -->
-            <div
-                v-if="toast.show"
-                class="rounded-xl px-4 py-3 text-sm font-medium border shadow-sm flex items-center justify-between"
-                :class="toast.type === 'error' ? 'bg-rose-50 border-rose-200 text-rose-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'"
-            >
-                <span>{{ toast.message }}</span>
-                <button type="button" class="text-xs underline ml-4" @click="toast.show = false">Tutup</button>
-            </div>
-
             <!-- Filter Bar -->
             <div class="bg-white rounded-xl border border-gov-surface-border p-4 shadow-sm flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
                 <div class="flex flex-col sm:flex-row gap-3 flex-1">

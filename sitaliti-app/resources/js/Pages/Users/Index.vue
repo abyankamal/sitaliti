@@ -4,6 +4,8 @@ import { Head, usePage } from '@inertiajs/vue3';
 import GovAppLayout from '@/Layouts/GovAppLayout.vue';
 import GovBadge from '@/Components/UI/GovBadge.vue';
 import GovButton from '@/Components/UI/GovButton.vue';
+import { useToast } from '@/Composables/useToast';
+import { useConfirm } from '@/Composables/useConfirm';
 
 const page = usePage();
 const currentUser = computed(() => page.props.auth?.user);
@@ -38,17 +40,8 @@ const searchQuery = ref('');
 const filterUnitId = ref('');
 const filterRole = ref('');
 
-// State Toast Notifikasi
-const toast = ref({ show: false, type: 'success', message: '' });
-let toastTimer = null;
-
-function showToast(message, type = 'success') {
-    if (toastTimer) clearTimeout(toastTimer);
-    toast.value = { show: true, type, message };
-    toastTimer = setTimeout(() => {
-        toast.value.show = false;
-    }, 4500);
-}
+const toast = useToast();
+const { confirm } = useConfirm();
 
 // State Modal Form Pengguna
 const showFormModal = ref(false);
@@ -96,7 +89,7 @@ async function fetchUsers() {
         const res = await window.axios.get('/api/v1/users', { params });
         users.value = res.data?.data ?? [];
     } catch {
-        showToast('Gagal memuat daftar pengguna.', 'error');
+        toast.error('Gagal memuat daftar pengguna.');
     } finally {
         loading.value = false;
     }
@@ -226,10 +219,10 @@ async function submitForm() {
     try {
         if (isEditing.value) {
             const res = await window.axios.put(`/api/v1/users/${editingUserId.value}`, payload);
-            showToast(res.data?.message || 'Data pengguna berhasil diperbarui.');
+            toast.success(res.data?.message || 'Data pengguna berhasil diperbarui.');
         } else {
             const res = await window.axios.post('/api/v1/users', payload);
-            showToast(res.data?.message || 'Pengguna baru berhasil ditambahkan.');
+            toast.success(res.data?.message || 'Pengguna baru berhasil ditambahkan.');
         }
         showFormModal.value = false;
         await fetchUsers();
@@ -248,36 +241,19 @@ async function submitForm() {
     }
 }
 
-function openDeleteModal(user) {
-    userToDelete.value = user;
-    deleteError.value = '';
-    showDeleteModal.value = true;
-}
-
-function closeDeleteModal() {
-    showDeleteModal.value = false;
-    userToDelete.value = null;
-    deleteError.value = '';
-}
-
-async function confirmDeleteUser() {
-    if (!userToDelete.value) return;
-    deleting.value = true;
-    deleteError.value = '';
-    try {
-        const res = await window.axios.delete(`/api/v1/users/${userToDelete.value.id}`);
-        showToast(res.data?.message || 'Pengguna berhasil dihapus.');
-        closeDeleteModal();
-        await fetchUsers();
-    } catch (err) {
-        const resData = err.response?.data;
-        deleteError.value =
-            resData?.error?.message ||
-            resData?.message ||
-            'Pengguna tidak dapat dihapus karena terkait data transaksi.';
-    } finally {
-        deleting.value = false;
-    }
+async function openDeleteModal(user) {
+    await confirm({
+        title: 'Konfirmasi Hapus Pengguna',
+        message: `Apakah Anda yakin ingin menghapus akun ${user.name}? Demi integritas jejak audit BPK, pengguna yang pernah tercatat dalam riwayat kuitansi tidak dapat dihapus.`,
+        details: `@${user.username}`,
+        variant: 'danger',
+        confirmText: 'Ya, Hapus Pengguna',
+        onConfirm: async () => {
+            const res = await window.axios.delete(`/api/v1/users/${user.id}`);
+            toast.success(res.data?.message || 'Pengguna berhasil dihapus.');
+            await fetchUsers();
+        },
+    });
 }
 
 onMounted(async () => {
@@ -290,27 +266,6 @@ onMounted(async () => {
 
     <GovAppLayout>
         <div class="space-y-4">
-            <!-- Toast Notifikasi Non-Intrusif -->
-            <div
-                v-if="toast.show"
-                :class="[
-                    'fixed bottom-5 right-5 z-50 flex items-center gap-3 rounded-lg border px-4 py-3 text-xs font-medium shadow-lg transition-colors duration-150 ease-unslop',
-                    toast.type === 'error'
-                        ? 'border-red-200 bg-red-50 text-red-800'
-                        : 'border-emerald-200 bg-emerald-50 text-emerald-800',
-                ]"
-                role="status"
-            >
-                <span>{{ toast.message }}</span>
-                <button
-                    type="button"
-                    class="ml-2 text-current opacity-70 hover:opacity-100"
-                    @click="toast.show = false"
-                >
-                    &times;
-                </button>
-            </div>
-
             <!-- Header Halaman -->
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -683,49 +638,6 @@ onMounted(async () => {
                         </GovButton>
                     </div>
                 </form>
-            </div>
-        </div>
-
-        <!-- Modal Konfirmasi Hapus Pengguna -->
-        <div
-            v-if="showDeleteModal"
-            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
-            @click.self="closeDeleteModal"
-        >
-            <div class="w-full max-w-md overflow-hidden rounded-lg border border-gov-border bg-white shadow-xl">
-                <div class="border-b border-gov-border bg-red-700 px-5 py-3 text-white">
-                    <h2 class="text-sm font-semibold">Konfirmasi Hapus Pengguna</h2>
-                </div>
-                <div class="space-y-3 p-5 text-xs text-gov-text-main">
-                    <p>
-                        Apakah Anda yakin ingin menghapus akun
-                        <span class="font-semibold">{{ userToDelete?.name }}</span>
-                        (<span class="font-mono">@{{ userToDelete?.username }}</span>)?
-                    </p>
-                    <p class="text-xs text-gov-text-sub">
-                        Demi integritas jejak audit BPK, pengguna yang pernah tercatat dalam riwayat kuitansi tidak dapat dihapus.
-                    </p>
-                    <div
-                        v-if="deleteError"
-                        class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"
-                    >
-                        {{ deleteError }}
-                    </div>
-                    <div class="flex justify-end gap-2 border-t border-gov-border pt-3">
-                        <GovButton type="button" variant="secondary" size="sm" @click="closeDeleteModal">
-                            Batal
-                        </GovButton>
-                        <GovButton
-                            type="button"
-                            variant="danger"
-                            size="sm"
-                            :disabled="deleting"
-                            @click="confirmDeleteUser"
-                        >
-                            {{ deleting ? 'Menghapus...' : 'Ya, Hapus Pengguna' }}
-                        </GovButton>
-                    </div>
-                </div>
             </div>
         </div>
     </GovAppLayout>
