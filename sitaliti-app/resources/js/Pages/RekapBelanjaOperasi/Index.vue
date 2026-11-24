@@ -4,7 +4,10 @@ import { Head, usePage } from '@inertiajs/vue3';
 import GovAppLayout from '@/Layouts/GovAppLayout.vue';
 import GovButton from '@/Components/UI/GovButton.vue';
 import { rekapBelanjaOperasiService } from '@/Services/rekapBelanjaOperasiService';
+import { useToast } from '@/Composables/useToast';
 import { BarChart3, Download, FileText, Search, X, Eye } from 'lucide-vue-next';
+
+const toast = useToast();
 
 const page = usePage();
 const currentUser = computed(() => page.props.auth?.user || {});
@@ -79,6 +82,8 @@ async function fetchReport() {
         rows.value = data.rows ?? [];
         posOptions.value = data.filters?.pos_options ?? [];
         unitOptions.value = data.filters?.unit_options ?? [];
+    } catch (err) {
+        toast.error(err?.response?.data?.message || 'Gagal memuat laporan Rekap Belanja Operasi.');
     } finally {
         loading.value = false;
     }
@@ -97,6 +102,8 @@ async function openDrilldown(row) {
             pos_key: row.pos_key,
         };
         drilldownData.value = await rekapBelanjaOperasiService.getDrilldown(params);
+    } catch (err) {
+        toast.error(err?.response?.data?.message || 'Gagal memuat rincian pos rekap.');
     } finally {
         drilldownLoading.value = false;
     }
@@ -108,6 +115,8 @@ function closeDrilldown() {
 }
 
 function downloadExport(format) {
+    const label = format === 'xlsx' ? 'Excel (.xlsx)' : 'PDF';
+    toast.info(`Menyiapkan unduhan Rekap Belanja Operasi (${label})...`);
     window.location.href = rekapBelanjaOperasiService.getExportUrl(buildFilterParams(), format);
 }
 
