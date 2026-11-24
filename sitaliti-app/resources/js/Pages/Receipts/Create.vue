@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
+import { useToast } from '@/Composables/useToast';
 import GovAppLayout from '@/Layouts/GovAppLayout.vue';
 import GovCard from '@/Components/UI/GovCard.vue';
 import GovButton from '@/Components/UI/GovButton.vue';
@@ -57,18 +58,14 @@ const sppdGroupPhoto = ref(null);
 const sppdRemoveGroupPhoto = ref(false);
 const sppdHasConflict = ref(false);
 
-function showFeedback(type, title, message) {
-    feedbackBanner.value = { type, title, message };
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
+const toast = useToast();
 
 onMounted(async () => {
     const saved = sessionStorage.getItem('sitaliti_budget_context');
     if (saved) {
         budgetContext.value = JSON.parse(saved);
     } else {
-        showFeedback(
-            'error',
+        toast.error(
             'Konteks Rekening Belum Dipilih',
             'Silakan pilih Unit Kerja, Sub-Kegiatan, Rekening, dan Bulan Anggaran melalui Dashboard terlebih dahulu.'
         );
@@ -202,7 +199,7 @@ async function handleSubmitDraft(andSubmit = true) {
             .map((doc) => doc.name);
 
         if (missingMandatory.length > 0) {
-            showFeedback(
+            toast.success(
                 'error',
                 'Dokumen Wajib Belum Lengkap',
                 `Harap unggah berkas wajib berikut: ${missingMandatory.join(', ')}.`
@@ -228,7 +225,7 @@ async function handleSubmitDraft(andSubmit = true) {
         validationResult.value = result;
 
         if (result?.is_exceeding_budget) {
-            showFeedback('error', 'Melebihi Sisa Pagu RAK', 'Nilai belanja melebihi sisa pagu anggaran kas yang tersedia!');
+            toast.error('Melebihi Sisa Pagu RAK', 'Nilai belanja melebihi sisa pagu anggaran kas yang tersedia!');
             isSubmitting.value = false;
             return;
         }
@@ -289,7 +286,7 @@ async function handleSubmitDraft(andSubmit = true) {
             const saveRes = await receiptService.storeReceipt(formData);
             receiptId = saveRes.data?.id || saveRes.data?.receipt_id;
             if (!receiptId) {
-                showFeedback('error', 'Gagal Menyimpan Draft', 'Respons penyimpanan kuitansi tidak mengembalikan ID.');
+                toast.error('Gagal Menyimpan Draft', 'Respons penyimpanan kuitansi tidak mengembalikan ID.');
                 return;
             }
             savedReceiptId.value = receiptId;
@@ -311,17 +308,17 @@ async function handleSubmitDraft(andSubmit = true) {
         const errData = err.response?.data?.error;
         const details = errData?.details || err.response?.data?.errors;
         if (errData?.code === 'DUPLICATE_RECEIPT_ATTACHMENT') {
-            showFeedback(
+            toast.success(
                 'error',
                 'Peringatan Duplikasi Nota Kembar (SHA-256)',
                 `${errData.message} Berkas lampiran yang sama persis telah terdaftar pada sistem.`
             );
         } else if (details && typeof details === 'object') {
             const detailText = Object.values(details).flat().join(' ');
-            showFeedback('error', errData?.message || 'Validasi Gagal', detailText || errData?.message);
+            toast.success('error', errData?.message || 'Validasi Gagal', detailText || errData?.message);
         } else {
             const errMsg = errData?.message || err.response?.data?.message || err.message || 'Terjadi kesalahan saat menyimpan draft.';
-            showFeedback('error', 'Gagal Menyimpan Kuitansi', errMsg);
+            toast.success('error', 'Gagal Menyimpan Kuitansi', errMsg);
         }
     } finally {
         isSubmitting.value = false;

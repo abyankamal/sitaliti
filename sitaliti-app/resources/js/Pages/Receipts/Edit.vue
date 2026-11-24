@@ -1,6 +1,8 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
+import { useToast } from '@/Composables/useToast';
+import { useConfirm } from '@/Composables/useConfirm';
 import axios from 'axios';
 import GovAppLayout from '@/Layouts/GovAppLayout.vue';
 import GovCard from '@/Components/UI/GovCard.vue';
@@ -106,10 +108,8 @@ const bulanOptions = [
     { value: 12, label: 'Desember' },
 ];
 
-function showFeedback(type, title, message) {
-    feedbackBanner.value = { type, title, message };
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
+const toast = useToast();
+const { confirm } = useConfirm();
 
 async function loadReceiptData() {
     isLoading.value = true;
@@ -162,7 +162,7 @@ async function loadReceiptData() {
         checklistItems.value = await receiptService.getChecklistByCategory(normalizedCategory.value);
         await refreshTaxPreview();
     } catch (error) {
-        showFeedback(
+        toast.error(
             'error',
             'Gagal Memuat Kuitansi',
             error.response?.data?.message || 'Tidak dapat memuat detail kuitansi untuk diedit.'
@@ -349,7 +349,7 @@ async function handleSaveChanges(andResubmit = false) {
 
     if (!receipt.value) return;
     if (!form.value.nama_penerima?.trim()) {
-        showFeedback('error', 'Data Penerima Kosong', 'Silakan isi Penerima / Nama Toko terlebih dahulu.');
+        toast.error('Data Penerima Kosong', 'Silakan isi Penerima / Nama Toko terlebih dahulu.');
         return;
     }
 
@@ -369,30 +369,30 @@ async function handleSaveChanges(andResubmit = false) {
         }
 
         await loadReceiptData();
-        showFeedback('success', 'Perubahan Disimpan', 'Data dan lampiran kuitansi berhasil diperbarui.');
+        toast.success('Perubahan Disimpan', 'Data dan lampiran kuitansi berhasil diperbarui.');
     } catch (error) {
-        showFeedback('error', 'Gagal Menyimpan Perubahan', formatApiError(error));
+        toast.error('Gagal Menyimpan Perubahan', formatApiError(error));
     } finally {
         isSaving.value = false;
     }
 }
 
-async function confirmDeleteAttachment() {
-    if (!deleteTarget.value || !receipt.value) return;
-    isDeletingAttachment.value = true;
-    try {
-        await receiptService.deleteAttachment(receipt.value.id, deleteTarget.value.id);
-        existingAttachments.value = existingAttachments.value.filter(
-            (att) => att.id !== deleteTarget.value.id
-        );
-        deleteTarget.value = null;
-        showFeedback('success', 'Lampiran Dihapus', 'Berkas lampiran berhasil dihapus dari kuitansi.');
-    } catch (error) {
-        deleteTarget.value = null;
-        showFeedback('error', 'Gagal Menghapus Lampiran', formatApiError(error));
-    } finally {
-        isDeletingAttachment.value = false;
-    }
+async function openDeleteAttachmentModal(att) {
+    if (!att || !receipt.value) return;
+    const label = att.nama_dokumen || att.file_name || att.nama_file_asli || 'Lampiran';
+    await confirm({
+        title: 'Hapus Berkas Lampiran?',
+        message: `Anda yakin ingin menghapus lampiran ${label}? Anda dapat mengunggah berkas pengganti setelahnya.`,
+        variant: 'danger',
+        confirmText: 'Ya, Hapus Lampiran',
+        onConfirm: async () => {
+            await receiptService.deleteAttachment(receipt.value.id, att.id);
+            existingAttachments.value = existingAttachments.value.filter(
+                (item) => item.id !== att.id
+            );
+            toast.success('Lampiran Dihapus', 'Berkas lampiran berhasil dihapus dari kuitansi.');
+        },
+    });
 }
 </script>
 
@@ -669,7 +669,7 @@ async function confirmDeleteAttachment() {
                                 <button
                                     type="button"
                                     class="text-xs font-semibold text-rose-600 hover:text-rose-800 px-2 py-1"
-                                    @click="deleteTarget = att"
+                                    @click="openDeleteAttachmentModal(att)"
                                 >
                                     Hapus
                                 </button>
@@ -705,27 +705,6 @@ async function confirmDeleteAttachment() {
                     </GovButton>
                 </div>
             </template>
-        </div>
-
-        <!-- Modal Konfirmasi Hapus Lampiran (In-App) -->
-        <div
-            v-if="deleteTarget"
-            class="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4"
-        >
-            <div class="bg-white rounded-xl max-w-md w-full p-6 shadow-xl space-y-4">
-                <h3 class="text-base font-bold text-slate-900">Hapus Berkas Lampiran?</h3>
-                <p class="text-sm text-slate-600">
-                    Anda yakin ingin menghapus lampiran <strong>{{ deleteTarget.nama_dokumen || deleteTarget.file_name || deleteTarget.nama_file_asli }}</strong>? Anda dapat mengunggah berkas pengganti setelahnya.
-                </p>
-                <div class="flex justify-end gap-2 pt-2">
-                    <GovButton variant="outline" :disabled="isDeletingAttachment" @click="deleteTarget = null">
-                        Batal
-                    </GovButton>
-                    <GovButton variant="danger" :disabled="isDeletingAttachment" @click="confirmDeleteAttachment">
-                        {{ isDeletingAttachment ? 'Menghapus...' : 'Ya, Hapus Lampiran' }}
-                    </GovButton>
-                </div>
-            </div>
         </div>
     </GovAppLayout>
 </template>
