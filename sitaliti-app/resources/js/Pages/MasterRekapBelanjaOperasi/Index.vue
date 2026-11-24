@@ -5,6 +5,8 @@ import GovAppLayout from '@/Layouts/GovAppLayout.vue';
 import GovBadge from '@/Components/UI/GovBadge.vue';
 import GovButton from '@/Components/UI/GovButton.vue';
 import { rekapBelanjaOperasiService } from '@/Services/rekapBelanjaOperasiService';
+import { useToast } from '@/Composables/useToast';
+import { useConfirm } from '@/Composables/useConfirm';
 import { Plus, Search, Pencil, Trash2, X, Layers, CheckSquare } from 'lucide-vue-next';
 
 const posList = ref([]);
@@ -15,16 +17,8 @@ const loadingOptions = ref(false);
 const searchQuery = ref('');
 const filterStatus = ref('');
 
-const toast = ref({ show: false, type: 'success', message: '' });
-let toastTimer = null;
-
-function showToast(message, type = 'success') {
-    if (toastTimer) clearTimeout(toastTimer);
-    toast.value = { show: true, type, message };
-    toastTimer = setTimeout(() => {
-        toast.value.show = false;
-    }, 4500);
-}
+const toast = useToast();
+const { confirm } = useConfirm();
 
 const formDialogRef = ref(null);
 const isEditing = ref(false);
@@ -42,11 +36,6 @@ const form = ref({
     is_active: true,
     kode_rekening: [],
 });
-
-const deleteDialogRef = ref(null);
-const posToDelete = ref(null);
-const deleting = ref(false);
-const deleteError = ref('');
 
 const filteredRekeningOptions = computed(() => {
     const q = rekeningSearch.value.trim().toLowerCase();
@@ -69,7 +58,7 @@ async function fetchMasterList() {
         if (filterStatus.value !== '') params.is_active = filterStatus.value;
         posList.value = await rekapBelanjaOperasiService.getMasterList(params);
     } catch {
-        showToast('Gagal memuat daftar Master Rekap Belanja Operasi.', 'error');
+        toast.error('Gagal memuat daftar Master Rekap Belanja Operasi.');
     } finally {
         loading.value = false;
     }
@@ -146,10 +135,10 @@ async function savePos() {
     try {
         if (isEditing.value && editingId.value) {
             await rekapBelanjaOperasiService.updateMasterPos(editingId.value, form.value);
-            showToast('Pos rekap belanja operasi berhasil diperbarui.');
+            toast.success('Pos rekap belanja operasi berhasil diperbarui.');
         } else {
             await rekapBelanjaOperasiService.createMasterPos(form.value);
-            showToast('Pos rekap belanja operasi berhasil ditambahkan.');
+            toast.success('Pos rekap belanja operasi berhasil ditambahkan.');
         }
         closeFormModal();
         await fetchMasterList();
@@ -166,31 +155,19 @@ async function savePos() {
     }
 }
 
-function openDeleteModal(item) {
-    posToDelete.value = item;
-    deleteError.value = '';
-    deleteDialogRef.value?.showModal();
-}
-
-function closeDeleteModal() {
-    deleteDialogRef.value?.close();
-    posToDelete.value = null;
-}
-
-async function confirmDelete() {
-    if (!posToDelete.value) return;
-    deleting.value = true;
-    deleteError.value = '';
-    try {
-        await rekapBelanjaOperasiService.deleteMasterPos(posToDelete.value.id);
-        showToast('Pos rekap belanja operasi berhasil dihapus.');
-        closeDeleteModal();
-        await fetchMasterList();
-    } catch (err) {
-        deleteError.value = err?.response?.data?.message || 'Gagal menghapus pos rekap.';
-    } finally {
-        deleting.value = false;
-    }
+async function openDeleteModal(item) {
+    await confirm({
+        title: 'Hapus Pos Rekap?',
+        message: `Anda yakin ingin menghapus pos ${item.kode} — ${item.nama}? Kode rekening yang terpetakan akan kembali berstatus belum dipetakan.`,
+        details: `${item.kode} — ${item.nama}`,
+        variant: 'danger',
+        confirmText: 'Ya, Hapus',
+        onConfirm: async () => {
+            await rekapBelanjaOperasiService.deleteMasterPos(item.id);
+            toast.success('Pos rekap belanja operasi berhasil dihapus.');
+            await fetchMasterList();
+        },
+    });
 }
 
 onMounted(() => {
@@ -218,22 +195,6 @@ onMounted(() => {
                     <Plus class="w-4 h-4 mr-1.5" />
                     Tambah Pos Rekap
                 </GovButton>
-            </div>
-
-            <!-- Toast -->
-            <div
-                v-if="toast.show"
-                :class="[
-                    'px-4 py-3 rounded-lg border text-sm font-medium flex items-center justify-between',
-                    toast.type === 'error'
-                        ? 'bg-red-50 border-red-200 text-red-800'
-                        : 'bg-emerald-50 border-emerald-200 text-emerald-800',
-                ]"
-            >
-                <span>{{ toast.message }}</span>
-                <button type="button" class="ml-3 opacity-70 hover:opacity-100" @click="toast.show = false">
-                    <X class="w-4 h-4" />
-                </button>
             </div>
 
             <!-- Filter Bar -->
@@ -480,27 +441,6 @@ onMounted(() => {
                     </GovButton>
                 </div>
             </form>
-        </dialog>
-
-        <!-- Modal Konfirmasi Hapus -->
-        <dialog
-            ref="deleteDialogRef"
-            class="rounded-xl border border-hairline p-0 w-full max-w-md backdrop:bg-ink/40 shadow-xl"
-        >
-            <div class="p-5 space-y-3 bg-surface">
-                <h3 class="text-base font-bold text-ink">Hapus Pos Rekap?</h3>
-                <p class="text-sm text-ink-muted">
-                    Anda yakin ingin menghapus pos <strong class="text-ink">{{ posToDelete?.kode }} — {{ posToDelete?.nama }}</strong>?
-                    Kode rekening yang terpetakan akan kembali berstatus belum dipetakan.
-                </p>
-                <p v-if="deleteError" class="text-xs text-red-600">{{ deleteError }}</p>
-                <div class="flex justify-end gap-2 pt-2">
-                    <GovButton type="button" variant="secondary" @click="closeDeleteModal">Batal</GovButton>
-                    <GovButton type="button" variant="danger" :disabled="deleting" @click="confirmDelete">
-                        {{ deleting ? 'Menghapus...' : 'Ya, Hapus' }}
-                    </GovButton>
-                </div>
-            </div>
         </dialog>
     </GovAppLayout>
 </template>
