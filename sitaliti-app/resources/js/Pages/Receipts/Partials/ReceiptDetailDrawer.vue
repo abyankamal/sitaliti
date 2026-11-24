@@ -6,6 +6,8 @@ import axios from 'axios';
 import GovBadge from '@/Components/UI/GovBadge.vue';
 import GovButton from '@/Components/UI/GovButton.vue';
 import AuditTimeline from '@/Components/UI/AuditTimeline.vue';
+import { useToast } from '@/Composables/useToast';
+import { useConfirm } from '@/Composables/useConfirm';
 import { formatRupiah } from '@/Utils/currency';
 import { formatTanggalIndo } from '@/Utils/date';
 
@@ -47,25 +49,20 @@ const errorMessage = ref('');
 const taxDeductions = computed(() => (receipt.value?.pajak || []).filter(p => p.kode_pajak !== 'BEA_METERAI'));
 const meteraiTax = computed(() => (receipt.value?.pajak || []).find(p => p.kode_pajak === 'BEA_METERAI'));
 
+const toast = useToast();
+const { confirm } = useConfirm();
+
 // State Modal Penolakan (PPTK / Lurah)
 const isRejectModalOpen = ref(false);
 const rejectMode = ref('PPTK'); // 'PPTK' | 'LURAH'
 const rejectReason = ref('');
 const rejectError = ref('');
 
-// State Modal Konfirmasi Aksi & Toast In-App (menggantikan alert/confirm/prompt)
+// State Modal Konfirmasi Aksi
 const isActionModalOpen = ref(false);
 const actionModalMode = ref(''); // 'SUBMIT_PPTK' | 'PPTK_APPROVE' | 'LURAH_APPROVE'
 const actionNote = ref('');
 const actionModalError = ref('');
-const drawerToast = ref({ show: false, type: 'success', message: '' });
-
-function showDrawerToast(message, type = 'success') {
-    drawerToast.value = { show: true, type, message };
-    setTimeout(() => {
-        drawerToast.value.show = false;
-    }, 4500);
-}
 
 // Load detail kuitansi saat receiptId berubah atau drawer dibuka
 watch(
@@ -123,18 +120,62 @@ onUnmounted(() => {
     window.removeEventListener('keydown', handleKeyDown);
 });
 
-function openActionModal(mode) {
-    if (!receipt.value || isActionLoading.value) return;
-    actionModalMode.value = mode;
-    actionModalError.value = '';
-    if (mode === 'PPTK_APPROVE') {
-        actionNote.value = 'Sesuai dengan spesifikasi teknis dan ketersediaan anggaran.';
-    } else if (mode === 'LURAH_APPROVE') {
-        actionNote.value = 'Disetujui dan diotorisasi oleh Lurah.';
-    } else {
-        actionNote.value = '';
-    }
-    isActionModalOpen.value = true;
+async function openActionModal(mode) {
+    if (!receipt.value) return;
+
+    const configs = {
+        SUBMIT_PPTK: {
+            title: 'Ajukan Kuitansi ke PPTK?',
+            message: 'Kuitansi akan dikunci dan pagu anggaran kas akan direservasi.',
+            confirmText: 'Ya, Ajukan ke PPTK',
+            endpoint: `/api/v1/receipts/${receipt.value.id}/submit`,
+            payload: {},
+            successMsg: 'Kuitansi berhasil diajukan ke PPTK. Pagu anggaran kas telah dikunci.',
+        },
+        RECALL_DRAFT: {
+            title: 'Tarik Kembali ke DRAFT?',
+            message: 'Kuitansi akan dikembalikan ke status DRAFT dan pagu anggaran kas dipulihkan.',
+            confirmText: 'Ya, Tarik ke DRAFT',
+            endpoint: `/api/v1/receipts/${receipt.value.id}/recall`,
+            payload: { alasan: 'Ditarik kembali ke DRAFT oleh Operator untuk perbaikan data' },
+            successMsg: 'Kuitansi berhasil ditarik kembali ke DRAFT dan pagu anggaran telah dipulihkan.',
+        },
+        PPTK_APPROVE: {
+            title: 'Setujui Kuitansi (PPTK)?',
+            message: 'Kuitansi akan disetujui oleh PPTK dan diteruskan ke tahap berikutnya.',
+            confirmText: 'Ya, Setujui',
+            endpoint: `/api/v1/receipts/${receipt.value.id}/pptk-approve`,
+            payload: { catatan: 'Disetujui oleh PPTK' },
+            successMsg: 'Kuitansi disetujui PPTK dan berhasil diteruskan ke tahap berikutnya.',
+        },
+        LURAH_APPROVE: {
+            title: 'Otorisasi Kuitansi (Lurah)?',
+            message: 'Kuitansi akan diotorisasi dan diteruskan ke Tim Verifikator Kecamatan.',
+            confirmText: 'Ya, Otorisasi',
+            endpoint: `/api/v1/receipts/${receipt.value.id}/lurah-approve`,
+            payload: { catatan: 'Disetujui oleh Lurah' },
+            successMsg: 'Kuitansi berhasil diotorisasi Lurah dan diteruskan ke Tim Verifikator Kecamatan.',
+        },
+    };
+
+    const cfg = configs[mode];
+    if (!cfg) return;
+
+    await confirm({
+        title: cfg.title,
+        message: cfg.message,
+        details: receipt.value.nomor_bukti ? `No. Bukti: ${receipt.value.nomor_bukti}` : '',
+        variant: 'primary',
+        confirmText: cfg.confirmText,
+        onConfirm: async () => {
+            const response = await axios.post(cfg.endpoint, cfg.payload);
+            if (response.data?.success) {
+                toast.success(cfg.successMsg);
+                emit('refresh');
+                await fetchReceiptDetail(receipt.value.id);
+            }
+        },
+    });
 }
 
 async function handleActionConfirm() {
@@ -190,11 +231,31 @@ async function handleActionConfirm() {
 }
 
 // Aksi Penolakan (PPTK / Lurah)
-function openRejectModal(mode = 'PPTK') {
-    rejectMode.value = mode;
-    rejectReason.value = '';
-    rejectError.value = '';
-    isRejectModalOpen.value = true;
+async function openRejectModal(mode = 'PPTK') {
+    if (!receipt.value) return;
+    const endpoint =
+        mode === 'LURAH'
+            ? `/api/v1/receipts/${receipt.value.id}/lurah-reject`
+            : `/api/v1/receipts/${receipt.value.id}/pptk-reject`;
+
+    await confirm({
+        title: mode === 'LURAH' ? 'Tolak Kuitansi (Lurah)?' : 'Tolak Kuitansi (PPTK)?',
+        message: 'Kuitansi akan dikembalikan ke DRAFT Operator & pagu anggaran kas akan dipulihkan.',
+        variant: 'danger',
+        confirmText: 'Tolak & Kembalikan',
+        requireReason: true,
+        reasonLabel: 'Alasan Penolakan',
+        reasonPlaceholder: 'Tuliskan alasan penolakan minimal 5 karakter...',
+        minReasonLength: 5,
+        onConfirm: async (reason) => {
+            const response = await axios.post(endpoint, { alasan: reason });
+            if (response.data?.success) {
+                toast.success('Kuitansi berhasil dikembalikan ke DRAFT Operator & pagu anggaran kas telah dipulihkan.');
+                emit('refresh');
+                await fetchReceiptDetail(receipt.value.id);
+            }
+        },
+    });
 }
 
 async function handleRejectConfirm() {
@@ -551,18 +612,6 @@ function getStatusBadge(status) {
 
                 <!-- Drawer Footer: Aksi Kontekstual Berdasarkan Role -->
                 <div v-if="receipt" class="p-4 bg-slate-50 border-t border-slate-200 space-y-2">
-                    <div
-                        v-if="drawerToast.show"
-                        :class="[
-                            'rounded-lg border px-3 py-2 text-xs font-medium',
-                            drawerToast.type === 'error'
-                                ? 'border-red-200 bg-red-50 text-red-700'
-                                : 'border-emerald-200 bg-emerald-50 text-emerald-700',
-                        ]"
-                    >
-                        {{ drawerToast.message }}
-                    </div>
-
                     <div class="flex items-center justify-between gap-3">
                         <GovButton @click="closeDrawer" variant="secondary" size="sm">
                             Tutup
