@@ -242,7 +242,7 @@ onMounted(async () => {
                         class="w-full h-9 px-3 text-xs bg-canvas border border-hairline rounded-lg text-ink focus:ring-2 focus:ring-accent focus:border-accent"
                     >
                         <option value="">Semua Unit Kerja</option>
-                        <option v-for="u in units" :key="u.id" :value="u.id">{{ u.nama_unit }}</option>
+                        <option v-for="u in units" :key="u.id" :value="u.id">{{ u.name || u.nama_unit }}</option>
                     </select>
                 </div>
 
@@ -443,7 +443,7 @@ onMounted(async () => {
                         class="w-full h-9 px-3 text-xs bg-canvas border border-hairline rounded-lg text-ink focus:ring-2 focus:ring-accent focus:border-accent"
                     >
                         <option value="">Umum / Lintas Unit Kerja</option>
-                        <option v-for="u in units" :key="u.id" :value="u.id">{{ u.nama_unit }}</option>
+                        <option v-for="u in units" :key="u.id" :value="u.id">{{ u.name || u.nama_unit }}</option>
                     </select>
                 </div>
                 <div v-else class="text-xs text-ink-muted bg-canvas border border-hairline rounded-lg px-3 py-2">

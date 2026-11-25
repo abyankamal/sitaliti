@@ -20,12 +20,12 @@ const ROLES = [
 ];
 
 const ROLE_BADGE_MAP = {
-    BPP: 'emerald',
-    BP: 'emerald',
-    PPTK: 'indigo',
-    LURAH: 'amber',
-    VERIFIKATOR: 'navy',
-    KPA: 'navy',
+    BPP: 'success',
+    BP: 'success',
+    PPTK: 'info',
+    LURAH: 'warning',
+    VERIFIKATOR: 'primary',
+    KPA: 'primary',
 };
 
 // State Data
@@ -62,12 +62,6 @@ const form = ref({
     jabatan: '',
     sub_kegiatan_codes: [],
 });
-
-// State Modal Hapus Pengguna
-const showDeleteModal = ref(false);
-const userToDelete = ref(null);
-const deleting = ref(false);
-const deleteError = ref('');
 
 async function fetchUnits() {
     try {
@@ -305,7 +299,7 @@ onMounted(async () => {
                         >
                             <option value="">Semua Unit Kerja</option>
                             <option v-for="unit in units" :key="unit.id" :value="unit.id">
-                                {{ unit.nama_unit }}
+                                {{ unit.name || unit.nama_unit }}
                             </option>
                         </select>
                     </div>
@@ -381,7 +375,7 @@ onMounted(async () => {
                                     {{ u.unit_kerja?.nama_unit || '-' }}
                                 </td>
                                 <td class="px-4 py-2.5">
-                                    <GovBadge :color="ROLE_BADGE_MAP[u.role] || 'slate'">
+                                    <GovBadge :variant="ROLE_BADGE_MAP[u.role] || 'neutral'">
                                         {{ u.role }}
                                     </GovBadge>
                                 </td>
@@ -551,7 +545,7 @@ onMounted(async () => {
                             >
                                 <option value="" disabled>Pilih Unit Kerja</option>
                                 <option v-for="unit in units" :key="unit.id" :value="unit.id">
-                                    {{ unit.nama_unit }}
+                                    {{ unit.name || unit.nama_unit }}
                                 </option>
                             </select>
                             <p v-if="formErrors.unit_kerja_id" class="mt-1 text-xs text-red-600">

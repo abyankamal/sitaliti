@@ -307,6 +307,7 @@ class BudgetApiController extends Controller
                 'id' => $u->id,
                 'code' => $u->kode_unit,
                 'name' => $u->nama_unit,
+                'nama_unit' => $u->nama_unit,
                 'type' => $u->tipe,
             ];
         });
