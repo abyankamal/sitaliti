@@ -430,6 +430,48 @@ async function handleQuickAuthSubmit() {
                     </div>
 
                     <div
+                        v-if="(detail.pajak || []).length > 0"
+                        class="p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs space-y-2"
+                    >
+                        <div class="font-semibold text-gov-navy-900">
+                            Status Setor Pajak (Kode Billing &amp; NTPN)
+                        </div>
+                        <div class="space-y-1.5">
+                            <div
+                                v-for="pj in detail.pajak"
+                                :key="pj.id"
+                                class="flex items-center justify-between gap-2 bg-white p-2 rounded border border-slate-200"
+                            >
+                                <div class="min-w-0">
+                                    <div class="font-medium text-slate-800">{{ pj.nama_pajak }}</div>
+                                    <div class="text-[11px] text-slate-500 font-mono tabular-nums">
+                                        {{ formatRupiah(pj.nominal) }}
+                                        <span v-if="pj.ntpn"> • NTPN: {{ pj.ntpn }}</span>
+                                    </div>
+                                </div>
+                                <span
+                                    v-if="pj.kode_pajak === 'BEA_METERAI'"
+                                    class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[11px] font-semibold shrink-0"
+                                >
+                                    Dokumen Fisik
+                                </span>
+                                <span
+                                    v-else-if="pj.ntpn"
+                                    class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[11px] font-semibold shrink-0"
+                                >
+                                    NTPN Terverifikasi
+                                </span>
+                                <span
+                                    v-else
+                                    class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[11px] font-semibold shrink-0"
+                                >
+                                    Belum Setor
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div
                         v-if="(detail.sppd_peserta && detail.sppd_peserta.length > 0) || detail.sppd_foto_url"
                         class="p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs space-y-2"
                     >

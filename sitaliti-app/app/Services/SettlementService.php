@@ -433,7 +433,7 @@ class SettlementService implements SettlementServiceInterface
      */
     public function getBundles(array $filters = [], ?User $actor = null): array
     {
-        $query = PengajuanSpj::with(['unitKerja', 'activeItems.kuitansi.rekening'])
+        $query = PengajuanSpj::with(['unitKerja', 'activeItems.kuitansi.rekening', 'activeItems.kuitansi.pajak'])
             ->orderBy('created_at', 'desc');
 
         if ($actor && $actor->isKelurahanScoped()) {
@@ -482,6 +482,16 @@ class SettlementService implements SettlementServiceInterface
                         'nominal' => (float) ($k?->nominal_bruto ?? 0),
                         'kategori' => $k?->rekening?->kategori_belanja ?? 'B.1',
                         'status' => $k?->status ?? 'VERIFIED',
+                        'pajak' => $k ? $k->pajak->map(fn ($p) => [
+                            'id' => $p->id,
+                            'kode_pajak' => $p->kode_pajak,
+                            'nama_pajak' => $p->nama_pajak,
+                            'nominal' => (float) $p->nominal,
+                            'kode_billing' => $p->kode_billing,
+                            'ntpn' => $p->ntpn,
+                            'tanggal_setor' => $p->tanggal_setor?->format('Y-m-d'),
+                            'bukti_setor_path' => $p->bukti_setor_path,
+                        ])->values()->all() : [],
                     ];
                 })->values()->all(),
             ];

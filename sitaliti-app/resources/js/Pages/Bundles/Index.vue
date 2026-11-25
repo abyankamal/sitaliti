@@ -6,6 +6,7 @@ import GovAppLayout from '@/Layouts/GovAppLayout.vue';
 import GovBadge from '@/Components/UI/GovBadge.vue';
 import GovButton from '@/Components/UI/GovButton.vue';
 import { settlementService } from '@/Services/settlementService';
+import { receiptService } from '@/Services/receiptService';
 import { formatRupiah } from '@/Utils/currency';
 import { useToast } from '@/Composables/useToast';
 import { useConfirm } from '@/Composables/useConfirm';
@@ -73,6 +74,79 @@ const actionModal = ref({
     kuitansi: null,
 });
 const isProcessingAction = ref(false);
+
+// State Modal Input Kode Billing & NTPN
+const showTaxModal = ref(false);
+const selectedReceiptForTax = ref(null);
+const taxFormRows = ref([]);
+const isSavingTax = ref(false);
+
+function hasTaxableRows(kw) {
+    return (kw?.pajak || []).some((p) => Number(p.nominal) > 0 && p.kode_pajak !== 'BEA_METERAI');
+}
+
+function getTaxSettlementBadge(kw) {
+    const taxable = (kw?.pajak || []).filter((p) => Number(p.nominal) > 0 && p.kode_pajak !== 'BEA_METERAI');
+    if (taxable.length === 0) {
+        return { label: 'Non-Pajak / Meterai', class: 'bg-slate-100 text-slate-600' };
+    }
+    const allSettled = taxable.every((p) => Boolean(p.ntpn && String(p.ntpn).trim() !== ''));
+    return allSettled
+        ? { label: 'NTPN Terverifikasi', class: 'bg-emerald-100 text-emerald-800' }
+        : { label: 'Belum Setor NTPN', class: 'bg-amber-100 text-amber-800' };
+}
+
+function openTaxModal(kw) {
+    selectedReceiptForTax.value = kw;
+    taxFormRows.value = (kw?.pajak || [])
+        .filter((p) => Number(p.nominal) > 0 && p.kode_pajak !== 'BEA_METERAI')
+        .map((p) => ({
+            kuitansi_pajak_id: p.id,
+            kode_pajak: p.kode_pajak,
+            nama_pajak: p.nama_pajak,
+            nominal: p.nominal,
+            kode_billing: p.kode_billing || '',
+            ntpn: p.ntpn || '',
+            tanggal_setor: p.tanggal_setor || new Date().toISOString().slice(0, 10),
+            bukti_setor_path: p.bukti_setor_path || null,
+            file: null,
+        }));
+    showTaxModal.value = true;
+}
+
+async function submitTaxSettlement() {
+    if (!selectedReceiptForTax.value) return;
+    const validRows = taxFormRows.value.filter((r) => r.ntpn.trim() !== '');
+    if (validRows.length === 0) {
+        toast.error('NTPN Wajib Diisi', 'Isi minimal satu nomor NTPN sebelum menyimpan.');
+        return;
+    }
+
+    isSavingTax.value = true;
+    try {
+        const fd = new FormData();
+        validRows.forEach((row, idx) => {
+            fd.append(`settlements[${idx}][kuitansi_pajak_id]`, row.kuitansi_pajak_id);
+            fd.append(`settlements[${idx}][kode_billing]`, row.kode_billing.trim());
+            fd.append(`settlements[${idx}][ntpn]`, row.ntpn.trim());
+            if (row.tanggal_setor) {
+                fd.append(`settlements[${idx}][tanggal_setor]`, row.tanggal_setor);
+            }
+            if (row.file) {
+                fd.append(`settlements[${idx}][bukti_setor]`, row.file);
+            }
+        });
+
+        await receiptService.saveTaxSettlement(selectedReceiptForTax.value.kuitansi_id || selectedReceiptForTax.value.id, fd);
+        toast.success('NTPN Tersimpan', 'Data Kode Billing & NTPN berhasil diperbarui.');
+        showTaxModal.value = false;
+        await loadBundles();
+    } catch (err) {
+        toast.error('Gagal Menyimpan NTPN', err.response?.data?.error?.message || err.response?.data?.message || 'Terjadi kesalahan saat menyimpan data setoran pajak.');
+    } finally {
+        isSavingTax.value = false;
+    }
+}
 
 const newBundleForm = ref({
     jenis_bundel: 'SPP_GU',
@@ -417,10 +491,23 @@ const BUNDLE_STATUS_LABELS = {
                                         <span class="text-xs bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-mono">
                                             {{ kw.kategori || 'B.1' }}
                                         </span>
+                                        <span
+                                            :class="['text-[11px] px-1.5 py-0.5 rounded font-semibold', getTaxSettlementBadge(kw).class]"
+                                        >
+                                            {{ getTaxSettlementBadge(kw).label }}
+                                        </span>
                                     </div>
                                     <p class="text-xs text-slate-500 truncate max-w-xs">{{ kw.uraian || kw.uraian_belanja }}</p>
                                 </div>
                                 <div class="flex items-center gap-2 shrink-0">
+                                    <button
+                                        v-if="hasTaxableRows(kw) && bundle.status !== 'SYNCED_SIPD' && !isReadOnly"
+                                        type="button"
+                                        @click="openTaxModal(kw)"
+                                        class="px-2 py-1 rounded text-xs font-semibold border border-gov-navy-200 bg-gov-navy-50 text-gov-navy-800 hover:bg-gov-navy-100 transition-colors"
+                                    >
+                                        Input NTPN
+                                    </button>
                                     <div class="text-right">
                                         <div class="font-bold text-slate-800 tabular-nums">{{ formatRupiah(kw.nominal || kw.nominal_bruto) }}</div>
                                         <span class="text-xs text-emerald-700 font-medium">Lolos Verifikasi</span>
@@ -707,6 +794,80 @@ const BUNDLE_STATUS_LABELS = {
                             {{ actionModal.confirmLabel }}
                         </GovButton>
                     </div>
+                </div>
+            </div>
+        </div>
+        <!-- Modal Input Kode Billing & NTPN per Baris Pajak -->
+        <div
+            v-if="showTaxModal"
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+        >
+            <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full border border-slate-200 overflow-hidden">
+                <div class="px-6 py-4 bg-gov-navy-950 text-white font-bold flex items-center justify-between">
+                    <span class="text-sm">Setoran Pajak (Kode Billing &amp; NTPN) — {{ selectedReceiptForTax?.id }}</span>
+                    <button type="button" @click="showTaxModal = false" class="text-white/80 hover:text-white text-lg">&times;</button>
+                </div>
+                <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                    <div
+                        v-for="row in taxFormRows"
+                        :key="row.kuitansi_pajak_id"
+                        class="p-3 rounded-lg border border-slate-200 bg-slate-50 space-y-2.5 text-xs"
+                    >
+                        <div class="flex items-center justify-between font-bold text-gov-navy-900">
+                            <span>{{ row.nama_pajak }} ({{ row.kode_pajak }})</span>
+                            <span class="tabular-nums">{{ formatRupiah(row.nominal) }}</span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                            <div>
+                                <label class="block text-slate-600 mb-1">Kode Billing</label>
+                                <input
+                                    v-model="row.kode_billing"
+                                    type="text"
+                                    placeholder="15 digit Kode Billing"
+                                    class="w-full rounded border-slate-300 text-xs py-1.5 px-2"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-slate-600 mb-1">NTPN *</label>
+                                <input
+                                    v-model="row.ntpn"
+                                    type="text"
+                                    placeholder="Nomor NTPN"
+                                    class="w-full rounded border-slate-300 text-xs py-1.5 px-2 font-mono"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-slate-600 mb-1">Tanggal Setor</label>
+                                <input
+                                    v-model="row.tanggal_setor"
+                                    type="date"
+                                    class="w-full rounded border-slate-300 text-xs py-1.5 px-2"
+                                />
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between gap-2 pt-1">
+                            <input
+                                type="file"
+                                accept=".pdf,.jpg,.jpeg,.png"
+                                @change="(e) => { row.file = e.target.files?.[0] || null; }"
+                                class="text-xs text-slate-600"
+                            />
+                            <a
+                                v-if="row.bukti_setor_path"
+                                :href="`/api/v1/receipts/${selectedReceiptForTax?.kuitansi_id}/tax-settlement/${row.kuitansi_pajak_id}/preview`"
+                                target="_blank"
+                                class="text-xs font-semibold text-gov-navy-800 underline shrink-0"
+                            >
+                                Lihat Bukti Tersimpan
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-6 py-3 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
+                    <GovButton variant="secondary" size="sm" @click="showTaxModal = false">Batal</GovButton>
+                    <GovButton variant="primary" size="sm" :loading="isSavingTax" @click="submitTaxSettlement">
+                        Simpan NTPN
+                    </GovButton>
                 </div>
             </div>
         </div>

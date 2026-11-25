@@ -109,6 +109,16 @@ export const receiptService = {
     },
 
     /**
+     * Simpan Kode Billing, NTPN, tanggal setor, dan bukti setor per baris pajak kuitansi.
+     */
+    async saveTaxSettlement(receiptId, formData) {
+        const response = await axios.post(`${API_BASE}/${receiptId}/tax-settlement`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        return response.data;
+    },
+
+    /**
      * Mengambil riwayat mutasi audit trail kuitansi.
      */
     async getHistory(receiptId) {
