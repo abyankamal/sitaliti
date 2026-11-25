@@ -7,6 +7,7 @@ use App\Contracts\SettlementServiceInterface;
 use App\Models\Kuitansi;
 use App\Models\PengajuanSpj;
 use App\Models\PengajuanSpjItem;
+use App\Models\PengaturanKepatuhan;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -305,10 +306,36 @@ class SettlementService implements SettlementServiceInterface
         }
 
         return DB::transaction(function () use ($bundleId, $checklistBagianA, $ppk) {
-            $bundle = PengajuanSpj::resolveOrFailByIdOrNumber($bundleId, lockForUpdate: true);
+            $bundle = PengajuanSpj::resolveOrFailByIdOrNumber($bundleId, ['activeItems.kuitansi.pajak'], lockForUpdate: true);
 
             if ($bundle->status_bundel !== 'MENUNGGU_PPK') {
                 throw new InvalidArgumentException("Bundel {$bundle->nomor_bundel} harus berstatus MENUNGGU_PPK sebelum disetujui PPK. Status saat ini: {$bundle->status_bundel}.");
+            }
+
+            $gateKey = $bundle->jenis_bundel === 'LPJ_BPP' ? 'ntpn_gate_lpj_bpp' : 'ntpn_gate_spp_gu';
+            if (PengaturanKepatuhan::isEnabled($gateKey, false)) {
+                $unsettledReceipts = [];
+                foreach ($bundle->activeItems as $item) {
+                    $kuitansi = $item->kuitansi;
+                    if (! $kuitansi) {
+                        continue;
+                    }
+
+                    $hasUnsettledTax = $kuitansi->pajak->contains(function ($pajak) {
+                        return (float) $pajak->nominal > 0
+                            && $pajak->kode_pajak !== 'BEA_METERAI'
+                            && blank($pajak->ntpn);
+                    });
+
+                    if ($hasUnsettledTax) {
+                        $unsettledReceipts[] = $kuitansi->nomor_kuitansi;
+                    }
+                }
+
+                if (! empty($unsettledReceipts)) {
+                    $list = implode(', ', array_unique($unsettledReceipts));
+                    throw new InvalidArgumentException("Pengesahan PPK ditolak: kuitansi berpajak berikut belum memiliki NTPN setoran negara ({$list}).");
+                }
             }
 
             $resolvedChecklist = ! empty($checklistBagianA)
