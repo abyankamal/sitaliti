@@ -23,14 +23,18 @@ class ReceiptService
 
     protected SppdScheduleService $sppdService;
 
+    protected SbmValidationService $sbmService;
+
     public function __construct(
         protected TaxCalculationServiceInterface $taxService,
         protected BudgetReservationServiceInterface $budgetService,
         ?AuditTrailService $auditTrailService = null,
-        ?SppdScheduleService $sppdService = null
+        ?SppdScheduleService $sppdService = null,
+        ?SbmValidationService $sbmService = null
     ) {
         $this->auditTrailService = $auditTrailService ?? app(AuditTrailService::class);
         $this->sppdService = $sppdService ?? app(SppdScheduleService::class);
+        $this->sbmService = $sbmService ?? app(SbmValidationService::class);
     }
 
     /**
@@ -69,6 +73,13 @@ class ReceiptService
         $sisaPagu = $budgetData['sisa_dapat_digunakan'] ?? 0.0;
         $isExceedingBudget = $totalBruto > $sisaPagu;
 
+        // Cek Soft-Warning SBM/SSH (non-blocking)
+        $sbmWarnings = $this->sbmService->checkItems(
+            $kategori,
+            $items,
+            (int) ($data['tahun_anggaran'] ?? date('Y'))
+        );
+
         return [
             'success' => ! $isExceedingBudget,
             'total_belanja' => $totalBruto,
@@ -76,6 +87,7 @@ class ReceiptService
             'is_exceeding_budget' => $isExceedingBudget,
             'tax_calculation' => $taxResult,
             'budget_context' => $budgetData,
+            'sbm_warnings' => $sbmWarnings,
         ];
     }
 
