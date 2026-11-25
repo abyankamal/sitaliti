@@ -212,7 +212,7 @@ class VerificationService implements VerificationServiceInterface
             'sbm_warnings' => $this->sbmService->checkItems(
                 $kategori,
                 $kuitansi->items->map(fn ($item) => [
-                    'nama_item' => $item->nama_item,
+                    'nama_barang' => $item->nama_barang,
                     'harga_satuan' => (float) $item->harga_satuan,
                 ])->all(),
                 (int) ($kuitansi->tanggal_transaksi?->year ?? date('Y'))

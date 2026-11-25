@@ -53,14 +53,15 @@ class SbmValidationTest extends TestCase
             'is_active' => true,
         ]);
 
-        // Cocok berdasarkan nama item melebihi batas
+        // Cocok berdasarkan nama_barang maupun nama_item yang melebihi batas
         $warnings = $this->sbmService->checkItems('B.2', [
-            ['nama_item' => 'Nasi Kotak Rapat Biasa', 'harga_satuan' => 55000],
-            ['sbm_item_id' => $sbm->id, 'nama_item' => 'Nasi Kotak VIP', 'harga_satuan' => 45000],
+            ['nama_barang' => 'Nasi Kotak Rapat Biasa', 'harga_satuan' => 55000],
+            ['sbm_item_id' => $sbm->id, 'nama_barang' => 'Nasi Kotak VIP', 'harga_satuan' => 45000],
         ], 2026);
 
         $this->assertCount(1, $warnings);
         $this->assertEquals('SBM-MAMIN-001', $warnings[0]['kode_sbm']);
         $this->assertEquals(10000.0, $warnings[0]['selisih']);
+        $this->assertEquals('Nasi Kotak Rapat Biasa', $warnings[0]['nama_item']);
     }
 }

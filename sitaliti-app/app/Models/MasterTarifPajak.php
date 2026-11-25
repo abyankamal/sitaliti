@@ -12,6 +12,8 @@ class MasterTarifPajak extends Model
 {
     use HasFactory;
 
+    private static bool $hasTable = false;
+
     protected $table = 'master_tarif_pajak';
 
     /**
@@ -54,8 +56,11 @@ class MasterTarifPajak extends Model
     public static function getRatesMapForYear(int $tahun): array
     {
         try {
-            if (! Schema::hasTable('master_tarif_pajak')) {
-                return [];
+            if (! self::$hasTable) {
+                if (! Schema::hasTable('master_tarif_pajak')) {
+                    return [];
+                }
+                self::$hasTable = true;
             }
 
             return self::activeForYear($tahun)

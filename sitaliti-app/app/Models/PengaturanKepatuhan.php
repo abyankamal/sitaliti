@@ -12,6 +12,8 @@ class PengaturanKepatuhan extends Model
 {
     use HasFactory;
 
+    private static bool $hasTable = false;
+
     protected $table = 'pengaturan_kepatuhan';
 
     /**
@@ -35,8 +37,11 @@ class PengaturanKepatuhan extends Model
     public static function isEnabled(string $key, bool $default = false): bool
     {
         try {
-            if (! Schema::hasTable('pengaturan_kepatuhan')) {
-                return $default;
+            if (! self::$hasTable) {
+                if (! Schema::hasTable('pengaturan_kepatuhan')) {
+                    return $default;
+                }
+                self::$hasTable = true;
             }
 
             $record = self::where('key', $key)->first();

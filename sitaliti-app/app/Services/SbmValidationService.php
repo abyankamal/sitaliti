@@ -9,6 +9,8 @@ use Illuminate\Support\Str;
 
 class SbmValidationService
 {
+    private static bool $hasTable = false;
+
     /**
      * Memeriksa apakah harga satuan item melebihi batas Standar Biaya Masukan (SBM/SSH).
      * Bersifat non-blocking (soft-warning).
@@ -22,8 +24,11 @@ class SbmValidationService
             return [];
         }
 
-        if (! Schema::hasTable('master_sbm_item')) {
-            return [];
+        if (! self::$hasTable) {
+            if (! Schema::hasTable('master_sbm_item')) {
+                return [];
+            }
+            self::$hasTable = true;
         }
 
         $tahun = $tahun ?? (int) date('Y');
@@ -46,7 +51,7 @@ class SbmValidationService
                 continue;
             }
 
-            $namaItem = trim((string) ($item['nama_item'] ?? $item['uraian'] ?? ''));
+            $namaItem = trim((string) ($item['nama_barang'] ?? $item['nama_item'] ?? $item['uraian'] ?? ''));
             $matched = null;
 
             if (! empty($item['sbm_item_id']) && $byId->has((int) $item['sbm_item_id'])) {
