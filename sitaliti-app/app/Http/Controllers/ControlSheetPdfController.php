@@ -55,7 +55,12 @@ class ControlSheetPdfController extends Controller
             abort(403, 'Anda tidak berwenang mengunduh Lembar Kendali ini.');
         }
 
-        $pdf = $this->controlSheetService->generatePdf((string) $kuitansi->id);
+        try {
+            $pdf = $this->controlSheetService->generatePdf((string) $kuitansi->id);
+        } catch (InvalidArgumentException $e) {
+            abort(422, $e->getMessage());
+        }
+
         $cleanId = preg_replace('/[^A-Za-z0-9_-]/', '-', (string) $id);
         $filename = "Lembar-Kendali-{$cleanId}.pdf";
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\AnggaranAuditLog;
 use App\Models\AnggaranRekening;
 use App\Models\Kuitansi;
 use App\Models\KuitansiRiwayat;
@@ -233,13 +234,14 @@ class UserManagementApiController extends Controller
                 ->orWhere('ppk_skpd_id', $user->id)
                 ->exists()
             || KuitansiRiwayat::where('user_id', $user->id)->exists()
-            || KuitansiVerifikasiChecklist::where('verified_by', $user->id)->exists();
+            || KuitansiVerifikasiChecklist::where('verified_by', $user->id)->exists()
+            || AnggaranAuditLog::where('user_id', $user->id)->exists();
 
         if ($hasTransactions) {
             return response()->json([
                 'success' => false,
                 'error' => [
-                    'message' => 'Pengguna tidak dapat dihapus karena tercatat dalam jejak audit kuitansi. Anda dapat mengubah perannya jika dinonaktifkan.',
+                    'message' => 'Pengguna tidak dapat dihapus karena tercatat dalam jejak audit kuitansi atau anggaran. Anda dapat mengubah perannya jika dinonaktifkan.',
                 ],
             ], 422);
         }
