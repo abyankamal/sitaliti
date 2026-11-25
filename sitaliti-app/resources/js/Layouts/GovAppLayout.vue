@@ -103,6 +103,13 @@ const allNavItems = [
         skpdOnly: true,
     },
     {
+        name: 'Pengaturan Kepatuhan',
+        route: 'compliance-settings.index',
+        icon: 'table',
+        roles: ['VERIFIKATOR', 'BP'],
+        skpdOnly: true,
+    },
+    {
         name: 'Rekap Belanja Operasi',
         route: 'rekap-belanja-operasi.index',
         icon: 'table',
