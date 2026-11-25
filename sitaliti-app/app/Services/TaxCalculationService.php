@@ -202,12 +202,12 @@ class TaxCalculationService implements TaxCalculationServiceInterface
     /**
      * Memvalidasi kepatuhan pajak:
      * - Keseimbangan matematis: Bruto - Total Pajak = Neto
-     * - Wajib meterai untuk transaksi > Rp 5.000.000
+     * - Wajib meterai sesuai ambang batas & nominal tahun anggaran terkait
      * - Pemisahan mutlak: PPN 11% dan PBJT 10% tidak boleh dipungut bersamaan
      *
      * @param  array<string, mixed>  $taxDetails
      */
-    public function validateTaxCompliance(float $nilaiBruto, array $taxDetails): bool
+    public function validateTaxCompliance(float $nilaiBruto, array $taxDetails, ?int $tahun = null): bool
     {
         $totalPajak = $taxDetails['total_pajak'] ?? 0.0;
         $nilaiNeto = $taxDetails['nilai_neto'] ?? 0.0;
@@ -225,8 +225,13 @@ class TaxCalculationService implements TaxCalculationServiceInterface
             return false;
         }
 
-        // 3. Verifikasi kewajiban meterai
-        if ($nilaiBruto > 5000000.0 && $beaMeterai < 10000.0) {
+        // 3. Verifikasi kewajiban meterai sesuai tarif tahun anggaran
+        $tahun = $tahun ?? (int) date('Y');
+        $rates = MasterTarifPajak::getRatesMapForYear($tahun);
+        $meteraiThreshold = $this->thresholdValue($rates, 'BEA_METERAI', 5000000.0);
+        $meteraiNominal = $this->fixedNominalValue($rates, 'BEA_METERAI', 10000.0);
+
+        if ($nilaiBruto > $meteraiThreshold && $beaMeterai < $meteraiNominal) {
             return false;
         }
 

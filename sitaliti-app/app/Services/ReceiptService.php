@@ -60,12 +60,15 @@ class ReceiptService
             $totalBruto += round($volume * $harga, 2);
         }
 
+        $tahunAnggaran = $this->resolveTahunAnggaran($data);
+
         // Kalkulasi Pajak
         $taxResult = $this->taxService->calculateTax($kategori, $totalBruto, [
             'has_npwp' => $hasNpwp,
             'golongan_asn' => $golonganAsn,
             'is_sewa_kendaraan' => (bool) ($data['is_sewa_kendaraan'] ?? false),
             'is_pkp' => (bool) ($data['is_pkp'] ?? true),
+            'tahun_anggaran' => $tahunAnggaran,
         ]);
 
         // Cek Pagu Anggaran
@@ -77,7 +80,7 @@ class ReceiptService
         $sbmWarnings = $this->sbmService->checkItems(
             $kategori,
             $items,
-            (int) ($data['tahun_anggaran'] ?? date('Y'))
+            $tahunAnggaran
         );
 
         return [
@@ -243,6 +246,7 @@ class ReceiptService
             $taxOptions = $this->resolveTaxOptions($data, $kuitansi);
             $calcPayload = array_merge($data, $taxOptions, [
                 'npwp_penerima' => array_key_exists('npwp_penerima', $data) ? $data['npwp_penerima'] : $kuitansi->npwp_penerima,
+                'tanggal_transaksi' => $data['tanggal_transaksi'] ?? $kuitansi->tanggal_transaksi,
             ]);
             [$itemsToSave, $totalBruto, $taxCalc, $totalPajak, $nominalNeto] = $this->calculateItemsAndTaxes($rekening, $calcPayload);
 
@@ -525,15 +529,17 @@ class ReceiptService
         $kategori = $rekening->kategori_belanja ?? 'B1_ATK';
         $hasNpwp = (bool) ($data['has_npwp'] ?? ! empty($data['npwp_penerima']));
         $golonganAsn = $data['golongan_asn'] ?? null;
+        $tahunAnggaran = $this->resolveTahunAnggaran($data);
 
         $taxCalc = $this->taxService->calculateTax($kategori, $totalBruto, [
             'has_npwp' => $hasNpwp,
             'golongan_asn' => $golonganAsn,
             'is_sewa_kendaraan' => (bool) ($data['is_sewa_kendaraan'] ?? false),
             'is_pkp' => (bool) ($data['is_pkp'] ?? true),
+            'tahun_anggaran' => $tahunAnggaran,
         ]);
 
-        if (! $this->taxService->validateTaxCompliance($totalBruto, $taxCalc)) {
+        if (! $this->taxService->validateTaxCompliance($totalBruto, $taxCalc, $tahunAnggaran)) {
             throw new InvalidArgumentException('Perhitungan pajak kuitansi tidak memenuhi validasi kepatuhan pajak (Bruto != Neto + Total Pajak).');
         }
 
@@ -562,6 +568,31 @@ class ReceiptService
                 ? (bool) $data['is_pkp']
                 : (bool) ($existing?->is_pkp ?? true),
         ];
+    }
+
+    /**
+     * Menentukan tahun anggaran efektif dari input eksplisit, tanggal transaksi, atau tahun berjalan.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function resolveTahunAnggaran(array $data): int
+    {
+        if (! empty($data['tahun_anggaran'])) {
+            return (int) $data['tahun_anggaran'];
+        }
+
+        if (! empty($data['tanggal_transaksi'])) {
+            if ($data['tanggal_transaksi'] instanceof \DateTimeInterface) {
+                return (int) $data['tanggal_transaksi']->format('Y');
+            }
+
+            $timestamp = strtotime((string) $data['tanggal_transaksi']);
+            if ($timestamp !== false) {
+                return (int) date('Y', $timestamp);
+            }
+        }
+
+        return (int) date('Y');
     }
 
     /**

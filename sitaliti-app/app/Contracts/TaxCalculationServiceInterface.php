@@ -44,8 +44,8 @@ interface TaxCalculationServiceInterface
     /**
      * Memvalidasi kepatuhan pajak:
      * - Keseimbangan matematis: Bruto - Total Pajak = Neto
-     * - Wajib meterai untuk transaksi > Rp 5.000.000
+     * - Wajib meterai sesuai ambang batas & nominal tahun anggaran terkait
      * - Pemisahan mutlak: PPN 11% dan PBJT 10% tidak boleh dipungut bersamaan
      */
-    public function validateTaxCompliance(float $nilaiBruto, array $taxDetails): bool;
+    public function validateTaxCompliance(float $nilaiBruto, array $taxDetails, ?int $tahun = null): bool;
 }

@@ -64,4 +64,35 @@ class DynamicTaxRuleTest extends TestCase
         ]);
         $this->assertEquals(25000.0, $fallback['pph21']);
     }
+
+    public function test_validates_dynamic_bea_meterai_threshold_and_nominal_by_fiscal_year(): void
+    {
+        MasterTarifPajak::create([
+            'tahun_anggaran' => 2028,
+            'kode_pajak' => 'BEA_METERAI',
+            'nama_pajak' => 'Bea Meterai 2028',
+            'tarif' => 0,
+            'ambang_batas' => 10000000.00,
+            'nominal_tetap' => 20000.00,
+            'is_active' => true,
+        ]);
+
+        // Rp 6.000.000 di bawah ambang batas 2028 (10 jt) -> valid tanpa meterai
+        $underThreshold = $this->taxService->calculateTax('B4_PERJADIN', 6000000, [
+            'tahun_anggaran' => 2028,
+        ]);
+        $this->assertEquals(0.0, $underThreshold['bea_meterai']);
+        $this->assertTrue($this->taxService->validateTaxCompliance(6000000, $underThreshold, 2028));
+
+        // Rp 12.000.000 di atas ambang batas 2028 (10 jt) -> wajib meterai Rp 20.000
+        $overThreshold = $this->taxService->calculateTax('B4_PERJADIN', 12000000, [
+            'tahun_anggaran' => 2028,
+        ]);
+        $this->assertEquals(20000.0, $overThreshold['bea_meterai']);
+        $this->assertTrue($this->taxService->validateTaxCompliance(12000000, $overThreshold, 2028));
+
+        // Meterai lama Rp 10.000 tidak memenuhi tarif 2028 (Rp 20.000)
+        $insufficientMeterai = array_merge($overThreshold, ['bea_meterai' => 10000.0]);
+        $this->assertFalse($this->taxService->validateTaxCompliance(12000000, $insufficientMeterai, 2028));
+    }
 }

@@ -111,6 +111,8 @@ class ReceiptApiController extends Controller
         $validated = $request->validate([
             'anggaran_rekening_id' => ['required'],
             'bulan_anggaran' => ['nullable', 'integer', 'between:1,12'],
+            'tahun_anggaran' => ['nullable', 'integer', 'between:2020,2100'],
+            'tanggal_transaksi' => ['nullable', 'date'],
             'kategori_belanja' => ['nullable', 'string'],
             'has_npwp' => ['nullable', 'boolean'],
             'npwp_penerima' => ['nullable', 'string'],
