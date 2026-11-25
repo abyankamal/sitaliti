@@ -30,9 +30,6 @@ const receipt = ref(null);
 const checklistItems = ref([]);
 const existingAttachments = ref([]);
 const validationResult = ref(null);
-const feedbackBanner = ref(null);
-const deleteTarget = ref(null);
-const isDeletingAttachment = ref(false);
 
 const form = ref({
     bulan_anggaran: 1,
@@ -163,7 +160,6 @@ async function loadReceiptData() {
         await refreshTaxPreview();
     } catch (error) {
         toast.error(
-            'error',
             'Gagal Memuat Kuitansi',
             error.response?.data?.message || 'Tidak dapat memuat detail kuitansi untuk diedit.'
         );
@@ -199,6 +195,7 @@ async function refreshTaxPreview() {
         validationResult.value = await receiptService.validateDraft({
             anggaran_rekening_id: receipt.value.anggaran_rekening_id,
             bulan_anggaran: form.value.bulan_anggaran,
+            tanggal_transaksi: form.value.tanggal_transaksi,
             kategori_belanja: normalizedCategory.value,
             has_npwp: form.value.has_npwp,
             npwp_penerima: form.value.npwp_penerima,
@@ -345,8 +342,6 @@ function formatApiError(error) {
 }
 
 async function handleSaveChanges(andResubmit = false) {
-    feedbackBanner.value = null;
-
     if (!receipt.value) return;
     if (!form.value.nama_penerima?.trim()) {
         toast.error('Data Penerima Kosong', 'Silakan isi Penerima / Nama Toko terlebih dahulu.');
@@ -422,29 +417,6 @@ async function openDeleteAttachmentModal(att) {
                 <Link href="/receipts">
                     <GovButton variant="outline">Kembali ke Daftar</GovButton>
                 </Link>
-            </div>
-
-            <!-- Feedback Banner -->
-            <div
-                v-if="feedbackBanner"
-                :class="[
-                    'p-4 rounded-xl border flex items-start justify-between gap-4',
-                    feedbackBanner.type === 'error'
-                        ? 'bg-rose-50 border-rose-200 text-rose-900'
-                        : 'bg-emerald-50 border-emerald-200 text-emerald-900',
-                ]"
-            >
-                <div class="text-sm">
-                    <p class="font-bold">{{ feedbackBanner.title }}</p>
-                    <p class="mt-0.5 text-xs leading-relaxed">{{ feedbackBanner.message }}</p>
-                </div>
-                <button
-                    type="button"
-                    class="text-xs font-semibold underline shrink-0"
-                    @click="feedbackBanner = null"
-                >
-                    Tutup
-                </button>
             </div>
 
             <!-- Revision Note Banner -->

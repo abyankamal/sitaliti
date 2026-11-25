@@ -8,17 +8,18 @@ import GovButton from '@/Components/UI/GovButton.vue';
 import GovInput from '@/Components/UI/GovInput.vue';
 import GovCurrencyInput from '@/Components/UI/GovCurrencyInput.vue';
 import DynamicChecklistTable from '@/Modules/Checklist/DynamicChecklistTable.vue';
+import RAKSelectorModal from '@/Modules/Gatekeeper/RAKSelectorModal.vue';
 import SppdParticipantsSection from '@/Components/SppdParticipantsSection.vue';
 import { formatRupiah } from '@/Utils/currency';
 import { receiptService } from '@/Services/receiptService';
 
 const budgetContext = ref(null);
+const showRakSelector = ref(false);
 const checklistItems = ref([]);
 const isSubmitting = ref(false);
 const savedReceiptId = ref(null);
 const isValidatingTax = ref(false);
 const validationResult = ref(null);
-const feedbackBanner = ref(null);
 
 // Form State
 const form = ref({
@@ -60,21 +61,31 @@ const sppdHasConflict = ref(false);
 
 const toast = useToast();
 
+async function applyBudgetContext(context) {
+    budgetContext.value = context;
+    showRakSelector.value = false;
+    sessionStorage.setItem('sitaliti_budget_context', JSON.stringify(context));
+
+    const catCode = context.account?.kategori || 'B.1';
+    checklistItems.value = await receiptService.getChecklistByCategory(catCode);
+    form.value.nomor_bukti = `KW-2026-${String(context.month).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
+}
+
 onMounted(async () => {
     const saved = sessionStorage.getItem('sitaliti_budget_context');
     if (saved) {
-        budgetContext.value = JSON.parse(saved);
-    } else {
-        toast.error(
-            'Konteks Rekening Belum Dipilih',
-            'Silakan pilih Unit Kerja, Sub-Kegiatan, Rekening, dan Bulan Anggaran melalui Dashboard terlebih dahulu.'
-        );
-        return;
+        try {
+            const parsed = JSON.parse(saved);
+            if (parsed?.account?.id) {
+                await applyBudgetContext(parsed);
+                return;
+            }
+        } catch {
+            sessionStorage.removeItem('sitaliti_budget_context');
+        }
     }
 
-    const catCode = budgetContext.value.account?.kategori || 'B.1';
-    checklistItems.value = await receiptService.getChecklistByCategory(catCode);
-    form.value.nomor_bukti = `KW-2026-${String(budgetContext.value.month).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
+    showRakSelector.value = true;
 });
 
 watch(
@@ -103,6 +114,7 @@ async function refreshTaxPreview() {
         validationResult.value = await receiptService.validateDraft({
             anggaran_rekening_id: budgetContext.value.account.id,
             bulan_anggaran: budgetContext.value.month,
+            tanggal_transaksi: form.value.tanggal_transaksi,
             kategori_belanja: categoryCode.value,
             has_npwp: form.value.has_npwp,
             npwp_penerima: form.value.npwp_penerima,
@@ -181,8 +193,6 @@ function removeItemRow(index) {
 }
 
 async function handleSubmitDraft(andSubmit = true) {
-    feedbackBanner.value = null;
-
     if (!budgetContext.value?.account?.id) {
         toast.error('Rekening Tidak Valid', 'Silakan pilih rekening anggaran dari Dashboard terlebih dahulu.');
         return;
@@ -199,8 +209,7 @@ async function handleSubmitDraft(andSubmit = true) {
             .map((doc) => doc.name);
 
         if (missingMandatory.length > 0) {
-            toast.success(
-                'error',
+            toast.error(
                 'Dokumen Wajib Belum Lengkap',
                 `Harap unggah berkas wajib berikut: ${missingMandatory.join(', ')}.`
             );
@@ -214,6 +223,7 @@ async function handleSubmitDraft(andSubmit = true) {
         const result = await receiptService.validateDraft({
             anggaran_rekening_id: budgetContext.value.account.id,
             bulan_anggaran: budgetContext.value.month,
+            tanggal_transaksi: form.value.tanggal_transaksi,
             kategori_belanja: categoryCode.value,
             has_npwp: form.value.has_npwp,
             npwp_penerima: form.value.npwp_penerima,
@@ -308,17 +318,16 @@ async function handleSubmitDraft(andSubmit = true) {
         const errData = err.response?.data?.error;
         const details = errData?.details || err.response?.data?.errors;
         if (errData?.code === 'DUPLICATE_RECEIPT_ATTACHMENT') {
-            toast.success(
-                'error',
+            toast.error(
                 'Peringatan Duplikasi Nota Kembar (SHA-256)',
                 `${errData.message} Berkas lampiran yang sama persis telah terdaftar pada sistem.`
             );
         } else if (details && typeof details === 'object') {
             const detailText = Object.values(details).flat().join(' ');
-            toast.success('error', errData?.message || 'Validasi Gagal', detailText || errData?.message);
+            toast.error(errData?.message || 'Validasi Gagal', detailText || errData?.message);
         } else {
             const errMsg = errData?.message || err.response?.data?.message || err.message || 'Terjadi kesalahan saat menyimpan draft.';
-            toast.success('error', 'Gagal Menyimpan Kuitansi', errMsg);
+            toast.error('Gagal Menyimpan Kuitansi', errMsg);
         }
     } finally {
         isSubmitting.value = false;
@@ -371,29 +380,6 @@ async function handleSubmitDraft(andSubmit = true) {
                 </div>
             </div>
         </template>
-
-        <div
-            v-if="feedbackBanner"
-            :class="[
-                'mb-4 rounded-xl border p-4 text-xs flex items-start justify-between gap-3',
-                feedbackBanner.type === 'error'
-                    ? 'bg-rose-50 border-rose-300 text-rose-800'
-                    : 'bg-emerald-50 border-emerald-300 text-emerald-800',
-            ]"
-            role="alert"
-        >
-            <div>
-                <div class="font-bold">{{ feedbackBanner.title }}</div>
-                <p class="mt-0.5">{{ feedbackBanner.message }}</p>
-            </div>
-            <button
-                type="button"
-                class="text-current opacity-70 hover:opacity-100 font-bold"
-                @click="feedbackBanner = null"
-            >
-                &times;
-            </button>
-        </div>
 
         <div v-if="budgetContext" class="space-y-6">
             <!-- Pagu Context Header Card (Kunci dari Gatekeeper) -->
@@ -739,6 +725,24 @@ async function handleSubmitDraft(andSubmit = true) {
                 v-model:items="checklistItems"
             />
         </div>
+
+        <div v-else class="bg-surface border border-hairline rounded-xl p-8 text-center space-y-3">
+            <h3 class="text-base font-bold text-ink">Konteks Rekening &amp; Bulan Anggaran Belum Dipilih</h3>
+            <p class="text-sm text-ink-secondary max-w-md mx-auto">
+                Pilih Unit Kerja, Sub-Kegiatan, Rekening Belanja, dan Bulan Anggaran terlebih dahulu untuk memulai input kuitansi.
+            </p>
+            <div>
+                <GovButton variant="primary" @click="showRakSelector = true">
+                    Pilih Rekening &amp; Bulan Anggaran
+                </GovButton>
+            </div>
+        </div>
+
+        <RAKSelectorModal
+            :show="showRakSelector"
+            @close="showRakSelector = false"
+            @select="applyBudgetContext"
+        />
     </GovAppLayout>
 </template>
 
