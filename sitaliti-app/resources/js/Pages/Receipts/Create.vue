@@ -642,6 +642,21 @@ async function handleSubmitDraft(andSubmit = true) {
                                 <div class="font-semibold text-gov-navy-900">Ambang Batas PMK 59/2022</div>
                                 <p class="text-xs text-slate-600 mt-1">Transaksi &le; Rp2.000.000 bebas pungut PPN &amp; PPh 22; di atas Rp2.000.000 dipungut PPN 11% &amp; PPh 22.</p>
                             </div>
+
+                            <div
+                                v-if="(validationResult?.sbm_warnings || []).length > 0"
+                                role="status"
+                                class="p-3 rounded-lg border border-amber-300 bg-amber-50 text-amber-900 space-y-1"
+                            >
+                                <div class="font-semibold text-xs flex items-center gap-1.5">
+                                    <span>Peringatan SBM/SSH (Non-Blocking)</span>
+                                </div>
+                                <ul class="list-disc pl-4 space-y-0.5 text-xs">
+                                    <li v-for="(warn, wIdx) in validationResult.sbm_warnings" :key="wIdx">
+                                        {{ warn.message }}
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
                     </GovCard>
                 </div>

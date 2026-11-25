@@ -18,11 +18,15 @@ class VerificationService implements VerificationServiceInterface
 {
     protected AuditTrailService $auditTrailService;
 
+    protected SbmValidationService $sbmService;
+
     public function __construct(
         protected BudgetReservationServiceInterface $budgetService,
-        ?AuditTrailService $auditTrailService = null
+        ?AuditTrailService $auditTrailService = null,
+        ?SbmValidationService $sbmService = null
     ) {
         $this->auditTrailService = $auditTrailService ?? app(AuditTrailService::class);
+        $this->sbmService = $sbmService ?? app(SbmValidationService::class);
     }
 
     /**
@@ -205,6 +209,14 @@ class VerificationService implements VerificationServiceInterface
                 ];
             })->values()->all(),
             'checklist' => $checklistSummary,
+            'sbm_warnings' => $this->sbmService->checkItems(
+                $kategori,
+                $kuitansi->items->map(fn ($item) => [
+                    'nama_item' => $item->nama_item,
+                    'harga_satuan' => (float) $item->harga_satuan,
+                ])->all(),
+                (int) ($kuitansi->tanggal_transaksi?->year ?? date('Y'))
+            ),
         ];
     }
 

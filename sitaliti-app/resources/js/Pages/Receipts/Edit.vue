@@ -614,6 +614,19 @@ async function openDeleteAttachmentModal(att) {
                             </div>
                         </div>
 
+                        <div
+                            v-if="(validationResult?.sbm_warnings || []).length > 0"
+                            role="status"
+                            class="p-3 rounded-lg border border-amber-300 bg-amber-50 text-amber-900 text-xs space-y-1"
+                        >
+                            <div class="font-semibold">Peringatan SBM/SSH (Non-Blocking)</div>
+                            <ul class="list-disc pl-4 space-y-0.5">
+                                <li v-for="(warn, wIdx) in validationResult.sbm_warnings" :key="wIdx">
+                                    {{ warn.message }}
+                                </li>
+                            </ul>
+                        </div>
+
                         <div class="flex items-center justify-between pt-2">
                             <GovButton v-if="!isMinorRevision" type="button" variant="outline" size="sm" @click="addItemRow">
                                 + Tambah Baris Item

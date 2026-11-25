@@ -417,6 +417,19 @@ async function handleQuickAuthSubmit() {
                     </div>
 
                     <div
+                        v-if="(detail.sbm_warnings || []).length > 0"
+                        role="status"
+                        class="p-3 rounded-lg bg-amber-50 border border-amber-300 text-xs text-amber-900 space-y-1"
+                    >
+                        <div class="font-semibold">Peringatan Kewajaran Harga SBM/SSH</div>
+                        <ul class="list-disc pl-4 space-y-0.5">
+                            <li v-for="(warn, wIdx) in detail.sbm_warnings" :key="wIdx">
+                                {{ warn.message }}
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div
                         v-if="(detail.sppd_peserta && detail.sppd_peserta.length > 0) || detail.sppd_foto_url"
                         class="p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs space-y-2"
                     >
