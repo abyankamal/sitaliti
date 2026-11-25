@@ -153,6 +153,7 @@ class RekapBelanjaOperasiReportService
         $filters['master_rekap_id'] = $posKey;
         $rekeningQuery = $this->buildScopedRekeningQuery($user, $filters)
             ->leftJoin('rekap_belanja_operasi_rekening as rbor', 'anggaran_rekening.kode_rekening', '=', 'rbor.kode_rekening')
+            ->leftJoin('master_rekap_belanja_operasi as mrbo', 'rbor.master_rekap_id', '=', 'mrbo.id')
             ->with('unitKerja:id,kode_unit,nama_unit')
             ->select('anggaran_rekening.*')
             ->orderBy('anggaran_rekening.kode_rekening')
@@ -243,10 +244,14 @@ class RekapBelanjaOperasiReportService
                 $query->where('anggaran_rekening.unit_kerja_id', $user->unit_kerja_id);
             }
         } elseif ($user->role === 'PPTK') {
-            $codes = $user->assignedSubkegiatanCodes();
-            if (empty($codes)) {
+            if ($user->unit_kerja_id === null) {
                 $query->whereRaw('1 = 0');
             } else {
+                $query->where('anggaran_rekening.unit_kerja_id', $user->unit_kerja_id);
+            }
+
+            $codes = $user->assignedSubkegiatanCodes();
+            if (! empty($codes)) {
                 $query->whereIn('anggaran_rekening.kode_sub_kegiatan', $codes);
             }
         } elseif (! empty($filters['unit_kerja_id'])) {
@@ -263,15 +268,21 @@ class RekapBelanjaOperasiReportService
 
         if (! empty($filters['search'])) {
             $term = '%'.trim((string) $filters['search']).'%';
-            $query->where(function (Builder $q) use ($term): void {
-                $q->where('anggaran_rekening.kode_rekening', 'like', $term)
-                    ->orWhere('anggaran_rekening.nama_rekening', 'like', $term)
-                    ->orWhere(DB::raw('COALESCE(mrbo.kode, \'\')'), 'like', $term)
-                    ->orWhere(DB::raw('COALESCE(mrbo.nama, \'\')'), 'like', $term);
+            $like = $this->likeOperator();
+            $query->where(function (Builder $q) use ($term, $like): void {
+                $q->where('anggaran_rekening.kode_rekening', $like, $term)
+                    ->orWhere('anggaran_rekening.nama_rekening', $like, $term)
+                    ->orWhere(DB::raw('COALESCE(mrbo.kode, \'\')'), $like, $term)
+                    ->orWhere(DB::raw('COALESCE(mrbo.nama, \'\')'), $like, $term);
             });
         }
 
         return $query;
+    }
+
+    private function likeOperator(): string
+    {
+        return DB::connection()->getDriverName() === 'pgsql' ? 'ilike' : 'like';
     }
 
     /**

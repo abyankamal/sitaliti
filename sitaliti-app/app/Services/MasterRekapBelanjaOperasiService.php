@@ -29,14 +29,20 @@ class MasterRekapBelanjaOperasiService
 
         if (! empty($filters['search'])) {
             $term = '%'.trim((string) $filters['search']).'%';
-            $query->where(function ($q) use ($term): void {
-                $q->where('kode', 'like', $term)
-                    ->orWhere('nama', 'like', $term)
-                    ->orWhere('deskripsi', 'like', $term);
+            $like = $this->likeOperator();
+            $query->where(function ($q) use ($term, $like): void {
+                $q->where('kode', $like, $term)
+                    ->orWhere('nama', $like, $term)
+                    ->orWhere('deskripsi', $like, $term);
             });
         }
 
         return $query->orderBy('urutan')->orderBy('nama')->get();
+    }
+
+    private function likeOperator(): string
+    {
+        return DB::connection()->getDriverName() === 'pgsql' ? 'ilike' : 'like';
     }
 
     /**
@@ -52,9 +58,10 @@ class MasterRekapBelanjaOperasiService
 
         if ($search !== null && trim($search) !== '') {
             $term = '%'.trim($search).'%';
-            $query->where(function ($q) use ($term): void {
-                $q->where('kode_rekening', 'like', $term)
-                    ->orWhere('nama_rekening', 'like', $term);
+            $like = $this->likeOperator();
+            $query->where(function ($q) use ($term, $like): void {
+                $q->where('kode_rekening', $like, $term)
+                    ->orWhere('nama_rekening', $like, $term);
             });
         }
 
