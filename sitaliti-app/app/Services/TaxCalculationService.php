@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Contracts\TaxCalculationServiceInterface;
 use App\DTOs\TaxCalculationResult;
+use App\Models\MasterTarifPajak;
 
 class TaxCalculationService implements TaxCalculationServiceInterface
 {
@@ -29,6 +30,8 @@ class TaxCalculationService implements TaxCalculationServiceInterface
         $golonganAsn = $options['golongan_asn'] ?? null;
         $isSewaKendaraan = (bool) ($options['is_sewa_kendaraan'] ?? false);
         $isPkp = (bool) ($options['is_pkp'] ?? true);
+        $tahun = (int) ($options['tahun_anggaran'] ?? date('Y'));
+        $rates = MasterTarifPajak::getRatesMapForYear($tahun);
 
         $dpp = 0.0;
         $ppn = 0.0;
@@ -41,8 +44,9 @@ class TaxCalculationService implements TaxCalculationServiceInterface
 
         // 1. Ambang batas Bea Meterai flat Rp 10.000 (> Rp 5.000.000) sesuai UU No. 10/2020
         // Bea meterai adalah pajak dokumen fisik, dicatat tetapi TIDAK mengurangi nilai neto ke rekanan.
-        if ($nilaiBruto > 5000000.0) {
-            $beaMeterai = 10000.0;
+        $meteraiThreshold = $this->thresholdValue($rates, 'BEA_METERAI', 5000000.0);
+        if ($nilaiBruto > $meteraiThreshold) {
+            $beaMeterai = $this->fixedNominalValue($rates, 'BEA_METERAI', 10000.0);
             $rincianPajak[] = [
                 'kode_pajak' => 'BEA_METERAI',
                 'nama_pajak' => 'Bea Meterai Lunas',
@@ -67,20 +71,21 @@ class TaxCalculationService implements TaxCalculationServiceInterface
         switch ($normalizedCategory) {
             case 'B1_ATK':
             case 'B6_MODAL':
-                [$dpp, $ppn, $pph22, $goodsRincian] = $this->calculateGoodsPurchaseTax($nilaiBruto, $hasNpwp);
+                [$dpp, $ppn, $pph22, $goodsRincian] = $this->calculateGoodsPurchaseTax($nilaiBruto, $hasNpwp, $rates);
                 $rincianPajak = array_merge($rincianPajak, $goodsRincian);
                 break;
 
             case 'B2_MAMIN':
                 // Pajak Barang & Jasa Tertentu (PBJT) 10% Pemda Garut (UU HKPD No. 1/2022 & Perda Garut 1/2024).
-                // Mutlak bebas dari PPN pusat 11%.
-                $dpp = round($nilaiBruto / 1.10);
+                // Mutlak bebas dari PPN pusat.
+                $pbjtRate = $this->rateValue($rates, 'PBJT_MAMIN_10', 0.10);
+                $dpp = round($nilaiBruto / (1 + $pbjtRate));
                 $pbjtMamin = $nilaiBruto - $dpp;
 
                 $rincianPajak[] = [
                     'kode_pajak' => 'PBJT_MAMIN_10',
-                    'nama_pajak' => 'PBJT Makanan dan/atau Minuman 10%',
-                    'tarif' => 0.10,
+                    'nama_pajak' => 'PBJT Makanan dan/atau Minuman '.($pbjtRate * 100).'%',
+                    'tarif' => $pbjtRate,
                     'tipe_tarif' => 'PERSENTASE_DPP',
                     'nominal' => $pbjtMamin,
                 ];
@@ -90,15 +95,10 @@ class TaxCalculationService implements TaxCalculationServiceInterface
                 // Honorarium bebas PPN. DPP adalah 100% Bruto.
                 $dpp = $nilaiBruto;
 
-                // Tarif PPh 21:
-                // - Golongan I & II: 0%
-                // - Golongan III: 5%
-                // - Golongan IV: 15%
-                // - Non-ASN: 2.5% efektif (5% x 50% bukan pegawai per PMK 168/2023)
                 $tarifPph21 = match ($golonganAsn) {
-                    'GOLONGAN_IV' => 0.15,
-                    'GOLONGAN_III' => 0.05,
-                    'NON_ASN' => 0.025,
+                    'GOLONGAN_IV' => $this->rateValue($rates, 'PPH21_GOL_IV', 0.15),
+                    'GOLONGAN_III' => $this->rateValue($rates, 'PPH21_GOL_III', 0.05),
+                    'NON_ASN' => $this->rateValue($rates, 'PPH21_NON_ASN', 0.025),
                     default => 0.0,
                 };
 
@@ -124,12 +124,14 @@ class TaxCalculationService implements TaxCalculationServiceInterface
                 // Hanya memotong PPh 23 (2% NPWP / 4% Non-NPWP) jika termasuk sewa kendaraan / jasa pihak ketiga.
                 $dpp = $nilaiBruto;
                 if ($isSewaKendaraan) {
-                    $tarifPph23 = $hasNpwp ? 0.020 : 0.040;
+                    $tarifPph23 = $hasNpwp
+                        ? $this->rateValue($rates, 'PPH23_NPWP', 0.020)
+                        : $this->rateValue($rates, 'PPH23_NON_NPWP', 0.040);
                     $pph23 = round($tarifPph23 * $dpp);
 
                     $rincianPajak[] = [
                         'kode_pajak' => 'PPH_23',
-                        'nama_pajak' => $hasNpwp ? 'PPh Pasal 23 Sewa (2.0%)' : 'PPh Pasal 23 Sewa Non-NPWP (4.0%)',
+                        'nama_pajak' => $hasNpwp ? 'PPh Pasal 23 Sewa ('.($tarifPph23 * 100).'%)' : 'PPh Pasal 23 Sewa Non-NPWP ('.($tarifPph23 * 100).'%)',
                         'tarif' => $tarifPph23,
                         'tipe_tarif' => 'PERSENTASE_BRUTO',
                         'nominal' => $pph23,
@@ -139,15 +141,17 @@ class TaxCalculationService implements TaxCalculationServiceInterface
 
             case 'B5_PEMELIHARAAN':
                 // Jasa pemeliharaan: PPh 23 (2% NPWP / 4% Non-NPWP) dari DPP,
-                // ditambah PPN 11% jika pembayaran > Rp 2.000.000 dan rekanan PKP (PMK 59/2022).
-                if ($nilaiBruto > 2000000.0 && $isPkp) {
-                    $dpp = round($nilaiBruto / 1.11);
+                // ditambah PPN jika pembayaran > ambang batas dan rekanan PKP (PMK 59/2022).
+                $ppnThreshold = $this->thresholdValue($rates, 'PPN_11', 2000000.0);
+                $ppnRate = $this->rateValue($rates, 'PPN_11', 0.11);
+                if ($nilaiBruto > $ppnThreshold && $isPkp) {
+                    $dpp = round($nilaiBruto / (1 + $ppnRate));
                     $ppn = $nilaiBruto - $dpp;
 
                     $rincianPajak[] = [
                         'kode_pajak' => 'PPN_11',
-                        'nama_pajak' => 'Pajak Pertambahan Nilai 11%',
-                        'tarif' => 0.11,
+                        'nama_pajak' => 'Pajak Pertambahan Nilai '.($ppnRate * 100).'%',
+                        'tarif' => $ppnRate,
                         'tipe_tarif' => 'PERSENTASE_DPP',
                         'nominal' => $ppn,
                     ];
@@ -155,12 +159,14 @@ class TaxCalculationService implements TaxCalculationServiceInterface
                     $dpp = $nilaiBruto;
                 }
 
-                $tarifPph23 = $hasNpwp ? 0.020 : 0.040;
+                $tarifPph23 = $hasNpwp
+                    ? $this->rateValue($rates, 'PPH23_NPWP', 0.020)
+                    : $this->rateValue($rates, 'PPH23_NON_NPWP', 0.040);
                 $pph23 = round($tarifPph23 * $dpp);
 
                 $rincianPajak[] = [
                     'kode_pajak' => 'PPH_23',
-                    'nama_pajak' => $hasNpwp ? 'PPh Pasal 23 Jasa (2.0%)' : 'PPh Pasal 23 Jasa Non-NPWP (4.0%)',
+                    'nama_pajak' => $hasNpwp ? 'PPh Pasal 23 Jasa ('.($tarifPph23 * 100).'%)' : 'PPh Pasal 23 Jasa Non-NPWP ('.($tarifPph23 * 100).'%)',
                     'tarif' => $tarifPph23,
                     'tipe_tarif' => 'PERSENTASE_DPP',
                     'nominal' => $pph23,
@@ -228,33 +234,38 @@ class TaxCalculationService implements TaxCalculationServiceInterface
     }
 
     /**
-     * Menghitung PPN 11% dan PPh 22 (1.5% NPWP / 3.0% Non-NPWP) untuk belanja barang/modal (B.1 & B.6) sesuai PMK 59/2022.
+     * Menghitung PPN dan PPh 22 untuk belanja barang/modal (B.1 & B.6) sesuai PMK 59/2022 & tarif tahun anggaran.
      *
+     * @param  array<string, MasterTarifPajak>  $rates
      * @return array{0: float, 1: float, 2: float, 3: array<int, array<string, mixed>>}
      */
-    private function calculateGoodsPurchaseTax(float $nilaiBruto, bool $hasNpwp): array
+    private function calculateGoodsPurchaseTax(float $nilaiBruto, bool $hasNpwp, array $rates = []): array
     {
-        $dpp = round($nilaiBruto / 1.11);
+        $ppnRate = $this->rateValue($rates, 'PPN_11', 0.11);
+        $ppnThreshold = $this->thresholdValue($rates, 'PPN_11', 2000000.0);
+        $dpp = round($nilaiBruto / (1 + $ppnRate));
         $ppn = 0.0;
         $pph22 = 0.0;
         $rincian = [];
 
-        if ($nilaiBruto > 2000000.0) {
+        if ($nilaiBruto > $ppnThreshold) {
             $ppn = $nilaiBruto - $dpp;
-            $tarifPph22 = $hasNpwp ? 0.015 : 0.030;
+            $tarifPph22 = $hasNpwp
+                ? $this->rateValue($rates, 'PPH22_NPWP', 0.015)
+                : $this->rateValue($rates, 'PPH22_NON_NPWP', 0.030);
             $pph22 = round($tarifPph22 * $dpp);
 
             $rincian[] = [
                 'kode_pajak' => 'PPN_11',
-                'nama_pajak' => 'Pajak Pertambahan Nilai 11%',
-                'tarif' => 0.11,
+                'nama_pajak' => 'Pajak Pertambahan Nilai '.($ppnRate * 100).'%',
+                'tarif' => $ppnRate,
                 'tipe_tarif' => 'PERSENTASE_DPP',
                 'nominal' => $ppn,
             ];
 
             $rincian[] = [
                 'kode_pajak' => 'PPH_22',
-                'nama_pajak' => $hasNpwp ? 'PPh Pasal 22 (1.5%)' : 'PPh Pasal 22 Non-NPWP (3.0%)',
+                'nama_pajak' => $hasNpwp ? 'PPh Pasal 22 ('.($tarifPph22 * 100).'%)' : 'PPh Pasal 22 Non-NPWP ('.($tarifPph22 * 100).'%)',
                 'tarif' => $tarifPph22,
                 'tipe_tarif' => 'PERSENTASE_DPP',
                 'nominal' => $pph22,
@@ -262,5 +273,33 @@ class TaxCalculationService implements TaxCalculationServiceInterface
         }
 
         return [$dpp, $ppn, $pph22, $rincian];
+    }
+
+    /**
+     * @param  array<string, MasterTarifPajak>  $rates
+     */
+    private function rateValue(array $rates, string $kode, float $default): float
+    {
+        return isset($rates[$kode]) ? (float) $rates[$kode]->tarif : $default;
+    }
+
+    /**
+     * @param  array<string, MasterTarifPajak>  $rates
+     */
+    private function thresholdValue(array $rates, string $kode, float $default): float
+    {
+        return isset($rates[$kode]) && $rates[$kode]->ambang_batas !== null
+            ? (float) $rates[$kode]->ambang_batas
+            : $default;
+    }
+
+    /**
+     * @param  array<string, MasterTarifPajak>  $rates
+     */
+    private function fixedNominalValue(array $rates, string $kode, float $default): float
+    {
+        return isset($rates[$kode]) && $rates[$kode]->nominal_tetap !== null
+            ? (float) $rates[$kode]->nominal_tetap
+            : $default;
     }
 }

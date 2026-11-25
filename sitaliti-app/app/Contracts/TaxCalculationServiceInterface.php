@@ -16,7 +16,8 @@ interface TaxCalculationServiceInterface
      *     is_rekanan_badan?: bool,
      *     is_sewa_kendaraan?: bool,
      *     is_pkp?: bool,
-     *     pph21_custom_rate?: float|null
+     *     pph21_custom_rate?: float|null,
+     *     tahun_anggaran?: int
      * } $options
      * @return array{
      *     nilai_bruto: float,
