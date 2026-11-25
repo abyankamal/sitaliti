@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\ApiResponseTrait;
 use App\Models\AnggaranRekening;
 use App\Models\Kuitansi;
+use App\Models\KuitansiPajak;
 use App\Models\Pegawai;
 use App\Services\ReceiptExportService;
 use App\Services\ReceiptQueryService;
@@ -514,5 +515,84 @@ class ReceiptApiController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Menyimpan Kode Billing, NTPN, tanggal setor, dan bukti setor per baris kuitansi_pajak.
+     * Endpoint: POST /api/v1/receipts/{id}/tax-settlement
+     */
+    public function taxSettlement(Request $request, int|string $id): JsonResponse
+    {
+        $kuitansi = Kuitansi::resolveByIdOrNumber($id);
+        if (! $kuitansi) {
+            return $this->errorResponse('RECEIPT_NOT_FOUND', 'Kuitansi tidak ditemukan.', null, 404);
+        }
+
+        $user = $request->user();
+        if (! $user || $user->isReadOnlyRole() || ! $user->canAccessReceipt($kuitansi)) {
+            return $this->errorResponse('FORBIDDEN', 'Anda tidak berwenang memperbarui setoran pajak kuitansi ini.', null, 403);
+        }
+
+        if ($kuitansi->status === 'SELESAI_SP2D') {
+            return $this->errorResponse('RECEIPT_SETTLED_LOCKED', 'Kuitansi yang telah selesai SP2D tidak dapat diubah data setoran pajaknya.', null, 422);
+        }
+
+        $validated = $request->validate([
+            'kuitansi_pajak_id' => ['required_without:settlements', 'integer'],
+            'kode_billing' => ['nullable', 'string', 'max:30'],
+            'ntpn' => ['required_without:settlements', 'string', 'max:30'],
+            'tanggal_setor' => ['nullable', 'date'],
+            'bukti_setor' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
+            'settlements' => ['required_without:kuitansi_pajak_id', 'array', 'min:1'],
+            'settlements.*.kuitansi_pajak_id' => ['required', 'integer'],
+            'settlements.*.kode_billing' => ['nullable', 'string', 'max:30'],
+            'settlements.*.ntpn' => ['required', 'string', 'max:30'],
+            'settlements.*.tanggal_setor' => ['nullable', 'date'],
+            'settlements.*.bukti_setor' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
+        ]);
+
+        $items = $validated['settlements'] ?? [[
+            'kuitansi_pajak_id' => $validated['kuitansi_pajak_id'],
+            'kode_billing' => $validated['kode_billing'] ?? null,
+            'ntpn' => $validated['ntpn'],
+            'tanggal_setor' => $validated['tanggal_setor'] ?? null,
+            'bukti_setor' => $request->file('bukti_setor'),
+        ]];
+
+        foreach ($items as $idx => $entry) {
+            $pajak = KuitansiPajak::where('kuitansi_id', $kuitansi->id)
+                ->where('id', $entry['kuitansi_pajak_id'])
+                ->first();
+
+            if (! $pajak) {
+                return $this->errorResponse(
+                    'TAX_ROW_NOT_FOUND',
+                    "Baris pajak ID {$entry['kuitansi_pajak_id']} tidak ditemukan pada kuitansi ini.",
+                    null,
+                    422
+                );
+            }
+
+            $file = $entry['bukti_setor'] ?? $request->file("settlements.{$idx}.bukti_setor");
+            $buktiPath = $pajak->bukti_setor_path;
+
+            if ($file instanceof UploadedFile) {
+                $buktiPath = $file->store("tax-settlements/{$kuitansi->id}", 'local');
+            }
+
+            $pajak->update([
+                'kode_billing' => $entry['kode_billing'] ?? null,
+                'ntpn' => trim((string) $entry['ntpn']),
+                'tanggal_setor' => $entry['tanggal_setor'] ?? now()->toDateString(),
+                'bukti_setor_path' => $buktiPath,
+                'ntpn_updated_by' => $user->id,
+                'ntpn_updated_at' => now(),
+            ]);
+        }
+
+        return $this->successResponse(
+            $kuitansi->pajak()->orderBy('id')->get(),
+            'Data setoran pajak (Kode Billing / NTPN) berhasil disimpan.'
+        );
     }
 }

@@ -70,6 +70,10 @@ Route::prefix('v1')->group(function () {
                 ->middleware('permission:kuitansi.view');
             Route::get('{kuitansiId}/attachments/{attachmentId}/preview', [ReceiptAttachmentController::class, 'preview'])
                 ->middleware('permission:kuitansi.view');
+            Route::post('{id}/tax-settlement', [ReceiptApiController::class, 'taxSettlement'])
+                ->middleware('permission:kuitansi.edit|verification.process_action');
+            Route::get('{kuitansiId}/tax-settlement/{pajakId}/preview', [ReceiptAttachmentController::class, 'previewTaxReceipt'])
+                ->middleware('permission:kuitansi.view');
             Route::get('{id}/history', [ReceiptApiController::class, 'history'])
                 ->middleware('permission:kuitansi.view');
         });

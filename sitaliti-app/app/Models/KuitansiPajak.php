@@ -23,6 +23,12 @@ class KuitansiPajak extends Model
         'tipe_tarif',
         'dpp',
         'nominal',
+        'kode_billing',
+        'ntpn',
+        'tanggal_setor',
+        'bukti_setor_path',
+        'ntpn_updated_by',
+        'ntpn_updated_at',
     ];
 
     /**
@@ -34,7 +40,14 @@ class KuitansiPajak extends Model
             'tarif' => 'decimal:4',
             'dpp' => 'decimal:2',
             'nominal' => 'decimal:2',
+            'tanggal_setor' => 'date',
+            'ntpn_updated_at' => 'datetime',
         ];
+    }
+
+    public function isSettled(): bool
+    {
+        return ! blank($this->ntpn);
     }
 
     public function kuitansi(): BelongsTo
