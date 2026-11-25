@@ -28,7 +28,6 @@ const page = usePage();
 const currentUser = computed(() => page.props.auth?.user || {});
 const userRole = computed(() => currentUser.value.role || '');
 const isVerifikator = computed(() => ['BP', 'VERIFIKATOR'].includes(userRole.value));
-const isLurah = computed(() => false);
 const isPptk = computed(() => userRole.value === 'PPTK');
 
 const detail = ref(null);
@@ -194,15 +193,7 @@ async function openQuickAuth(type) {
         reasonPlaceholder: 'Cantumkan alasan penolakan minimal 3 karakter...',
         minReasonLength: 3,
         onConfirm: async (reason) => {
-            if (detail.value.status === 'MENUNGGU_LURAH' && isLurah.value) {
-                if (!isReject) {
-                    await receiptService.approveByLurah(targetId, 'Disetujui dan diotorisasi oleh Lurah.');
-                    toast.success('Kuitansi berhasil diotorisasi Lurah dan diteruskan ke Tim Verifikator Kecamatan.');
-                } else {
-                    await receiptService.rejectByLurah(targetId, reason);
-                    toast.success('Kuitansi dikembalikan oleh Lurah ke draf Operator.');
-                }
-            } else if (detail.value.status === 'MENUNGGU_PPTK' && isPptk.value) {
+            if (detail.value.status === 'MENUNGGU_PPTK' && isPptk.value) {
                 if (!isReject) {
                     await receiptService.approveByPptk(targetId, '');
                     toast.success('Kuitansi disetujui PPTK dan diteruskan ke tahapan selanjutnya.');
@@ -227,15 +218,7 @@ async function handleQuickAuthSubmit() {
     const targetId = detail.value.id;
 
     try {
-        if (detail.value.status === 'MENUNGGU_LURAH' && isLurah.value) {
-            if (quickAuthType.value === 'APPROVE') {
-                await receiptService.approveByLurah(targetId, quickAuthNotes.value || 'Disetujui dan diotorisasi oleh Lurah.');
-                toast.success('Kuitansi berhasil diotorisasi Lurah dan diteruskan ke Tim Verifikator Kecamatan.');
-            } else {
-                await receiptService.rejectByLurah(targetId, quickAuthNotes.value);
-                toast.success('Kuitansi dikembalikan oleh Lurah ke draf Operator.');
-            }
-        } else if (detail.value.status === 'MENUNGGU_PPTK' && isPptk.value) {
+        if (detail.value.status === 'MENUNGGU_PPTK' && isPptk.value) {
             if (quickAuthType.value === 'APPROVE') {
                 await receiptService.approveByPptk(targetId, quickAuthNotes.value);
                 toast.success('Kuitansi disetujui PPTK dan diteruskan ke tahapan selanjutnya.');
@@ -300,20 +283,7 @@ async function handleQuickAuthSubmit() {
                     Unduh PDF Lembar Kendali
                 </a>
 
-                <!-- 2. Aksi Khusus LURAH jika status MENUNGGU_LURAH -->
-                <template v-if="detail.status === 'MENUNGGU_LURAH' && isLurah">
-                    <GovButton variant="danger" size="sm" @click="openQuickAuth('REJECT')">
-                        Tolak / Kembalikan
-                    </GovButton>
-                    <GovButton variant="primary" size="sm" class="bg-purple-700 hover:bg-purple-800 text-white" @click="openQuickAuth('APPROVE')">
-                        <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                        </svg>
-                        Otorisasi Lurah
-                    </GovButton>
-                </template>
-
-                <!-- 3. Aksi Khusus PPTK jika status MENUNGGU_PPTK -->
+                <!-- 2. Aksi Khusus PPTK jika status MENUNGGU_PPTK -->
                 <template v-if="detail.status === 'MENUNGGU_PPTK' && isPptk">
                     <GovButton variant="danger" size="sm" @click="openQuickAuth('REJECT')">
                         Tolak Kuitansi
@@ -613,7 +583,7 @@ async function handleQuickAuthSubmit() {
             @submit="handleActionSubmit"
         />
 
-        <!-- Modal Otorisasi Cepat (Lurah & PPTK) -->
+        <!-- Modal Otorisasi Cepat (PPTK) -->
         <div
             v-if="showQuickAuthModal"
             class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
@@ -622,11 +592,11 @@ async function handleQuickAuthSubmit() {
                 <div
                     :class="[
                         'px-6 py-4 text-white font-bold flex items-center justify-between',
-                        quickAuthType === 'APPROVE' ? (detail?.status === 'MENUNGGU_LURAH' ? 'bg-purple-800' : 'bg-emerald-700') : 'bg-rose-700'
+                        quickAuthType === 'APPROVE' ? 'bg-emerald-700' : 'bg-rose-700'
                     ]"
                 >
                     <span class="text-sm font-bold">
-                        {{ detail?.status === 'MENUNGGU_LURAH' ? (quickAuthType === 'APPROVE' ? 'Otorisasi Lurah (KPA Kelurahan)' : 'Penolakan oleh Lurah') : (quickAuthType === 'APPROVE' ? 'Persetujuan PPTK' : 'Penolakan PPTK') }}
+                        {{ quickAuthType === 'APPROVE' ? 'Persetujuan PPTK' : 'Penolakan PPTK' }}
                     </span>
                     <button @click="showQuickAuthModal = false" class="text-white/80 hover:text-white text-lg">&times;</button>
                 </div>

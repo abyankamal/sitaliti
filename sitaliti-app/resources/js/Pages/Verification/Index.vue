@@ -87,15 +87,7 @@ async function openAuthModal(item, role, action) {
         reasonPlaceholder: 'Cantumkan alasan penolakan minimal 3 karakter...',
         minReasonLength: 3,
         onConfirm: async (reason) => {
-            if (role === 'LURAH') {
-                if (!isReject) {
-                    await receiptService.approveByLurah(targetId, 'Disetujui dan diotorisasi oleh Lurah.');
-                    toast.success('Kuitansi berhasil diotorisasi Lurah dan diteruskan ke Tim Verifikator Kecamatan.');
-                } else {
-                    await receiptService.rejectByLurah(targetId, reason);
-                    toast.success('Kuitansi dikembalikan oleh Lurah ke draf Operator dan pagu kas dipulihkan.');
-                }
-            } else if (!isReject) {
+            if (!isReject) {
                 await receiptService.approveByPptk(targetId, '');
                 toast.success('Kuitansi berhasil disetujui PPTK dan diteruskan ke tahapan selanjutnya.');
             } else {
@@ -119,23 +111,13 @@ async function handleAuthSubmit() {
     const targetId = selectedItem.value.kuitansi_id || selectedItem.value.id;
 
     try {
-        if (authActionRole.value === 'LURAH') {
-            if (authActionType.value === 'APPROVE') {
-                await receiptService.approveByLurah(targetId, authNotes.value || 'Disetujui dan diotorisasi oleh Lurah.');
-                toast.success('Kuitansi berhasil diotorisasi Lurah dan diteruskan ke Tim Verifikator Kecamatan.');
-            } else {
-                await receiptService.rejectByLurah(targetId, authNotes.value);
-                toast.success('Kuitansi dikembalikan oleh Lurah ke draf Operator dan pagu kas dipulihkan.');
-            }
+        // PPTK
+        if (authActionType.value === 'APPROVE') {
+            await receiptService.approveByPptk(targetId, authNotes.value);
+            toast.success('Kuitansi berhasil disetujui PPTK dan diteruskan ke tahapan selanjutnya.');
         } else {
-            // PPTK
-            if (authActionType.value === 'APPROVE') {
-                await receiptService.approveByPptk(targetId, authNotes.value);
-                toast.success('Kuitansi berhasil disetujui PPTK dan diteruskan ke tahapan selanjutnya.');
-            } else {
-                await receiptService.rejectByPptk(targetId, authNotes.value);
-                toast.success('Kuitansi ditolak oleh PPTK dan dikembalikan ke draf Operator.');
-            }
+            await receiptService.rejectByPptk(targetId, authNotes.value);
+            toast.success('Kuitansi ditolak oleh PPTK dan dikembalikan ke draf Operator.');
         }
         showAuthModal.value = false;
         await loadQueue();

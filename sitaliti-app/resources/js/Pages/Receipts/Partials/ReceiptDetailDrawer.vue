@@ -148,14 +148,6 @@ async function openActionModal(mode) {
             payload: { catatan: 'Disetujui oleh PPTK' },
             successMsg: 'Kuitansi disetujui PPTK dan berhasil diteruskan ke tahap berikutnya.',
         },
-        LURAH_APPROVE: {
-            title: 'Otorisasi Kuitansi (Lurah)?',
-            message: 'Kuitansi akan diotorisasi dan diteruskan ke Tim Verifikator Kecamatan.',
-            confirmText: 'Ya, Otorisasi',
-            endpoint: `/api/v1/receipts/${receipt.value.id}/lurah-approve`,
-            payload: { catatan: 'Disetujui oleh Lurah' },
-            successMsg: 'Kuitansi berhasil diotorisasi Lurah dan diteruskan ke Tim Verifikator Kecamatan.',
-        },
     };
 
     const cfg = configs[mode];
@@ -212,16 +204,6 @@ async function handleActionConfirm() {
                 emit('refresh');
                 await fetchReceiptDetail(receipt.value.id);
             }
-        } else if (actionModalMode.value === 'LURAH_APPROVE') {
-            const response = await axios.post(`/api/v1/receipts/${receipt.value.id}/lurah-approve`, {
-                catatan: actionNote.value.trim() || 'Disetujui oleh Lurah',
-            });
-            if (response.data?.success) {
-                isActionModalOpen.value = false;
-                showDrawerToast('Kuitansi berhasil diotorisasi Lurah dan diteruskan ke Tim Verifikator Kecamatan.');
-                emit('refresh');
-                await fetchReceiptDetail(receipt.value.id);
-            }
         }
     } catch (err) {
         actionModalError.value = err.response?.data?.error?.message || err.response?.data?.message || 'Gagal memproses aksi kuitansi.';
@@ -230,16 +212,13 @@ async function handleActionConfirm() {
     }
 }
 
-// Aksi Penolakan (PPTK / Lurah)
-async function openRejectModal(mode = 'PPTK') {
+// Aksi Penolakan (PPTK)
+async function openRejectModal() {
     if (!receipt.value) return;
-    const endpoint =
-        mode === 'LURAH'
-            ? `/api/v1/receipts/${receipt.value.id}/lurah-reject`
-            : `/api/v1/receipts/${receipt.value.id}/pptk-reject`;
+    const endpoint = `/api/v1/receipts/${receipt.value.id}/pptk-reject`;
 
     await confirm({
-        title: mode === 'LURAH' ? 'Tolak Kuitansi (Lurah)?' : 'Tolak Kuitansi (PPTK)?',
+        title: 'Tolak Kuitansi (PPTK)?',
         message: 'Kuitansi akan dikembalikan ke DRAFT Operator & pagu anggaran kas akan dipulihkan.',
         variant: 'danger',
         confirmText: 'Tolak & Kembalikan',
@@ -266,9 +245,7 @@ async function handleRejectConfirm() {
 
     isActionLoading.value = true;
     rejectError.value = '';
-    const endpoint = rejectMode.value === 'LURAH'
-        ? `/api/v1/receipts/${receipt.value.id}/lurah-reject`
-        : `/api/v1/receipts/${receipt.value.id}/pptk-reject`;
+    const endpoint = `/api/v1/receipts/${receipt.value.id}/pptk-reject`;
 
     try {
         const response = await axios.post(endpoint, {

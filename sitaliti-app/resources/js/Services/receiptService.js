@@ -109,22 +109,6 @@ export const receiptService = {
     },
 
     /**
-     * Otorisasi kuitansi oleh Lurah (menuju MENUNGGU_VERIFIKASI).
-     */
-    async approveByLurah(receiptId, catatan = null) {
-        const response = await axios.post(`${API_BASE}/${receiptId}/lurah-approve`, { catatan });
-        return response.data;
-    },
-
-    /**
-     * Penolakan kuitansi oleh Lurah (mengembalikan ke DRAFT & melepaskan pagu).
-     */
-    async rejectByLurah(receiptId, alasan) {
-        const response = await axios.post(`${API_BASE}/${receiptId}/lurah-reject`, { alasan });
-        return response.data;
-    },
-
-    /**
      * Mengambil riwayat mutasi audit trail kuitansi.
      */
     async getHistory(receiptId) {
