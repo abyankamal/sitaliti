@@ -37,13 +37,9 @@ const activeTab = ref('checklist'); // 'checklist' | 'timeline'
 const auditHistory = ref([]);
 const loadingHistory = ref(false);
 
-// Modal Revision & Otorisasi State
+// Modal Revision State
 const showRevisionModal = ref(false);
 const revisionActionType = ref('REVISION_MINOR');
-const showQuickAuthModal = ref(false);
-const quickAuthType = ref('APPROVE'); // 'APPROVE' | 'REJECT'
-const quickAuthNotes = ref('');
-const isSubmittingQuickAuth = ref(false);
 
 onMounted(async () => {
     try {
@@ -140,9 +136,15 @@ function openRevisionModal(type) {
 
 async function handleActionSubmit(payload) {
     showRevisionModal.value = false;
-    const res = await verificationService.submitAction(detail.value.id, payload);
-    toast.success(res.message || 'Aksi verifikasi berhasil diproses.');
-    router.visit(route('verification.index'));
+    try {
+        const res = await verificationService.submitAction(detail.value.id, payload);
+        toast.success(res.message || 'Aksi verifikasi berhasil diproses.');
+        router.visit(route('verification.index'));
+    } catch (err) {
+        toast.error(
+            err.response?.data?.error?.message || err.response?.data?.message || err.message || 'Gagal memproses aksi verifikasi.'
+        );
+    }
 }
 
 async function handleApprove() {
@@ -190,8 +192,8 @@ async function openQuickAuth(type) {
         confirmText: isReject ? 'Tolak & Kembalikan' : 'Ya, Setujui',
         requireReason: isReject,
         reasonLabel: 'Alasan Penolakan',
-        reasonPlaceholder: 'Cantumkan alasan penolakan minimal 3 karakter...',
-        minReasonLength: 3,
+        reasonPlaceholder: 'Cantumkan alasan penolakan minimal 5 karakter...',
+        minReasonLength: 5,
         onConfirm: async (reason) => {
             if (detail.value.status === 'MENUNGGU_PPTK' && isPptk.value) {
                 if (!isReject) {
@@ -205,37 +207,6 @@ async function openQuickAuth(type) {
             router.visit(route('verification.index'));
         },
     });
-}
-
-async function handleQuickAuthSubmit() {
-    if (!detail.value) return;
-    if (quickAuthType.value === 'REJECT' && (!quickAuthNotes.value || quickAuthNotes.value.trim().length < 3)) {
-        toast.error('Mohon cantumkan alasan penolakan secara jelas (minimal 3 karakter).');
-        return;
-    }
-
-    isSubmittingQuickAuth.value = true;
-    const targetId = detail.value.id;
-
-    try {
-        if (detail.value.status === 'MENUNGGU_PPTK' && isPptk.value) {
-            if (quickAuthType.value === 'APPROVE') {
-                await receiptService.approveByPptk(targetId, quickAuthNotes.value);
-                toast.success('Kuitansi disetujui PPTK dan diteruskan ke tahapan selanjutnya.');
-            } else {
-                await receiptService.rejectByPptk(targetId, quickAuthNotes.value);
-                toast.success('Kuitansi ditolak oleh PPTK dan dikembalikan ke draf Operator.');
-            }
-        }
-        showQuickAuthModal.value = false;
-        router.visit(route('verification.index'));
-    } catch (err) {
-        toast.error(
-            err.response?.data?.error?.message || err.response?.data?.message || err.message || 'Gagal memproses otorisasi.'
-        );
-    } finally {
-        isSubmittingQuickAuth.value = false;
-    }
 }
 </script>
 
@@ -637,68 +608,5 @@ async function handleQuickAuthSubmit() {
             @close="showRevisionModal = false"
             @submit="handleActionSubmit"
         />
-
-        <!-- Modal Otorisasi Cepat (PPTK) -->
-        <div
-            v-if="showQuickAuthModal"
-            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
-        >
-            <div class="bg-white rounded-xl shadow-2xl max-w-md w-full border border-slate-200 overflow-hidden">
-                <div
-                    :class="[
-                        'px-6 py-4 text-white font-bold flex items-center justify-between',
-                        quickAuthType === 'APPROVE' ? 'bg-emerald-700' : 'bg-rose-700'
-                    ]"
-                >
-                    <span class="text-sm font-bold">
-                        {{ quickAuthType === 'APPROVE' ? 'Persetujuan PPTK' : 'Penolakan PPTK' }}
-                    </span>
-                    <button @click="showQuickAuthModal = false" class="text-white/80 hover:text-white text-lg">&times;</button>
-                </div>
-                <div class="p-6 space-y-4">
-                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs space-y-1">
-                        <div class="flex justify-between">
-                            <span class="text-slate-500">No. Kuitansi:</span>
-                            <span class="font-bold text-slate-800">{{ detail?.id }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-slate-500">Nominal:</span>
-                            <span class="font-bold text-gov-navy-950">{{ formatRupiah(detail?.nominal || 0) }}</span>
-                        </div>
-                    </div>
-
-                    <div v-if="quickAuthType === 'APPROVE'">
-                        <label class="block text-xs font-semibold text-slate-700 mb-1">Catatan Persetujuan (Opsional):</label>
-                        <textarea
-                            v-model="quickAuthNotes"
-                            rows="3"
-                            class="w-full text-xs rounded-lg border-slate-300 focus:border-gov-navy-800 focus:ring-gov-navy-800"
-                            placeholder="Catatan..."
-                        ></textarea>
-                    </div>
-                    <div v-else>
-                        <label class="block text-xs font-semibold text-rose-800 mb-1">Alasan Penolakan (Wajib):</label>
-                        <textarea
-                            v-model="quickAuthNotes"
-                            rows="3"
-                            class="w-full text-xs rounded-lg border-rose-300 focus:border-rose-500 focus:ring-rose-500"
-                            placeholder="Alasan penolakan..."
-                        ></textarea>
-                    </div>
-
-                    <div class="flex justify-end gap-2 pt-2">
-                        <GovButton variant="secondary" size="sm" @click="showQuickAuthModal = false">Batal</GovButton>
-                        <GovButton
-                            :variant="quickAuthType === 'APPROVE' ? 'primary' : 'danger'"
-                            size="sm"
-                            :disabled="isSubmittingQuickAuth"
-                            @click="handleQuickAuthSubmit"
-                        >
-                            {{ isSubmittingQuickAuth ? 'Memproses...' : (quickAuthType === 'APPROVE' ? 'Konfirmasi Setujui' : 'Konfirmasi Tolak') }}
-                        </GovButton>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 </template>

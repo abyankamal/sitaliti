@@ -21,6 +21,7 @@ const isKelurahanScoped = computed(() => !!currentUser.value?.is_kelurahan_scope
 const isKelurahanBpp = computed(() => !!currentUser.value?.is_kelurahan_bpp || (userRole.value === 'BPP' && isKelurahanScoped.value));
 const isLurah = computed(() => userRole.value === 'LURAH');
 const isKpa = computed(() => userRole.value === 'KPA');
+const isReadOnly = computed(() => Boolean(currentUser.value?.is_read_only) || isLurah.value || isKpa.value);
 const isVerifikator = computed(() => userRole.value === 'VERIFIKATOR');
 const isBp = computed(() => userRole.value === 'BP');
 const isBpp = computed(() => userRole.value === 'BPP' && isKelurahanScoped.value);
@@ -59,21 +60,6 @@ const sp2dForm = ref({
     tanggal_sp2d: new Date().toISOString().split('T')[0],
 });
 const isSubmittingSp2d = ref(false);
-
-// State Modal Konfirmasi In-App (submitPpk, approvePpk, unbundle, sp2dConfirm)
-const actionModal = ref({
-    open: false,
-    type: null, // 'SUBMIT_PPK' | 'APPROVE_PPK' | 'UNBUNDLE' | 'CONFIRM_SP2D'
-    title: '',
-    message: '',
-    confirmLabel: 'Ya, Lanjutkan',
-    variant: 'primary',
-    requireReason: false,
-    reason: '',
-    bundle: null,
-    kuitansi: null,
-});
-const isProcessingAction = ref(false);
 
 // State Modal Input Kode Billing & NTPN
 const showTaxModal = ref(false);
@@ -307,43 +293,6 @@ async function handleUnbundle(bundle, kw) {
     });
 }
 
-async function executeActionModal() {
-    const modal = actionModal.value;
-    if (modal.requireReason && !modal.reason.trim()) {
-        toast.error('Alasan Wajib Diisi', 'Mohon isi alasan sebelum melanjutkan.');
-        return;
-    }
-
-    isProcessingAction.value = true;
-    try {
-        if (modal.type === 'SUBMIT_PPK') {
-            const res = await settlementService.submitPpk(modal.bundle.id);
-            toast.success('Diajukan ke PPK', res.message || 'Bundel berhasil diajukan ke PPK.');
-        } else if (modal.type === 'APPROVE_PPK') {
-            const res = await settlementService.approvePpk(modal.bundle.id);
-            toast.success('Disahkan PPK', res.message || 'Bundel berhasil disahkan PPK.');
-        } else if (modal.type === 'UNBUNDLE') {
-            const kuitansiId = modal.kuitansi.kuitansi_id || modal.kuitansi.id;
-            const res = await settlementService.unbundleReceipt(modal.bundle.id, kuitansiId, modal.reason.trim());
-            toast.success('Kuitansi Dikeluarkan', res.message || 'Kuitansi berhasil dikeluarkan dari bundel.');
-        } else if (modal.type === 'CONFIRM_SP2D') {
-            isSubmittingSp2d.value = true;
-            const res = await settlementService.recordSp2d(modal.bundle.id, sp2dForm.value);
-            showSp2dModal.value = false;
-            toast.success('SP2D Dicatat', res.message || 'Nomor SP2D SIPD-RI berhasil dicatat.');
-        }
-
-        actionModal.value.open = false;
-        await loadBundles();
-    } catch (err) {
-        actionModal.value.open = false;
-        toast.error('Operasi Gagal', formatApiError(err, 'Gagal memproses aksi bundel.'));
-    } finally {
-        isProcessingAction.value = false;
-        isSubmittingSp2d.value = false;
-    }
-}
-
 const BUNDLE_STATUS_VARIANTS = {
     'DRAFT': 'neutral',
     'MENUNGGU_PPK': 'warning',
@@ -516,7 +465,6 @@ const BUNDLE_STATUS_LABELS = {
                                         v-if="canUnbundle && (bundle.status || bundle.status_bundel) === 'DRAFT'"
                                         type="button"
                                         @click="handleUnbundle(bundle, kw)"
-                                        :disabled="isProcessingAction"
                                         title="Keluarkan dari bundel ini"
                                         class="p-1 rounded text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors"
                                     >
@@ -768,35 +716,6 @@ const BUNDLE_STATUS_LABELS = {
             </div>
         </div>
 
-        <!-- Modal Konfirmasi Aksi In-App -->
-        <div v-if="actionModal.open" class="fixed inset-0 z-[60] overflow-y-auto">
-            <div class="fixed inset-0 bg-gov-navy-950/70 backdrop-blur-sm" @click="actionModal.open = false"></div>
-            <div class="flex min-h-full items-center justify-center p-4">
-                <div class="relative w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-200 p-6 space-y-4">
-                    <h3 class="text-base font-bold text-gov-navy-950">{{ actionModal.title }}</h3>
-                    <p class="text-xs text-slate-600 leading-relaxed">{{ actionModal.message }}</p>
-
-                    <div v-if="actionModal.requireReason">
-                        <label class="block text-xs font-bold text-slate-700 mb-1">Alasan *</label>
-                        <textarea
-                            v-model="actionModal.reason"
-                            rows="3"
-                            class="w-full text-xs rounded-lg border border-slate-300 p-2.5 focus:border-gov-navy-900 focus:ring-gov-navy-900"
-                            placeholder="Tuliskan alasan..."
-                        ></textarea>
-                    </div>
-
-                    <div class="flex justify-end gap-2 pt-2">
-                        <GovButton variant="secondary" size="sm" :disabled="isProcessingAction" @click="actionModal.open = false">
-                            Batal
-                        </GovButton>
-                        <GovButton :variant="actionModal.variant" size="sm" :loading="isProcessingAction" @click="executeActionModal">
-                            {{ actionModal.confirmLabel }}
-                        </GovButton>
-                    </div>
-                </div>
-            </div>
-        </div>
         <!-- Modal Input Kode Billing & NTPN per Baris Pajak -->
         <div
             v-if="showTaxModal"

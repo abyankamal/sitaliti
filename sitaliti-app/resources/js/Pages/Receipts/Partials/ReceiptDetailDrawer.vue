@@ -52,18 +52,6 @@ const meteraiTax = computed(() => (receipt.value?.pajak || []).find(p => p.kode_
 const toast = useToast();
 const { confirm } = useConfirm();
 
-// State Modal Penolakan (PPTK / Lurah)
-const isRejectModalOpen = ref(false);
-const rejectMode = ref('PPTK'); // 'PPTK' | 'LURAH'
-const rejectReason = ref('');
-const rejectError = ref('');
-
-// State Modal Konfirmasi Aksi
-const isActionModalOpen = ref(false);
-const actionModalMode = ref(''); // 'SUBMIT_PPTK' | 'PPTK_APPROVE' | 'LURAH_APPROVE'
-const actionNote = ref('');
-const actionModalError = ref('');
-
 // Load detail kuitansi saat receiptId berubah atau drawer dibuka
 watch(
     () => [props.show, props.receiptId],
@@ -73,8 +61,6 @@ watch(
         } else if (!newShow) {
             receipt.value = null;
             errorMessage.value = '';
-            isRejectModalOpen.value = false;
-            rejectReason.value = '';
         }
     }
 );
@@ -104,11 +90,7 @@ function closeDrawer() {
 // Penanganan tombol ESC untuk menutup drawer
 function handleKeyDown(e) {
     if (e.key === 'Escape' && props.show) {
-        if (isRejectModalOpen.value) {
-            isRejectModalOpen.value = false;
-        } else {
-            closeDrawer();
-        }
+        closeDrawer();
     }
 }
 
@@ -170,48 +152,6 @@ async function openActionModal(mode) {
     });
 }
 
-async function handleActionConfirm() {
-    if (!receipt.value || isActionLoading.value) return;
-    isActionLoading.value = true;
-    actionModalError.value = '';
-
-    try {
-        if (actionModalMode.value === 'SUBMIT_PPTK') {
-            const response = await axios.post(`/api/v1/receipts/${receipt.value.id}/submit`);
-            if (response.data?.success) {
-                isActionModalOpen.value = false;
-                showDrawerToast('Kuitansi berhasil diajukan ke PPTK. Pagu anggaran kas telah dikunci.');
-                emit('refresh');
-                await fetchReceiptDetail(receipt.value.id);
-            }
-        } else if (actionModalMode.value === 'RECALL_DRAFT') {
-            const response = await axios.post(`/api/v1/receipts/${receipt.value.id}/recall`, {
-                alasan: actionNote.value.trim() || 'Ditarik kembali ke DRAFT oleh Operator untuk perbaikan data',
-            });
-            if (response.data?.success) {
-                isActionModalOpen.value = false;
-                showDrawerToast('Kuitansi berhasil ditarik kembali ke DRAFT dan pagu anggaran telah dipulihkan.');
-                emit('refresh');
-                await fetchReceiptDetail(receipt.value.id);
-            }
-        } else if (actionModalMode.value === 'PPTK_APPROVE') {
-            const response = await axios.post(`/api/v1/receipts/${receipt.value.id}/pptk-approve`, {
-                catatan: actionNote.value.trim() || 'Disetujui oleh PPTK',
-            });
-            if (response.data?.success) {
-                isActionModalOpen.value = false;
-                showDrawerToast('Kuitansi disetujui PPTK dan berhasil diteruskan ke tahap berikutnya.');
-                emit('refresh');
-                await fetchReceiptDetail(receipt.value.id);
-            }
-        }
-    } catch (err) {
-        actionModalError.value = err.response?.data?.error?.message || err.response?.data?.message || 'Gagal memproses aksi kuitansi.';
-    } finally {
-        isActionLoading.value = false;
-    }
-}
-
 // Aksi Penolakan (PPTK)
 async function openRejectModal() {
     if (!receipt.value) return;
@@ -235,33 +175,6 @@ async function openRejectModal() {
             }
         },
     });
-}
-
-async function handleRejectConfirm() {
-    if (rejectReason.value.trim().length < 5) {
-        rejectError.value = 'Alasan penolakan wajib diisi minimal 5 karakter demi akuntabilitas jejak audit.';
-        return;
-    }
-
-    isActionLoading.value = true;
-    rejectError.value = '';
-    const endpoint = `/api/v1/receipts/${receipt.value.id}/pptk-reject`;
-
-    try {
-        const response = await axios.post(endpoint, {
-            alasan: rejectReason.value.trim(),
-        });
-        if (response.data?.success) {
-            isRejectModalOpen.value = false;
-            showDrawerToast('Kuitansi berhasil dikembalikan ke DRAFT Operator & pagu anggaran kas telah dipulihkan.');
-            emit('refresh');
-            await fetchReceiptDetail(receipt.value.id);
-        }
-    } catch (err) {
-        rejectError.value = err.response?.data?.error?.message || err.response?.data?.message || 'Gagal memproses penolakan kuitansi.';
-    } finally {
-        isActionLoading.value = false;
-    }
 }
 
 // Format status badge
@@ -679,105 +592,6 @@ function getStatusBadge(status) {
                 </div>
             </aside>
         </transition>
-
-        <!-- Modal Dialog Konfirmasi Aksi (Operator Submit / PPTK Approve / Lurah Approve) -->
-        <div v-if="isActionModalOpen" class="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-            <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 border border-slate-200">
-                <div>
-                    <h3 class="font-bold text-slate-900 text-base">
-                        {{
-                            actionModalMode === 'SUBMIT_PPTK'
-                                ? (currentUser?.can_auto_finalize_receipt ? 'Ajukan & Finalisasi Kuitansi' : 'Ajukan Kuitansi untuk Verifikasi')
-                                : actionModalMode === 'RECALL_DRAFT'
-                                    ? 'Tarik Kembali Kuitansi ke Draft'
-                                    : actionModalMode === 'PPTK_APPROVE'
-                                        ? 'Persetujuan Teknis PPTK'
-                                        : 'Otorisasi Kuitansi Lurah'
-                        }}
-                    </h3>
-                    <p class="text-xs text-slate-500 mt-1">
-                        {{
-                            actionModalMode === 'SUBMIT_PPTK'
-                                ? (currentUser?.can_auto_finalize_receipt
-                                    ? `Ajukan kuitansi ${receipt?.nomor_kuitansi}? Pagu anggaran kas akan otomatis dikunci dan kuitansi langsung berstatus LOLOS_VERIFIKASI.`
-                                    : `Ajukan kuitansi ${receipt?.nomor_kuitansi} ke antrean verifikasi? Pagu anggaran kas akan otomatis dikunci.`)
-                                : actionModalMode === 'RECALL_DRAFT'
-                                    ? `Tarik kuitansi ${receipt?.nomor_kuitansi} kembali ke DRAFT? Pagu anggaran yang terkunci akan dilepas otomatis dan persetujuan sebelumnya dibatalkan.`
-                                    : actionModalMode === 'PPTK_APPROVE'
-                                        ? 'Tambahkan catatan persetujuan teknis (opsional) sebelum meneruskan kuitansi.'
-                                        : 'Tambahkan catatan otorisasi Lurah (opsional) sebelum meneruskan ke Verifikator Kecamatan.'
-                        }}
-                    </p>
-                </div>
-
-                <div v-if="actionModalMode !== 'SUBMIT_PPTK'" class="space-y-1">
-                    <label class="text-xs font-semibold text-slate-700">
-                        {{ actionModalMode === 'RECALL_DRAFT' ? 'Alasan Penarikan (Opsional):' : 'Catatan Persetujuan (Opsional):' }}
-                    </label>
-                    <textarea
-                        v-model="actionNote"
-                        rows="3"
-                        class="w-full text-xs p-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gov-navy-800/20 focus:border-gov-navy-800"
-                    ></textarea>
-                </div>
-
-                <p v-if="actionModalError" class="text-xs text-rose-600 font-medium">{{ actionModalError }}</p>
-
-                <div class="flex items-center justify-end gap-2 pt-2">
-                    <GovButton @click="isActionModalOpen = false" variant="secondary" size="sm" :disabled="isActionLoading">
-                        Batal
-                    </GovButton>
-                    <GovButton @click="handleActionConfirm" variant="primary" size="sm" :disabled="isActionLoading">
-                        {{ isActionLoading ? 'Memproses...' : 'Ya, Lanjutkan' }}
-                    </GovButton>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal Dialog Penolakan (PPTK / Lurah) -->
-        <div v-if="isRejectModalOpen" class="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-            <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 border border-slate-200">
-                <div class="flex items-center gap-3 text-rose-600">
-                    <div class="w-10 h-10 rounded-md bg-rose-50 flex items-center justify-center">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <h3 class="font-bold text-slate-900 text-base">
-                            Tolak Kuitansi ke DRAFT
-                        </h3>
-                        <p class="text-xs text-slate-500">
-                            {{
-                                rejectMode === 'LURAH'
-                                    ? 'Kuitansi akan dikembalikan ke DRAFT Operator & pagu anggaran kas yang terkunci otomatis dipulihkan.'
-                                    : 'Pagu anggaran kas yang terkunci akan otomatis dipulihkan.'
-                            }}
-                        </p>
-                    </div>
-                </div>
-
-                <div class="space-y-1">
-                    <label class="text-xs font-semibold text-slate-700">Alasan Penolakan / Catatan Perbaikan:</label>
-                    <textarea
-                        v-model="rejectReason"
-                        rows="3"
-                        placeholder="Tuliskan alasan penolakan secara spesifik (min. 5 karakter)..."
-                        class="w-full text-xs p-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
-                    ></textarea>
-                    <p v-if="rejectError" class="text-xs text-rose-600 font-medium">{{ rejectError }}</p>
-                </div>
-
-                <div class="flex items-center justify-end gap-2 pt-2">
-                    <GovButton @click="isRejectModalOpen = false" variant="secondary" size="sm" :disabled="isActionLoading">
-                        Batal
-                    </GovButton>
-                    <GovButton @click="handleRejectConfirm" variant="danger" size="sm" :disabled="isActionLoading">
-                        {{ isActionLoading ? 'Memproses...' : 'Konfirmasi Penolakan' }}
-                    </GovButton>
-                </div>
-            </div>
-        </div>
     </div>
 </template>
 

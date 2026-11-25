@@ -25,14 +25,6 @@ const queue = ref([]);
 const loading = ref(true);
 const activeTab = ref('ALL'); // ALL, MENUNGGU_PPTK, MENUNGGU_LURAH, MENUNGGU_VERIFIKASI, REVISI_MINOR, LOLOS_VERIFIKASI
 
-// Modal Otorisasi (PPTK / Lurah)
-const showAuthModal = ref(false);
-const authActionRole = ref('PPTK'); // 'PPTK' | 'LURAH'
-const authActionType = ref('APPROVE'); // 'APPROVE' | 'REJECT'
-const selectedItem = ref(null);
-const authNotes = ref('');
-const isSubmittingAuth = ref(false);
-
 async function loadQueue() {
     loading.value = true;
     try {
@@ -84,8 +76,8 @@ async function openAuthModal(item, role, action) {
         confirmText: isReject ? 'Tolak & Kembalikan' : 'Ya, Lanjutkan',
         requireReason: isReject,
         reasonLabel: 'Alasan Penolakan',
-        reasonPlaceholder: 'Cantumkan alasan penolakan minimal 3 karakter...',
-        minReasonLength: 3,
+        reasonPlaceholder: 'Cantumkan alasan penolakan minimal 5 karakter...',
+        minReasonLength: 5,
         onConfirm: async (reason) => {
             if (!isReject) {
                 await receiptService.approveByPptk(targetId, '');
@@ -97,37 +89,6 @@ async function openAuthModal(item, role, action) {
             await loadQueue();
         },
     });
-}
-
-async function handleAuthSubmit() {
-    if (!selectedItem.value) return;
-
-    if (authActionType.value === 'REJECT' && (!authNotes.value || authNotes.value.trim().length < 3)) {
-        toast.error('Mohon cantumkan alasan penolakan secara jelas (minimal 3 karakter).');
-        return;
-    }
-
-    isSubmittingAuth.value = true;
-    const targetId = selectedItem.value.kuitansi_id || selectedItem.value.id;
-
-    try {
-        // PPTK
-        if (authActionType.value === 'APPROVE') {
-            await receiptService.approveByPptk(targetId, authNotes.value);
-            toast.success('Kuitansi berhasil disetujui PPTK dan diteruskan ke tahapan selanjutnya.');
-        } else {
-            await receiptService.rejectByPptk(targetId, authNotes.value);
-            toast.success('Kuitansi ditolak oleh PPTK dan dikembalikan ke draf Operator.');
-        }
-        showAuthModal.value = false;
-        await loadQueue();
-    } catch (err) {
-        toast.error(
-            err.response?.data?.error?.message || err.response?.data?.message || err.message || 'Terjadi kesalahan saat memproses otorisasi.'
-        );
-    } finally {
-        isSubmittingAuth.value = false;
-    }
 }
 </script>
 
@@ -378,91 +339,6 @@ async function handleAuthSubmit() {
                     </table>
                 </div>
             </GovCard>
-        </div>
-
-        <!-- Modal Otorisasi Bersama (PPTK & Lurah) -->
-        <div
-            v-if="showAuthModal"
-            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
-        >
-            <div class="bg-white rounded-xl shadow-2xl max-w-md w-full border border-slate-200 overflow-hidden">
-                <div
-                    :class="[
-                        'px-6 py-4 text-white font-bold flex items-center justify-between',
-                        authActionType === 'APPROVE' ? (authActionRole === 'LURAH' ? 'bg-purple-800' : 'bg-emerald-700') : 'bg-rose-700'
-                    ]"
-                >
-                    <span class="flex items-center gap-2 text-sm">
-                        <svg v-if="authActionType === 'APPROVE'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                        {{ authActionRole === 'LURAH' ? (authActionType === 'APPROVE' ? 'Otorisasi KPA Kelurahan (Lurah)' : 'Penolakan / Pengembalian oleh Lurah') : (authActionType === 'APPROVE' ? 'Persetujuan PPTK' : 'Penolakan oleh PPTK') }}
-                    </span>
-                    <button @click="showAuthModal = false" class="text-white/80 hover:text-white text-lg">&times;</button>
-                </div>
-
-                <div class="p-6 space-y-4">
-                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs space-y-1">
-                        <div class="flex justify-between">
-                            <span class="text-slate-500">Nomor Bukti:</span>
-                            <span class="font-bold text-slate-800">{{ selectedItem?.id }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-slate-500">Nominal Belanja:</span>
-                            <span class="font-bold text-gov-navy-950">{{ formatRupiah(selectedItem?.nominal || 0) }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-slate-500">Uraian:</span>
-                            <span class="text-slate-700 max-w-xs truncate">{{ selectedItem?.uraian }}</span>
-                        </div>
-                    </div>
-
-                    <div v-if="authActionType === 'APPROVE'">
-                        <label class="block text-xs font-semibold text-slate-700 mb-1">
-                            Catatan Persetujuan (Opsional):
-                        </label>
-                        <textarea
-                            v-model="authNotes"
-                            rows="3"
-                            class="w-full text-xs rounded-lg border-slate-300 focus:border-gov-navy-800 focus:ring-gov-navy-800"
-                            :placeholder="authActionRole === 'LURAH' ? 'Contoh: Disetujui dan diotorisasi untuk diproses verifikasi Kecamatan.' : 'Contoh: Sesuai rencana kegiatan seksi, diteruskan.'"
-                        ></textarea>
-                    </div>
-
-                    <div v-else>
-                        <label class="block text-xs font-semibold text-rose-800 mb-1">
-                            Alasan Penolakan / Pengembalian (Wajib):
-                        </label>
-                        <textarea
-                            v-model="authNotes"
-                            rows="3"
-                            class="w-full text-xs rounded-lg border-rose-300 focus:border-rose-500 focus:ring-rose-500 placeholder-rose-300"
-                            placeholder="Contoh: Bukti fisik belum lengkap, mohon perbaiki."
-                        ></textarea>
-                    </div>
-
-                    <div class="flex justify-end gap-2 pt-2">
-                        <GovButton
-                            variant="secondary"
-                            size="sm"
-                            @click="showAuthModal = false"
-                        >
-                            Batal
-                        </GovButton>
-                        <GovButton
-                            :variant="authActionType === 'APPROVE' ? 'primary' : 'danger'"
-                            size="sm"
-                            :disabled="isSubmittingAuth"
-                            @click="handleAuthSubmit"
-                        >
-                            {{ isSubmittingAuth ? 'Memproses...' : (authActionType === 'APPROVE' ? 'Konfirmasi Setujui' : 'Konfirmasi Tolak') }}
-                        </GovButton>
-                    </div>
-                </div>
-            </div>
         </div>
     </GovAppLayout>
 </template>
