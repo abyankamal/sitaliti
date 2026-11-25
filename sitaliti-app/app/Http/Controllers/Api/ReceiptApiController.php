@@ -16,6 +16,8 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
@@ -561,35 +563,67 @@ class ReceiptApiController extends Controller
             'bukti_setor' => $request->file('bukti_setor'),
         ]];
 
-        foreach ($items as $idx => $entry) {
-            $pajak = KuitansiPajak::where('kuitansi_id', $kuitansi->id)
-                ->where('id', $entry['kuitansi_pajak_id'])
-                ->first();
+        $requestedIds = collect($items)->pluck('kuitansi_pajak_id')->map(fn ($v) => (int) $v)->all();
+        $taxRows = KuitansiPajak::where('kuitansi_id', $kuitansi->id)
+            ->whereIn('id', $requestedIds)
+            ->get()
+            ->keyBy('id');
 
-            if (! $pajak) {
+        foreach ($requestedIds as $pajakId) {
+            if (! $taxRows->has($pajakId)) {
                 return $this->errorResponse(
                     'TAX_ROW_NOT_FOUND',
-                    "Baris pajak ID {$entry['kuitansi_pajak_id']} tidak ditemukan pada kuitansi ini.",
+                    "Baris pajak ID {$pajakId} tidak ditemukan pada kuitansi ini.",
                     null,
                     422
                 );
             }
+        }
 
-            $file = $entry['bukti_setor'] ?? $request->file("settlements.{$idx}.bukti_setor");
-            $buktiPath = $pajak->bukti_setor_path;
+        $newlyStoredPaths = [];
+        $replacedOldPaths = [];
 
-            if ($file instanceof UploadedFile) {
-                $buktiPath = $file->store("tax-settlements/{$kuitansi->id}", 'local');
+        try {
+            DB::transaction(function () use ($items, $taxRows, $request, $kuitansi, $user, &$newlyStoredPaths, &$replacedOldPaths): void {
+                foreach ($items as $idx => $entry) {
+                    $pajak = $taxRows->get((int) $entry['kuitansi_pajak_id']);
+                    $file = $entry['bukti_setor'] ?? $request->file("settlements.{$idx}.bukti_setor");
+                    $buktiPath = $pajak->bukti_setor_path;
+
+                    if ($file instanceof UploadedFile) {
+                        $newPath = $file->store("tax-settlements/{$kuitansi->id}", 'local');
+                        $newlyStoredPaths[] = $newPath;
+                        if ($buktiPath && $buktiPath !== $newPath) {
+                            $replacedOldPaths[] = $buktiPath;
+                        }
+                        $buktiPath = $newPath;
+                    }
+
+                    $pajak->update([
+                        'kode_billing' => $entry['kode_billing'] ?? null,
+                        'ntpn' => trim((string) $entry['ntpn']),
+                        'tanggal_setor' => $entry['tanggal_setor'] ?? now()->toDateString(),
+                        'bukti_setor_path' => $buktiPath,
+                        'ntpn_updated_by' => $user->id,
+                        'ntpn_updated_at' => now(),
+                    ]);
+                }
+
+                if ($replacedOldPaths !== []) {
+                    $pathsToDelete = array_values(array_unique($replacedOldPaths));
+                    DB::afterCommit(function () use ($pathsToDelete): void {
+                        foreach ($pathsToDelete as $path) {
+                            Storage::disk('local')->delete($path);
+                        }
+                    });
+                }
+            });
+        } catch (Throwable $e) {
+            foreach ($newlyStoredPaths as $path) {
+                Storage::disk('local')->delete($path);
             }
 
-            $pajak->update([
-                'kode_billing' => $entry['kode_billing'] ?? null,
-                'ntpn' => trim((string) $entry['ntpn']),
-                'tanggal_setor' => $entry['tanggal_setor'] ?? now()->toDateString(),
-                'bukti_setor_path' => $buktiPath,
-                'ntpn_updated_by' => $user->id,
-                'ntpn_updated_at' => now(),
-            ]);
+            throw $e;
         }
 
         return $this->successResponse(

@@ -609,9 +609,16 @@ class ReceiptService
             KuitansiItem::create($item);
         }
 
+        $existingTaxes = $kuitansi->pajak()->get()->keyBy('kode_pajak');
+        $keptPaths = [];
+
         $kuitansi->pajak()->delete();
         foreach ($taxCalc['rincian_pajak'] as $rp) {
-            KuitansiPajak::create([
+            $old = $existingTaxes->get($rp['kode_pajak']);
+            $preserveSettlement = $old !== null
+                && round((float) $old->nominal, 2) === round((float) $rp['nominal'], 2);
+
+            $payload = [
                 'kuitansi_id' => $kuitansi->id,
                 'kode_pajak' => $rp['kode_pajak'],
                 'nama_pajak' => $rp['nama_pajak'],
@@ -619,7 +626,37 @@ class ReceiptService
                 'tipe_tarif' => $rp['tipe_tarif'],
                 'dpp' => $taxCalc['dpp'],
                 'nominal' => $rp['nominal'],
-            ]);
+            ];
+
+            if ($preserveSettlement) {
+                $payload['kode_billing'] = $old->kode_billing;
+                $payload['ntpn'] = $old->ntpn;
+                $payload['tanggal_setor'] = $old->tanggal_setor;
+                $payload['bukti_setor_path'] = $old->bukti_setor_path;
+                $payload['ntpn_updated_by'] = $old->ntpn_updated_by;
+                $payload['ntpn_updated_at'] = $old->ntpn_updated_at;
+
+                if ($old->bukti_setor_path) {
+                    $keptPaths[] = $old->bukti_setor_path;
+                }
+            }
+
+            KuitansiPajak::create($payload);
+        }
+
+        $orphanedPaths = $existingTaxes
+            ->pluck('bukti_setor_path')
+            ->filter()
+            ->reject(fn (string $path) => in_array($path, $keptPaths, true))
+            ->values()
+            ->all();
+
+        if ($orphanedPaths !== []) {
+            DB::afterCommit(function () use ($orphanedPaths): void {
+                foreach ($orphanedPaths as $path) {
+                    Storage::disk('local')->delete($path);
+                }
+            });
         }
     }
 
