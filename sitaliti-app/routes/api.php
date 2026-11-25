@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\BudgetApiController;
+use App\Http\Controllers\Api\MasterComplianceApiController;
 use App\Http\Controllers\Api\MasterDataApiController;
 use App\Http\Controllers\Api\MasterRekapBelanjaOperasiApiController;
 use App\Http\Controllers\Api\PegawaiApiController;
@@ -168,6 +169,14 @@ Route::prefix('v1')->group(function () {
             Route::get('sub-activities', [RekeningManagementApiController::class, 'subActivities']);
             Route::post('rekening', [RekeningManagementApiController::class, 'store']);
             Route::put('rekening/{id}', [RekeningManagementApiController::class, 'update']);
+        });
+
+        // Pengaturan Kepatuhan, Tarif Pajak, & Master SBM (Eksklusif VERIFIKATOR & BP Kecamatan)
+        Route::prefix('compliance')->middleware('permission:rekap_belanja_operasi.manage')->group(function () {
+            Route::get('/', [MasterComplianceApiController::class, 'index']);
+            Route::post('settings', [MasterComplianceApiController::class, 'updateSetting']);
+            Route::post('tax-rates', [MasterComplianceApiController::class, 'upsertTaxRate']);
+            Route::post('sbm-items', [MasterComplianceApiController::class, 'upsertSbmItem']);
         });
     });
 });
