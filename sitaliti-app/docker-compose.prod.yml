@@ -1,11 +1,25 @@
 services:
     sitaliti.app:
+        image: 'sitaliti-app:prod'
         build:
             context: .
             dockerfile: docker/prod/Dockerfile
         restart: unless-stopped
         ports:
             - '${APP_PORT:-80}:80'
+        volumes:
+            - '.:/var/www/html'
+        networks:
+            - sitaliti
+        depends_on:
+            pgsql:
+                condition: service_healthy
+
+    sitaliti.scheduler:
+        image: 'sitaliti-app:prod'
+        restart: unless-stopped
+        user: www-data
+        command: php artisan schedule:work
         volumes:
             - '.:/var/www/html'
         networks:
