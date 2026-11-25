@@ -26,6 +26,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             UnitKerjaSeeder::class,
             MasterChecklistSeeder::class,
+            ComplianceRulesSeeder::class,
         ]);
 
         $kecamatan = UnitKerja::where('tipe', 'KECAMATAN')->first();
