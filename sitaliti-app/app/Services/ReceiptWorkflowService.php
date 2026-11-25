@@ -164,8 +164,7 @@ class ReceiptWorkflowService
             }
 
             $statusLama = $kuitansi->status;
-            $kuitansi->loadMissing('unitKerja');
-            $statusBaru = ($kuitansi->unitKerja?->tipe === 'KELURAHAN') ? 'MENUNGGU_LURAH' : 'MENUNGGU_VERIFIKASI';
+            $statusBaru = 'MENUNGGU_VERIFIKASI';
 
             $kuitansi->update([
                 'status' => $statusBaru,

@@ -205,28 +205,29 @@ class KelurahanLurahWorkflowTest extends TestCase
             1
         );
 
-        // 2. PPTK Sarpras Pataruman menyetujui -> harus berstatus MENUNGGU_LURAH
+        // 2. PPTK Sarpras Pataruman menyetujui -> langsung menuju MENUNGGU_VERIFIKASI (Lurah murni monitoring)
         $responsePptk = $this->actingAs($this->pptkSarprasPataruman)
             ->postJson("/api/v1/receipts/{$kuitansi->id}/pptk-approve", [
                 'catatan' => 'Pekerjaan fisik sarpras telah diperiksa',
             ]);
 
         $responsePptk->assertOk()
-            ->assertJsonPath('data.status', 'MENUNGGU_LURAH')
+            ->assertJsonPath('data.status', 'MENUNGGU_VERIFIKASI')
             ->assertJsonPath('data.pptk_user_id', $this->pptkSarprasPataruman->id);
 
         $kuitansi->refresh();
-        $this->assertEquals('MENUNGGU_LURAH', $kuitansi->status);
+        $this->assertEquals('MENUNGGU_VERIFIKASI', $kuitansi->status);
         $this->assertEquals($this->pptkSarprasPataruman->id, $kuitansi->pptk_user_id);
         $this->assertNotNull($kuitansi->tanggal_pptk_approve);
+        $this->assertNull($kuitansi->lurah_user_id);
 
-        // 3. Lurah Pataruman (read-only) ditolak 403 saat mencoba mengotorisasi
+        // 3. Rute lurah-approve sudah dinonaktifkan (404) & Lurah murni read-only
         $responseLurah = $this->actingAs($this->lurahPataruman)
             ->postJson("/api/v1/receipts/{$kuitansi->id}/lurah-approve", [
                 'catatan' => 'Disetujui KPA Kelurahan Pataruman',
             ]);
 
-        $responseLurah->assertStatus(403);
+        $responseLurah->assertNotFound();
     }
 
     public function test_kecamatan_receipt_approval_bypasses_lurah_and_goes_directly_to_verifikasi(): void
@@ -297,7 +298,7 @@ class KelurahanLurahWorkflowTest extends TestCase
                 'alasan' => 'Dokumentasi foto fisik belum lengkap, mohon lengkapi',
             ]);
 
-        $response->assertStatus(403);
+        $response->assertNotFound();
 
         // Pagu tetap terkunci karena Lurah tidak berwenang menolak
         $kasBulananAfter = AnggaranKasBulanan::where('anggaran_rekening_id', $this->rekeningSarprasPataruman->id)
@@ -357,19 +358,24 @@ class KelurahanLurahWorkflowTest extends TestCase
             'status' => 'MENUNGGU_LURAH',
         ]);
 
-        // Lurah Sukagalih mencoba approve Pataruman -> harus 403
+        // Lurah Sukagalih mencoba approve Pataruman -> rute tidak aktif (404) & akses baca lintas kelurahan ditolak (403)
         $responseApprove = $this->actingAs($this->lurahSukagalih)
             ->postJson("/api/v1/receipts/{$kuitansi->id}/lurah-approve", [
                 'catatan' => 'Cross kelurahan approve attempt',
             ]);
-        $responseApprove->assertStatus(403);
+        $responseApprove->assertNotFound();
 
-        // Lurah Sukagalih mencoba reject Pataruman -> harus 403
+        // Lurah Sukagalih mencoba reject Pataruman -> rute tidak aktif (404)
         $responseReject = $this->actingAs($this->lurahSukagalih)
             ->postJson("/api/v1/receipts/{$kuitansi->id}/lurah-reject", [
                 'alasan' => 'Cross kelurahan reject attempt',
             ]);
-        $responseReject->assertStatus(403);
+        $responseReject->assertNotFound();
+
+        // Lurah Sukagalih tetap ditolak 403 saat mencoba melihat detail kuitansi Pataruman
+        $this->actingAs($this->lurahSukagalih)
+            ->getJson("/api/v1/receipts/{$kuitansi->id}")
+            ->assertStatus(403);
     }
 
     public function test_verification_anti_bypass_rejects_receipt_in_menunggu_lurah(): void

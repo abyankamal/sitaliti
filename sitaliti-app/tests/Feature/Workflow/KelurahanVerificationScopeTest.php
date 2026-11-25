@@ -171,7 +171,7 @@ class KelurahanVerificationScopeTest extends TestCase
             'unit_kerja_id' => $this->kecamatan->id,
         ]);
 
-        // Kuitansi 1: Sarpras Pataruman (status MENUNGGU_LURAH)
+        // Kuitansi 1: Sarpras Pataruman (status MENUNGGU_PPTK)
         $this->kuitansiSarprasPataruman = Kuitansi::create([
             'nomor_kuitansi' => 'KWT/PTR/VERIF/0001',
             'unit_kerja_id' => $this->kelurahanPataruman->id,
@@ -185,7 +185,7 @@ class KelurahanVerificationScopeTest extends TestCase
             'nominal_bruto' => 1000000,
             'total_pajak' => 0,
             'nominal_neto' => 1000000,
-            'status' => 'MENUNGGU_LURAH',
+            'status' => 'MENUNGGU_PPTK',
         ]);
 
         // Kuitansi 2: Pemberdayaan Pataruman (status MENUNGGU_VERIFIKASI)

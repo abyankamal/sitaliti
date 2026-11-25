@@ -184,7 +184,7 @@ class KelurahanBudgetDashboardScopeTest extends TestCase
             'nominal_bruto' => 5000000.00,
             'total_pajak' => 0.00,
             'nominal_neto' => 5000000.00,
-            'status' => 'MENUNGGU_LURAH',
+            'status' => 'MENUNGGU_VERIFIKASI',
         ]);
 
         KuitansiRiwayat::create([
@@ -192,7 +192,7 @@ class KelurahanBudgetDashboardScopeTest extends TestCase
             'user_id' => $this->lurahPataruman->id,
             'action' => 'PPTK_APPROVED',
             'status_sebelumnya' => 'MENUNGGU_PPTK',
-            'status_baru' => 'MENUNGGU_LURAH',
+            'status_baru' => 'MENUNGGU_VERIFIKASI',
             'catatan' => 'Disetujui PPTK Sarpras',
         ]);
 
@@ -240,9 +240,9 @@ class KelurahanBudgetDashboardScopeTest extends TestCase
         $this->assertContains('7.01.03.2.02.0002', $codes);
         $this->assertContains('7.01.03.2.02.0003', $codes);
 
-        // Queue counts Pataruman
-        $this->assertEquals(1, $data['queue_counts']['menunggu_lurah']);
-        $this->assertEquals(0, $data['queue_counts']['menunggu_verifikasi']); // Kuitansi verifikasi di kecamatan tidak boleh terhitung
+        // Queue counts Pataruman (kuitansi Pataruman masuk MENUNGGU_VERIFIKASI; kuitansi Kecamatan tidak boleh terhitung)
+        $this->assertEquals(0, $data['queue_counts']['menunggu_lurah']);
+        $this->assertEquals(1, $data['queue_counts']['menunggu_verifikasi']);
 
         // Recent activities hanya mencatat kuitansi Pataruman
         $this->assertCount(1, $data['recent_activities']);
