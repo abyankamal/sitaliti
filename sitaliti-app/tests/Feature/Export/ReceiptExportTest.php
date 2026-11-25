@@ -13,6 +13,8 @@ use App\Models\User;
 use Database\Seeders\MasterChecklistSeeder;
 use Database\Seeders\UnitKerjaSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use Tests\TestCase;
 
 class ReceiptExportTest extends TestCase
@@ -531,13 +533,13 @@ class ReceiptExportTest extends TestCase
         file_put_contents($tmpFile, $response->streamedContent());
 
         try {
-            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($tmpFile);
+            $spreadsheet = IOFactory::load($tmpFile);
             $sheet = $spreadsheet->getActiveSheet();
 
             $this->assertSame('Nomor Kuitansi', $sheet->getCell('A4')->getValue());
             $this->assertSame('KW-XLSX-01', $sheet->getCell('A5')->getValue());
             $this->assertSame(
-                \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING,
+                DataType::TYPE_STRING,
                 $sheet->getCell('Q5')->getDataType()
             );
             $this->assertSame('01.234.567.8-443.000', $sheet->getCell('Q5')->getValue());
@@ -574,11 +576,11 @@ class ReceiptExportTest extends TestCase
         file_put_contents($tmpFile, $response->streamedContent());
 
         try {
-            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($tmpFile);
+            $spreadsheet = IOFactory::load($tmpFile);
             $sheet = $spreadsheet->getActiveSheet();
 
             $this->assertSame(
-                \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING,
+                DataType::TYPE_STRING,
                 $sheet->getCell('F5')->getDataType()
             );
             $this->assertSame("'=SUM(1,1)", $sheet->getCell('F5')->getValue());

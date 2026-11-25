@@ -494,7 +494,7 @@ class CrossUnitIdorIsolationTest extends TestCase
             'unit_kerja_id' => $this->kelurahanPataruman->id,
         ]);
 
-        \Illuminate\Support\Facades\Storage::disk('local')->put('lampiran/nota.pdf', '%PDF-1.4 dummy');
+        Storage::disk('local')->put('lampiran/nota.pdf', '%PDF-1.4 dummy');
         $this->actingAs($bppLainPataruman)->get("/receipts/{$draftMilikPataruman->id}/edit")->assertStatus(200);
         $this->actingAs($bppLainPataruman)->get("/receipts/{$draftMilikPataruman->id}/attachments/{$att->id}/preview")->assertStatus(200);
         $this->actingAs($bppLainPataruman)->getJson("/api/v1/receipts/{$draftMilikPataruman->id}")->assertStatus(200);
