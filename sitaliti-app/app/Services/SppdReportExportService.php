@@ -7,6 +7,7 @@ use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
@@ -216,6 +217,8 @@ class SppdReportExportService
         }
 
         $rows = [];
+        $photoDataUris = [];
+        $photoCache = [];
         $rowNumber = 1;
         $totalHariOrang = 0;
 
@@ -223,10 +226,16 @@ class SppdReportExportService
             $row = $this->extractReportRow($item, $rowNumber++);
             $totalHariOrang += (int) $row[3];
             $rows[] = $row;
+
+            $photoPath = filled($item->foto_path)
+                ? $item->foto_path
+                : $item->kuitansi?->sppd_foto_path;
+            $photoDataUris[] = $this->resolvePhotoDataUri($photoPath, $photoCache);
         }
 
         $pdf = Pdf::loadView('pdf.rekap-sppd', [
             'rows' => $rows,
+            'photoDataUris' => $photoDataUris,
             'totalPerjalanan' => count($rows),
             'totalHariOrang' => $totalHariOrang,
             'filterSummary' => $this->formatFilterSummary($filters),
@@ -315,5 +324,46 @@ class SppdReportExportService
         }
 
         return $str;
+    }
+
+    /**
+     * Mengonversi foto SPPD dari private disk 'local' menjadi data URI base64 untuk DomPDF (di-cache per path).
+     *
+     * @param  array<string, string|null>  $cache
+     */
+    private function resolvePhotoDataUri(?string $photoPath, array &$cache): ?string
+    {
+        if (! filled($photoPath)) {
+            return null;
+        }
+
+        if (array_key_exists($photoPath, $cache)) {
+            return $cache[$photoPath];
+        }
+
+        $disk = Storage::disk('local');
+        if (! $disk->exists($photoPath)) {
+            return $cache[$photoPath] = null;
+        }
+
+        $mime = $disk->mimeType($photoPath);
+        if (! is_string($mime) || ! in_array($mime, ['image/jpeg', 'image/png', 'image/webp', 'image/gif'], true)) {
+            $ext = strtolower(pathinfo($photoPath, PATHINFO_EXTENSION));
+            $mime = match ($ext) {
+                'jpg', 'jpeg' => 'image/jpeg',
+                'png' => 'image/png',
+                'webp' => 'image/webp',
+                'gif' => 'image/gif',
+                default => null,
+            };
+        }
+
+        if ($mime === null) {
+            return $cache[$photoPath] = null;
+        }
+
+        $bytes = $disk->get($photoPath);
+
+        return $cache[$photoPath] = 'data:'.$mime.';base64,'.base64_encode($bytes);
     }
 }

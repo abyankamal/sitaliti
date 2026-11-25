@@ -156,13 +156,13 @@
                 <th style="width: 3%;">No</th>
                 <th style="width: 11%;">Tanggal Berangkat – Pulang</th>
                 <th style="width: 5%;">Durasi</th>
-                <th style="width: 17%;">NIP &amp; Nama Pegawai</th>
+                <th style="width: 15%;">NIP &amp; Nama Pegawai</th>
                 <th style="width: 11%;">Jabatan / Gol.</th>
                 <th style="width: 10%;">Unit Kerja</th>
-                <th style="width: 17%;">Sub Kegiatan</th>
+                <th style="width: 15%;">Sub Kegiatan</th>
                 <th style="width: 10%;">Tujuan</th>
                 <th style="width: 10%;">No. Kuitansi / Status</th>
-                <th style="width: 6%;">Foto</th>
+                <th style="width: 10%;">Foto</th>
             </tr>
         </thead>
         <tbody>
@@ -186,7 +186,17 @@
                         <span class="mono">{{ $row[12] }}</span><br>
                         <span style="color: #475569;">{{ $row[13] }}</span>
                     </td>
-                    <td class="text-center">{{ $row[14] }}</td>
+                    <td class="text-center">
+                        @php
+                            $photoUri = $photoDataUris[$loop->index] ?? null;
+                        @endphp
+                        @if ($photoUri)
+                            <img src="{{ $photoUri }}" alt="Foto SPPD" style="max-width: 68px; max-height: 52px; object-fit: cover; border: 1px solid #cbd5e1; border-radius: 2px;">
+                            <div style="font-size: 6pt; color: #475569; margin-top: 2px;">{{ $row[14] }}</div>
+                        @else
+                            <span style="color: #64748b;">{{ $row[14] }}</span>
+                        @endif
+                    </td>
                 </tr>
             @empty
                 <tr>

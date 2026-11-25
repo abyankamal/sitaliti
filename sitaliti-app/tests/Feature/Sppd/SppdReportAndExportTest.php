@@ -9,6 +9,7 @@ use App\Models\Pegawai;
 use App\Models\PptkSubkegiatanAssignment;
 use App\Models\UnitKerja;
 use App\Models\User;
+use App\Services\SppdReportExportService;
 use Database\Seeders\UnitKerjaSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -193,11 +194,22 @@ class SppdReportAndExportTest extends TestCase
         unlink($tmpFile);
         $this->assertSame('Rekap Laporan SPPD', $spreadsheet->getActiveSheet()->getTitle());
 
-        // PDF export
+        // PDF export (menyertakan foto peserta/rombongan jika file tersedia)
         $pdfRes = $this->actingAs($this->verifikator)
             ->get('/api/v1/sppd/report/export?format=pdf')
             ->assertOk();
         $this->assertStringStartsWith('%PDF-', $pdfRes->getContent());
+
+        // Verifikasi view PDF menyisipkan data URI gambar dari storage lokal
+        $html = view('pdf.rekap-sppd', [
+            'rows' => [app(SppdReportExportService::class)->extractReportRow($this->pesertaA->load(['pegawai', 'kuitansi.unitKerja', 'kuitansi.rekening']), 1)],
+            'photoDataUris' => ['data:image/jpeg;base64,'.base64_encode('fake-img')],
+            'totalPerjalanan' => 1,
+            'totalHariOrang' => 1,
+            'filterSummary' => 'Semua',
+            'printedAt' => '26/11/2026 05:00',
+        ])->render();
+        $this->assertStringContainsString('<img src="data:image/jpeg;base64,', $html);
     }
 
     public function test_photo_preview_enforces_unit_scoping_and_anti_idor(): void
