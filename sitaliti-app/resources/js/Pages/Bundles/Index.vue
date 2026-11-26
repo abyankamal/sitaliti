@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { Head, usePage } from '@inertiajs/vue3';
+import { X } from 'lucide-vue-next';
 import axios from 'axios';
 import GovAppLayout from '@/Layouts/GovAppLayout.vue';
 import GovBadge from '@/Components/UI/GovBadge.vue';
@@ -74,7 +75,7 @@ function hasTaxableRows(kw) {
 function getTaxSettlementBadge(kw) {
     const taxable = (kw?.pajak || []).filter((p) => Number(p.nominal) > 0 && p.kode_pajak !== 'BEA_METERAI');
     if (taxable.length === 0) {
-        return { label: 'Non-Pajak / Meterai', class: 'bg-slate-100 text-slate-600' };
+        return { label: 'Non-Pajak / Meterai', class: 'bg-raised text-ink-secondary' };
     }
     const allSettled = taxable.every((p) => Boolean(p.ntpn && String(p.ntpn).trim() !== ''));
     return allSettled
@@ -315,13 +316,13 @@ const BUNDLE_STATUS_LABELS = {
         <template #header>
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 class="text-lg font-bold text-gov-navy-950 flex items-center gap-2">
+                    <h1 class="text-lg font-bold text-ink flex items-center gap-2">
                         <span>{{ isKelurahanScoped ? 'Pengelompokan Bundel LPJ BPP' : 'Pengelompokan Bundel SPJ (Two-Tier Settlement)' }}</span>
-                        <span class="text-xs px-2.5 py-0.5 rounded-md font-semibold bg-gov-navy-100 text-gov-navy-900 border border-gov-navy-200">
+                        <span class="text-xs px-2.5 py-0.5 rounded-md font-semibold bg-accent-soft text-ink border border-accent-border">
                             {{ isKelurahanScoped ? 'Tier 2 Pertanggungjawaban BPP' : 'Tier 2 Pengesahan' }}
                         </span>
                     </h1>
-                    <p class="text-xs text-slate-500 mt-1">
+                    <p class="text-xs text-ink-muted mt-1">
                         {{ isKelurahanScoped
                             ? 'Penyatuan kuitansi-kuitansi yang telah Lolos Verifikasi menjadi berkas bundel Laporan Pertanggungjawaban (LPJ-BPP) Kelurahan'
                             : 'Penyatuan kuitansi-kuitansi yang telah Lolos Verifikasi menjadi berkas bundel pengesahan SPP-GU / TU / LS' }}
@@ -374,26 +375,26 @@ const BUNDLE_STATUS_LABELS = {
             </div>
 
             <!-- List Bundel Cards -->
-            <div v-for="bundle in bundles" :key="bundle.id" class="bg-white rounded-xl border border-gov-surface-border shadow-sm overflow-hidden">
-                <div class="bg-gov-surface-subtle p-5 border-b border-gov-surface-border flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div v-for="bundle in bundles" :key="bundle.id" class="bg-surface rounded-xl border border-hairline shadow-subtle overflow-hidden">
+                <div class="bg-raised p-5 border-b border-hairline flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div>
                         <div class="flex items-center gap-2">
-                            <span class="px-2 py-0.5 rounded text-xs font-bold bg-gov-navy-900 text-white font-mono">
+                            <span class="px-2 py-0.5 rounded text-xs font-bold bg-accent text-white font-mono">
                                 {{ bundle.jenis || bundle.jenis_bundel }}
                             </span>
-                            <h3 class="text-sm font-bold text-gov-navy-950">{{ bundle.nomor_spp || bundle.nomor_bundel }}</h3>
+                            <h3 class="text-sm font-bold text-ink">{{ bundle.nomor_spp || bundle.nomor_bundel }}</h3>
                             <GovBadge :variant="BUNDLE_STATUS_VARIANTS[bundle.status || bundle.status_bundel]">
                                 {{ BUNDLE_STATUS_LABELS[bundle.status || bundle.status_bundel] }}
                             </GovBadge>
                         </div>
-                        <p class="text-xs text-slate-500 mt-1">
+                        <p class="text-xs text-ink-muted mt-1">
                             Unit: {{ bundle.unit || 'Kecamatan Tarogong Kidul' }} • Periode: {{ bundle.periode || '-' }}
                         </p>
                     </div>
 
                     <div class="text-right">
-                        <div class="text-xs text-slate-500">Total Nominal Bundel</div>
-                        <div class="text-lg font-semibold text-gov-navy-900 tabular-nums">
+                        <div class="text-xs text-ink-muted">Total Nominal Bundel</div>
+                        <div class="text-lg font-semibold text-ink tabular-nums">
                             {{ formatRupiah(bundle.total_nominal || bundle.total_bruto) }}
                         </div>
                     </div>
@@ -402,16 +403,16 @@ const BUNDLE_STATUS_LABELS = {
                 <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- Sisi Kiri: 9 Dokumen Bagian A -->
                     <div>
-                        <h4 class="text-xs font-bold text-gov-navy-900  mb-2.5">
+                        <h4 class="text-xs font-bold text-ink  mb-2.5">
                             Status 9 Dokumen Wajib Pengesahan SPJ (Bagian A)
                         </h4>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                             <div
                                 v-for="(doc, idx) in (bundle.checklist_bagian_a || [])"
                                 :key="doc.id || doc.name || idx"
-                                class="p-2 rounded border border-slate-200 bg-slate-50 flex items-center justify-between"
+                                class="p-2 rounded border border-hairline bg-raised flex items-center justify-between"
                             >
-                                <span class="truncate pr-2 text-slate-700 text-xs">{{ doc.name }}</span>
+                                <span class="truncate pr-2 text-ink-secondary text-xs">{{ doc.name }}</span>
                                 <span
                                     class="px-1.5 py-0.5 rounded text-xs font-bold font-mono"
                                     :class="doc.checked ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'"
@@ -424,41 +425,41 @@ const BUNDLE_STATUS_LABELS = {
 
                     <!-- Sisi Kanan: Kuitansi-Kuitansi yang Tergabung -->
                     <div>
-                        <h4 class="text-xs font-bold text-gov-navy-900  mb-2.5 flex items-center justify-between">
+                        <h4 class="text-xs font-bold text-ink  mb-2.5 flex items-center justify-between">
                             <span>Daftar Kuitansi Tergabung (Tier 1)</span>
-                            <span class="text-slate-500 text-xs">{{ (bundle.kuitansi_list || bundle.items || []).length }} Bukti Kuitansi</span>
+                            <span class="text-ink-muted text-xs">{{ (bundle.kuitansi_list || bundle.items || []).length }} Bukti Kuitansi</span>
                         </h4>
                         <div class="space-y-2">
                             <div
                                 v-for="kw in (bundle.kuitansi_list || bundle.items || [])"
                                 :key="kw.id"
-                                class="p-2.5 rounded-lg border border-slate-200 flex items-center justify-between text-xs hover:border-slate-300 transition-colors"
+                                class="p-2.5 rounded-lg border border-hairline flex items-center justify-between text-xs hover:border-hairline transition-colors"
                             >
                                 <div class="flex-1 min-w-0 pr-2">
-                                    <div class="font-bold text-gov-navy-950 flex items-center gap-1.5 flex-wrap">
+                                    <div class="font-bold text-ink flex items-center gap-1.5 flex-wrap">
                                         <span>{{ kw.id || kw.nomor_kuitansi }}</span>
-                                        <span class="text-xs bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-mono">
+                                        <span class="text-xs bg-raised text-ink-secondary px-1.5 py-0.5 rounded font-mono">
                                             {{ kw.kategori || 'B.1' }}
                                         </span>
                                         <span
-                                            :class="['text-[11px] px-1.5 py-0.5 rounded font-semibold', getTaxSettlementBadge(kw).class]"
+                                            :class="['text-xs px-1.5 py-0.5 rounded font-semibold', getTaxSettlementBadge(kw).class]"
                                         >
                                             {{ getTaxSettlementBadge(kw).label }}
                                         </span>
                                     </div>
-                                    <p class="text-xs text-slate-500 truncate max-w-xs">{{ kw.uraian || kw.uraian_belanja }}</p>
+                                    <p class="text-xs text-ink-muted truncate max-w-xs">{{ kw.uraian || kw.uraian_belanja }}</p>
                                 </div>
                                 <div class="flex items-center gap-2 shrink-0">
                                     <button
                                         v-if="hasTaxableRows(kw) && bundle.status !== 'SYNCED_SIPD' && !isReadOnly"
                                         type="button"
                                         @click="openTaxModal(kw)"
-                                        class="px-2 py-1 rounded text-xs font-semibold border border-gov-navy-200 bg-gov-navy-50 text-gov-navy-800 hover:bg-gov-navy-100 transition-colors"
+                                        class="px-2 py-1 rounded text-xs font-semibold border border-accent-border bg-accent-soft text-accent hover:bg-accent-soft transition-colors"
                                     >
                                         Input NTPN
                                     </button>
                                     <div class="text-right">
-                                        <div class="font-bold text-slate-800 tabular-nums">{{ formatRupiah(kw.nominal || kw.nominal_bruto) }}</div>
+                                        <div class="font-bold text-ink tabular-nums">{{ formatRupiah(kw.nominal || kw.nominal_bruto) }}</div>
                                         <span class="text-xs text-emerald-700 font-medium">Lolos Verifikasi</span>
                                     </div>
                                     <button
@@ -478,14 +479,14 @@ const BUNDLE_STATUS_LABELS = {
                     </div>
                 </div>
 
-                <div class="px-5 py-3 bg-slate-50 border-t border-gov-surface-border flex items-center justify-between text-xs flex-wrap gap-2">
+                <div class="px-5 py-3 bg-raised border-t border-hairline flex items-center justify-between text-xs flex-wrap gap-2">
                     <div class="flex items-center gap-2">
-                        <span class="text-slate-500 text-xs">
+                        <span class="text-ink-muted text-xs">
                             Status:
                             <strong v-if="bundle.status === 'SYNCED_SIPD'" class="text-emerald-700">
                                 Anggaran Telah Cair Definitif (SP2D: {{ bundle.nomor_sipd || bundle.nomor_sp2d_sipd }})
                             </strong>
-                            <strong v-else class="text-slate-700">
+                            <strong v-else class="text-ink-secondary">
                                 {{ isKelurahanScoped ? 'Siap Pengesahan oleh Bendahara Pengeluaran Kecamatan' : 'Siap Pengesahan & Pencatatan SP2D SIPD-RI' }}
                             </strong>
                         </span>
@@ -526,10 +527,10 @@ const BUNDLE_STATUS_LABELS = {
                                 </svg>
                                 Catat SP2D SIPD-RI
                             </GovButton>
-                            <span v-else-if="isKelurahanScoped" class="text-xs text-slate-500 italic">
+                            <span v-else-if="isKelurahanScoped" class="text-xs text-ink-muted italic">
                                 Pencatatan SP2D dilakukan oleh BP Kecamatan
                             </span>
-                            <span v-else-if="isLurah" class="text-xs text-slate-500 italic">
+                            <span v-else-if="isLurah" class="text-xs text-ink-muted italic">
                                 Pengawasan Lurah (Read-Only)
                             </span>
                         </template>
@@ -546,23 +547,23 @@ const BUNDLE_STATUS_LABELS = {
 
         <!-- Modal Buat Bundel SPP / LPJ-BPP Baru -->
         <div v-if="showCreateModal" class="fixed inset-0 z-50 overflow-y-auto">
-            <div class="fixed inset-0 bg-gov-navy-950/70 backdrop-blur-sm" @click="showCreateModal = false"></div>
+            <div class="fixed inset-0 bg-ink/40" @click="showCreateModal = false"></div>
             <div class="flex min-h-full items-center justify-center p-4">
-                <div class="relative w-full max-w-2xl rounded-2xl bg-white shadow-2xl border border-gov-surface-border overflow-hidden">
-                    <div class="bg-gov-navy-950 text-white px-6 py-4 flex items-center justify-between">
+                <div class="relative w-full max-w-2xl rounded-xl bg-surface shadow-floating border border-hairline overflow-hidden">
+                    <div class="bg-surface text-ink border-b border-hairline px-6 py-4 flex items-center justify-between">
                         <h3 class="text-base font-bold text-white flex items-center gap-2">
                             {{ isKelurahanBpp ? 'Penyatuan Bundel LPJ-BPP Baru (Kelurahan)' : 'Penyatuan Bundel SPP Baru (Two-Tier Model)' }}
                         </h3>
-                        <button type="button" @click="showCreateModal = false" class="text-slate-400 hover:text-white">Tutup</button>
+                        <button type="button" @click="showCreateModal = false" class="text-ink-muted hover:text-ink p-1 rounded" aria-label="Tutup"><X class="w-4 h-4" :stroke-width="1.5" /></button>
                     </div>
 
                     <div class="p-6 space-y-4 text-xs">
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block font-bold text-gov-navy-900 mb-1">
+                                <label class="block font-bold text-ink mb-1">
                                     {{ isKelurahanBpp ? 'Jenis Pertanggungjawaban *' : 'Jenis Pengajuan SPP *' }}
                                 </label>
-                                <select v-model="newBundleForm.jenis_bundel" class="w-full text-xs rounded-lg border-gov-surface-border py-2 px-3" :disabled="isKelurahanBpp">
+                                <select v-model="newBundleForm.jenis_bundel" class="w-full text-xs rounded-lg border-hairline py-2 px-3" :disabled="isKelurahanBpp">
                                     <option v-if="isKelurahanBpp" value="LPJ_BPP">LPJ-BPP (Laporan Pertanggungjawaban BPP Kelurahan)</option>
                                     <template v-else>
                                         <option value="SPP_GU">SPP-GU (Ganti Uang Persediaan)</option>
@@ -572,49 +573,49 @@ const BUNDLE_STATUS_LABELS = {
                                 </select>
                             </div>
                             <div>
-                                <label class="block font-bold text-gov-navy-900 mb-1">
+                                <label class="block font-bold text-ink mb-1">
                                     {{ isKelurahanBpp ? 'Nomor Referensi LPJ-BPP' : 'Nomor Referensi SPP SIPD-RI' }}
                                 </label>
                                 <input
                                     v-model="newBundleForm.nomor_spp_sipd"
                                     type="text"
                                     :placeholder="isKelurahanBpp ? 'Contoh: 001/LPJ-BPP/PATARUMAN/2026' : 'Contoh: 0012/SPP-GU/TARKID/2026'"
-                                    class="w-full text-xs rounded-lg border-gov-surface-border py-2 px-3"
+                                    class="w-full text-xs rounded-lg border-hairline py-2 px-3"
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <label class="block font-bold text-gov-navy-900 mb-1.5 flex items-center justify-between">
+                            <label class="block font-bold text-ink mb-1.5 flex items-center justify-between">
                                 <span>Pilih Kuitansi Lolos Verifikasi (Tier 1) *</span>
-                                <span class="text-slate-500 font-normal">Hanya kuitansi yang sah bertanda Lolos</span>
+                                <span class="text-ink-muted font-normal">Hanya kuitansi yang sah bertanda Lolos</span>
                             </label>
                             
-                            <div v-if="loadingReceipts" class="p-6 text-center text-slate-400">
+                            <div v-if="loadingReceipts" class="p-6 text-center text-ink-muted">
                                 Memuat kuitansi lolos verifikasi...
                             </div>
-                            <div v-else-if="verifiedReceipts.length === 0" class="p-6 text-center text-slate-500 bg-slate-50 rounded-lg border border-slate-200">
+                            <div v-else-if="verifiedReceipts.length === 0" class="p-6 text-center text-ink-muted bg-raised rounded-lg border border-hairline">
                                 Belum ada kuitansi baru berstatus LOLOS_VERIFIKASI untuk dibundel.
                             </div>
-                            <div v-else class="max-h-60 overflow-y-auto space-y-2 border border-slate-200 rounded-lg p-2">
+                            <div v-else class="max-h-60 overflow-y-auto scrollbar-thin space-y-2 border border-hairline rounded-lg p-2">
                                 <label
                                     v-for="rec in verifiedReceipts"
                                     :key="rec.kuitansi_id || rec.id"
-                                    class="flex items-center justify-between p-2.5 rounded bg-slate-50 hover:bg-slate-100 cursor-pointer border border-slate-200"
+                                    class="flex items-center justify-between p-2.5 rounded bg-raised hover:bg-raised cursor-pointer border border-hairline"
                                 >
                                     <div class="flex items-center gap-3">
                                         <input
                                             type="checkbox"
                                             :value="rec.kuitansi_id || rec.id"
                                             v-model="newBundleForm.selected_kuitansi_ids"
-                                            class="rounded text-gov-navy-900 focus:ring-gov-navy-800"
+                                            class="rounded text-ink focus:ring-accent"
                                         />
                                         <div>
-                                            <div class="font-bold text-gov-navy-950">{{ rec.nomor_kuitansi || rec.id }}</div>
-                                            <div class="text-xs text-slate-500">{{ rec.uraian_belanja || rec.uraian }}</div>
+                                            <div class="font-bold text-ink">{{ rec.nomor_kuitansi || rec.id }}</div>
+                                            <div class="text-xs text-ink-muted">{{ rec.uraian_belanja || rec.uraian }}</div>
                                         </div>
                                     </div>
-                                    <div class="font-bold text-gov-navy-900 tabular-nums">
+                                    <div class="font-bold text-ink tabular-nums">
                                         {{ formatRupiah(rec.nominal_bruto || rec.nominal) }}
                                     </div>
                                 </label>
@@ -622,7 +623,7 @@ const BUNDLE_STATUS_LABELS = {
                         </div>
                     </div>
 
-                    <div class="bg-slate-50 px-6 py-4 border-t border-slate-200 flex justify-end gap-3">
+                    <div class="bg-raised px-6 py-4 border-t border-hairline flex justify-end gap-3">
                         <GovButton variant="secondary" size="sm" @click="showCreateModal = false">Batal</GovButton>
                         <GovButton variant="gold" size="sm" :loading="isSubmitting" @click="handleCreateBundle">
                             Sahkan & Simpan Bundel
@@ -634,19 +635,19 @@ const BUNDLE_STATUS_LABELS = {
 
         <!-- Modal Pencatatan Nomor SP2D SIPD-RI (Camat / KPA) -->
         <div v-if="showSp2dModal" class="fixed inset-0 z-50 overflow-y-auto">
-            <div class="fixed inset-0 bg-gov-navy-950/70 backdrop-blur-sm" @click="showSp2dModal = false"></div>
+            <div class="fixed inset-0 bg-ink/40" @click="showSp2dModal = false"></div>
             <div class="flex min-h-full items-center justify-center p-4">
-                <div class="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-gov-surface-border overflow-hidden">
-                    <div class="bg-gov-navy-950 text-white px-6 py-4 flex items-center justify-between">
+                <div class="relative w-full max-w-lg rounded-xl bg-surface shadow-floating border border-hairline overflow-hidden">
+                    <div class="bg-surface text-ink border-b border-hairline px-6 py-4 flex items-center justify-between">
                         <div>
                             <h3 class="text-base font-bold text-white flex items-center gap-2">
                                 <span>Pencatatan Realisasi SP2D SIPD-RI</span>
                             </h3>
-                            <p class="text-xs text-gov-gold-400 mt-0.5 font-mono">
+                            <p class="text-xs text-accent-soft mt-0.5 font-mono">
                                 Bundel: {{ selectedBundleForSp2d?.nomor_bundel || selectedBundleForSp2d?.nomor_spp }}
                             </p>
                         </div>
-                        <button type="button" @click="showSp2dModal = false" class="text-slate-400 hover:text-white">Tutup</button>
+                        <button type="button" @click="showSp2dModal = false" class="text-ink-muted hover:text-ink p-1 rounded" aria-label="Tutup"><X class="w-4 h-4" :stroke-width="1.5" /></button>
                     </div>
 
                     <div class="p-6 space-y-4 text-xs">
@@ -655,7 +656,7 @@ const BUNDLE_STATUS_LABELS = {
                         </div>
 
                         <div>
-                            <label class="block font-bold text-gov-navy-900 mb-1">
+                            <label class="block font-bold text-ink mb-1">
                                 Nomor SP2D Resmi SIPD-RI <span class="text-rose-500">*</span>
                             </label>
                             <input
@@ -663,36 +664,36 @@ const BUNDLE_STATUS_LABELS = {
                                 type="text"
                                 required
                                 placeholder="Contoh: 0042/SP2D-GU/TARKID/2026"
-                                class="w-full text-xs rounded-lg border-gov-surface-border py-2 px-3 font-mono focus:border-gov-navy-900 focus:ring-gov-navy-900"
+                                class="w-full text-xs rounded-lg border-hairline py-2 px-3 font-mono focus:border-accent focus:ring-accent"
                             />
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block font-bold text-gov-navy-900 mb-1">Nomor Pengantar SPP</label>
+                                <label class="block font-bold text-ink mb-1">Nomor Pengantar SPP</label>
                                 <input
                                     v-model="sp2dForm.nomor_spp"
                                     type="text"
                                     placeholder="Nomor SPP"
-                                    class="w-full text-xs rounded-lg border-gov-surface-border py-2 px-3 font-mono"
+                                    class="w-full text-xs rounded-lg border-hairline py-2 px-3 font-mono"
                                 />
                             </div>
                             <div>
-                                <label class="block font-bold text-gov-navy-900 mb-1">Tanggal Terbit SP2D</label>
+                                <label class="block font-bold text-ink mb-1">Tanggal Terbit SP2D</label>
                                 <input
                                     v-model="sp2dForm.tanggal_sp2d"
                                     type="date"
-                                    class="w-full text-xs rounded-lg border-gov-surface-border py-2 px-3"
+                                    class="w-full text-xs rounded-lg border-hairline py-2 px-3"
                                 />
                             </div>
                         </div>
 
-                        <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-1 text-xs">
-                            <div class="flex justify-between text-slate-500">
+                        <div class="p-3 bg-raised border border-hairline rounded-lg space-y-1 text-xs">
+                            <div class="flex justify-between text-ink-muted">
                                 <span>Jumlah Kuitansi:</span>
-                                <span class="font-bold text-slate-800">{{ (selectedBundleForSp2d?.kuitansi_list || selectedBundleForSp2d?.items || []).length }} berkas</span>
+                                <span class="font-bold text-ink">{{ (selectedBundleForSp2d?.kuitansi_list || selectedBundleForSp2d?.items || []).length }} berkas</span>
                             </div>
-                            <div class="flex justify-between text-slate-500">
+                            <div class="flex justify-between text-ink-muted">
                                 <span>Total Belanja Definitif:</span>
                                 <span class="font-bold text-emerald-700 text-xs tabular-nums">
                                     {{ formatRupiah(selectedBundleForSp2d?.total_nominal || selectedBundleForSp2d?.total_bruto) }}
@@ -701,7 +702,7 @@ const BUNDLE_STATUS_LABELS = {
                         </div>
                     </div>
 
-                    <div class="bg-slate-50 px-6 py-4 border-t border-slate-200 flex justify-end gap-3">
+                    <div class="bg-raised px-6 py-4 border-t border-hairline flex justify-end gap-3">
                         <GovButton variant="secondary" size="sm" @click="showSp2dModal = false">Batal</GovButton>
                         <GovButton
                             variant="success"
@@ -719,48 +720,48 @@ const BUNDLE_STATUS_LABELS = {
         <!-- Modal Input Kode Billing & NTPN per Baris Pajak -->
         <div
             v-if="showTaxModal"
-            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/40"
         >
-            <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full border border-slate-200 overflow-hidden">
-                <div class="px-6 py-4 bg-gov-navy-950 text-white font-bold flex items-center justify-between">
+            <div class="bg-surface rounded-xl shadow-floating max-w-2xl w-full border border-hairline overflow-hidden">
+                <div class="px-6 py-4 bg-surface text-ink border-b border-hairline font-bold flex items-center justify-between">
                     <span class="text-sm">Setoran Pajak (Kode Billing &amp; NTPN) — {{ selectedReceiptForTax?.id }}</span>
-                    <button type="button" @click="showTaxModal = false" class="text-white/80 hover:text-white text-lg">&times;</button>
+                    <button type="button" @click="showTaxModal = false" class="text-ink-muted hover:text-ink p-1 rounded" aria-label="Tutup"><X class="w-4 h-4" :stroke-width="1.5" /></button>
                 </div>
-                <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto scrollbar-thin">
                     <div
                         v-for="row in taxFormRows"
                         :key="row.kuitansi_pajak_id"
-                        class="p-3 rounded-lg border border-slate-200 bg-slate-50 space-y-2.5 text-xs"
+                        class="p-3 rounded-lg border border-hairline bg-raised space-y-2.5 text-xs"
                     >
-                        <div class="flex items-center justify-between font-bold text-gov-navy-900">
+                        <div class="flex items-center justify-between font-bold text-ink">
                             <span>{{ row.nama_pajak }} ({{ row.kode_pajak }})</span>
                             <span class="tabular-nums">{{ formatRupiah(row.nominal) }}</span>
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                             <div>
-                                <label class="block text-slate-600 mb-1">Kode Billing</label>
+                                <label class="block text-ink-secondary mb-1">Kode Billing</label>
                                 <input
                                     v-model="row.kode_billing"
                                     type="text"
                                     placeholder="15 digit Kode Billing"
-                                    class="w-full rounded border-slate-300 text-xs py-1.5 px-2"
+                                    class="w-full rounded border-hairline text-xs py-1.5 px-2"
                                 />
                             </div>
                             <div>
-                                <label class="block text-slate-600 mb-1">NTPN *</label>
+                                <label class="block text-ink-secondary mb-1">NTPN *</label>
                                 <input
                                     v-model="row.ntpn"
                                     type="text"
                                     placeholder="Nomor NTPN"
-                                    class="w-full rounded border-slate-300 text-xs py-1.5 px-2 font-mono"
+                                    class="w-full rounded border-hairline text-xs py-1.5 px-2 font-mono"
                                 />
                             </div>
                             <div>
-                                <label class="block text-slate-600 mb-1">Tanggal Setor</label>
+                                <label class="block text-ink-secondary mb-1">Tanggal Setor</label>
                                 <input
                                     v-model="row.tanggal_setor"
                                     type="date"
-                                    class="w-full rounded border-slate-300 text-xs py-1.5 px-2"
+                                    class="w-full rounded border-hairline text-xs py-1.5 px-2"
                                 />
                             </div>
                         </div>
@@ -769,20 +770,20 @@ const BUNDLE_STATUS_LABELS = {
                                 type="file"
                                 accept=".pdf,.jpg,.jpeg,.png"
                                 @change="(e) => { row.file = e.target.files?.[0] || null; }"
-                                class="text-xs text-slate-600"
+                                class="text-xs text-ink-secondary"
                             />
                             <a
                                 v-if="row.bukti_setor_path"
                                 :href="`/api/v1/receipts/${selectedReceiptForTax?.kuitansi_id}/tax-settlement/${row.kuitansi_pajak_id}/preview`"
                                 target="_blank"
-                                class="text-xs font-semibold text-gov-navy-800 underline shrink-0"
+                                class="text-xs font-semibold text-accent underline shrink-0"
                             >
                                 Lihat Bukti Tersimpan
                             </a>
                         </div>
                     </div>
                 </div>
-                <div class="px-6 py-3 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
+                <div class="px-6 py-3 bg-raised border-t border-hairline flex justify-end gap-2">
                     <GovButton variant="secondary" size="sm" @click="showTaxModal = false">Batal</GovButton>
                     <GovButton variant="primary" size="sm" :loading="isSavingTax" @click="submitTaxSettlement">
                         Simpan NTPN

@@ -134,10 +134,10 @@ function handleConfirm() {
 <template>
     <div v-if="show" class="fixed inset-0 z-50 overflow-y-auto">
         <!-- Backdrop -->
-        <div class="fixed inset-0 bg-gov-navy-950/70 backdrop-blur-sm transition-opacity" @click="$emit('close')"></div>
+        <div class="fixed inset-0 bg-ink/40 transition-opacity" @click="$emit('close')"></div>
 
         <div class="flex min-h-full items-center justify-center p-4">
-            <div class="relative w-full max-w-4xl rounded-2xl bg-white shadow-2xl border border-gov-surface-border overflow-hidden">
+            <div class="relative w-full max-w-4xl rounded-xl bg-surface shadow-floating border border-hairline overflow-hidden">
                 <!-- Modal Header -->
                 <div class="bg-surface px-6 py-4 flex items-center justify-between border-b border-hairline">
                     <div class="flex items-center gap-3">

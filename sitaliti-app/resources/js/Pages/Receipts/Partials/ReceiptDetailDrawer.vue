@@ -220,7 +220,7 @@ function getStatusBadge(status) {
             <div
                 v-if="show"
                 @click="closeDrawer"
-                class="fixed inset-0 bg-slate-900/60 z-50 backdrop-blur-xs"
+                class="fixed inset-0 bg-ink/40 z-50"
             ></div>
         </transition>
 
@@ -235,7 +235,7 @@ function getStatusBadge(status) {
         >
             <aside
                 v-if="show"
-                class="fixed inset-y-0 right-0 z-50 w-full max-w-2xl bg-white shadow-2xl flex flex-col border-l border-slate-200"
+                class="fixed inset-y-0 right-0 z-50 w-full max-w-2xl bg-surface shadow-floating flex flex-col border-l border-hairline"
                 aria-label="Panel Rincian Kuitansi"
             >
                 <!-- Drawer Header -->
@@ -264,7 +264,7 @@ function getStatusBadge(status) {
                 </div>
 
                 <!-- Drawer Body (Scrollable) -->
-                <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                <div class="flex-1 overflow-y-auto scrollbar-thin p-6 space-y-6">
                     <!-- Loading State -->
                     <div v-if="isLoading" class="py-16 flex flex-col items-center justify-center space-y-3 text-ink-muted">
                         <Loader2 class="w-6 h-6 animate-spin text-accent" :stroke-width="1.5" />
@@ -293,7 +293,7 @@ function getStatusBadge(status) {
                                         Perlu Tindak Lanjut Revisi Minor (SLA 2 Hari Kerja)
                                     </div>
                                     <p>Batas Waktu SLA: <span class="font-semibold">{{ formatTanggalIndo(receipt.tenggat_sla, true) }}</span></p>
-                                    <p v-if="receipt.catatan_verifikasi" class="text-slate-700 italic bg-white/70 p-2 rounded border border-amber-200">
+                                    <p v-if="receipt.catatan_verifikasi" class="text-ink-secondary italic bg-surface/80 p-2 rounded border border-amber-200">
                                         "{{ receipt.catatan_verifikasi }}"
                                     </p>
                                 </div>
@@ -301,47 +301,47 @@ function getStatusBadge(status) {
                         </div>
 
                         <!-- 1. Ringkasan Pos Anggaran & Identitas Belanja -->
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                            <h3 class="text-xs font-bold text-slate-500 ">
+                        <div class="bg-raised p-4 rounded-xl border border-hairline space-y-3">
+                            <h3 class="text-xs font-bold text-ink-muted ">
                                 Pos Anggaran & Dokumen Belanja
                             </h3>
                             <div class="grid grid-cols-2 gap-3 text-xs">
                                 <div>
-                                    <span class="text-slate-500 block">Unit Kerja:</span>
-                                    <span class="font-semibold text-slate-900">{{ receipt.rekening?.unit_kerja?.nama_unit || '-' }}</span>
+                                    <span class="text-ink-muted block">Unit Kerja:</span>
+                                    <span class="font-semibold text-ink">{{ receipt.rekening?.unit_kerja?.nama_unit || '-' }}</span>
                                 </div>
                                 <div>
-                                    <span class="text-slate-500 block">Bulan Kas RAK:</span>
-                                    <span class="font-semibold text-slate-900">Bulan {{ receipt.bulan_anggaran }} (2026)</span>
+                                    <span class="text-ink-muted block">Bulan Kas RAK:</span>
+                                    <span class="font-semibold text-ink">Bulan {{ receipt.bulan_anggaran }} (2026)</span>
                                 </div>
                                 <div class="col-span-2">
-                                    <span class="text-slate-500 block">Kode & Nama Rekening:</span>
-                                    <span class="font-mono font-semibold text-slate-900">{{ receipt.rekening?.kode_rekening }}</span>
-                                    <span class="text-slate-700 block mt-0.5">{{ receipt.rekening?.nama_rekening }}</span>
+                                    <span class="text-ink-muted block">Kode & Nama Rekening:</span>
+                                    <span class="font-mono font-semibold text-ink">{{ receipt.rekening?.kode_rekening }}</span>
+                                    <span class="text-ink-secondary block mt-0.5">{{ receipt.rekening?.nama_rekening }}</span>
                                 </div>
                                 <div class="col-span-2">
-                                    <span class="text-slate-500 block">Uraian Transaksi:</span>
-                                    <span class="font-medium text-slate-900">{{ receipt.uraian }}</span>
+                                    <span class="text-ink-muted block">Uraian Transaksi:</span>
+                                    <span class="font-medium text-ink">{{ receipt.uraian }}</span>
                                 </div>
                                 <div>
-                                    <span class="text-slate-500 block">Rekanan / Penerima:</span>
-                                    <span class="font-semibold text-slate-900">{{ receipt.nama_penerima || '-' }}</span>
+                                    <span class="text-ink-muted block">Rekanan / Penerima:</span>
+                                    <span class="font-semibold text-ink">{{ receipt.nama_penerima || '-' }}</span>
                                 </div>
                                 <div>
-                                    <span class="text-slate-500 block">NPWP Rekanan:</span>
-                                    <span class="font-mono text-slate-900">{{ receipt.npwp_penerima || 'Tanpa NPWP (Penalti 100%)' }}</span>
+                                    <span class="text-ink-muted block">NPWP Rekanan:</span>
+                                    <span class="font-mono text-ink">{{ receipt.npwp_penerima || 'Tanpa NPWP (Penalti 100%)' }}</span>
                                 </div>
                             </div>
                         </div>
 
                         <!-- 2. Rincian Item Belanja -->
                         <div class="space-y-2">
-                            <h3 class="text-xs font-bold text-slate-500 ">
+                            <h3 class="text-xs font-bold text-ink-muted ">
                                 Rincian Barang / Jasa
                             </h3>
-                            <div class="border border-slate-200 rounded-xl overflow-hidden">
-                                <table class="min-w-full divide-y divide-slate-200 text-xs text-left">
-                                    <thead class="bg-slate-100 font-semibold text-slate-700">
+                            <div class="border border-hairline rounded-xl overflow-hidden">
+                                <table class="min-w-full divide-y divide-hairline text-xs text-left">
+                                    <thead class="bg-raised font-semibold text-ink-secondary">
                                         <tr>
                                             <th class="py-2.5 px-3">Nama Barang / Jasa</th>
                                             <th class="py-2.5 px-3 text-center">Volume</th>
@@ -349,17 +349,17 @@ function getStatusBadge(status) {
                                             <th class="py-2.5 px-3 text-right">Subtotal (Rp)</th>
                                         </tr>
                                     </thead>
-                                    <tbody class="divide-y divide-slate-100 bg-white">
-                                        <tr v-for="(item, idx) in receipt.items" :key="idx" class="hover:bg-slate-50/50">
-                                            <td class="py-2 px-3 font-medium text-slate-900">{{ item.nama_barang }}</td>
-                                            <td class="py-2 px-3 text-center text-slate-600">{{ item.volume }} {{ item.satuan || 'Pcs' }}</td>
-                                            <td class="py-2 px-3 text-right tabular-nums text-slate-700">{{ formatRupiah(item.harga_satuan) }}</td>
-                                            <td class="py-2 px-3 text-right tabular-nums font-semibold text-slate-900">
+                                    <tbody class="divide-y divide-hairline bg-surface">
+                                        <tr v-for="(item, idx) in receipt.items" :key="idx" class="hover:bg-raised/60">
+                                            <td class="py-2 px-3 font-medium text-ink">{{ item.nama_barang }}</td>
+                                            <td class="py-2 px-3 text-center text-ink-secondary">{{ item.volume }} {{ item.satuan || 'Pcs' }}</td>
+                                            <td class="py-2 px-3 text-right tabular-nums text-ink-secondary">{{ formatRupiah(item.harga_satuan) }}</td>
+                                            <td class="py-2 px-3 text-right tabular-nums font-semibold text-ink">
                                                 {{ formatRupiah(Number(item.volume) * Number(item.harga_satuan)) }}
                                             </td>
                                         </tr>
                                         <tr v-if="!receipt.items || receipt.items.length === 0">
-                                            <td colspan="4" class="py-4 text-center text-slate-400">Tidak ada item rincian.</td>
+                                            <td colspan="4" class="py-4 text-center text-ink-muted">Tidak ada item rincian.</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -367,28 +367,28 @@ function getStatusBadge(status) {
                         </div>
 
                         <!-- 3. Rekonsiliasi Keuangan & Perhitungan Pajak -->
-                        <div class="bg-gov-navy-950/5 p-4 rounded-xl border border-gov-navy-900/10 space-y-3">
-                            <h3 class="text-xs font-bold text-gov-navy-900 ">
+                        <div class="bg-raised p-4 rounded-xl border border-hairline space-y-3">
+                            <h3 class="text-xs font-bold text-ink ">
                                 Rekonsiliasi Keuangan & Pemotongan Pajak
                             </h3>
                             <div class="space-y-2 text-xs">
-                                <div class="flex justify-between py-1 border-b border-slate-200">
-                                    <span class="text-slate-600">Nominal Bruto Belanja:</span>
-                                    <span class="font-bold text-slate-900 tabular-nums">{{ formatRupiah(receipt.nominal_bruto) }}</span>
+                                <div class="flex justify-between py-1 border-b border-hairline">
+                                    <span class="text-ink-secondary">Nominal Bruto Belanja:</span>
+                                    <span class="font-bold text-ink tabular-nums">{{ formatRupiah(receipt.nominal_bruto) }}</span>
                                 </div>
 
                                 <!-- Rincian Komponen Pajak Rekanan -->
-                                <div v-for="pjk in taxDeductions" :key="pjk.id" class="flex justify-between text-slate-600 pl-3">
+                                <div v-for="pjk in taxDeductions" :key="pjk.id" class="flex justify-between text-ink-secondary pl-3">
                                     <span>• {{ pjk.nama_pajak }} (DPP: {{ formatRupiah(pjk.dpp) }}):</span>
                                     <span class="font-medium text-rose-600 tabular-nums">- {{ formatRupiah(pjk.nominal) }}</span>
                                 </div>
 
-                                <div v-if="taxDeductions.length === 0" class="text-slate-400 italic text-xs pl-3">
+                                <div v-if="taxDeductions.length === 0" class="text-ink-muted italic text-xs pl-3">
                                     Bebas pemotongan pajak rekanan (PMK 59/2022).
                                 </div>
 
-                                <div class="flex justify-between py-1 border-b border-slate-200">
-                                    <span class="text-slate-600 font-medium">Total Potongan Pajak Rekanan:</span>
+                                <div class="flex justify-between py-1 border-b border-hairline">
+                                    <span class="text-ink-secondary font-medium">Total Potongan Pajak Rekanan:</span>
                                     <span class="font-bold text-rose-600 tabular-nums">- {{ formatRupiah(receipt.total_pajak) }}</span>
                                 </div>
 
@@ -405,31 +405,31 @@ function getStatusBadge(status) {
                                     </span>
                                 </div>
 
-                                <div class="flex justify-between py-2 text-sm bg-gov-navy-900 text-white px-3 rounded-lg font-bold">
+                                <div class="flex justify-between py-2 text-sm bg-accent text-white px-3 rounded-lg font-bold">
                                     <span>Nominal Pembayaran Neto:</span>
-                                    <span class="tabular-nums text-gov-gold-400">{{ formatRupiah(receipt.nominal_neto) }}</span>
+                                    <span class="tabular-nums text-accent-soft">{{ formatRupiah(receipt.nominal_neto) }}</span>
                                 </div>
                             </div>
                         </div>
 
                         <!-- 4. Berkas Bukti & Lampiran SHA-256 -->
                         <div class="space-y-2">
-                            <h3 class="text-xs font-bold text-slate-500 ">
+                            <h3 class="text-xs font-bold text-ink-muted ">
                                 Berkas Bukti & Hash SHA-256 (Anti-Duplikasi)
                             </h3>
                             <div class="space-y-1.5">
                                 <div
                                     v-for="lampiran in receipt.lampiran"
                                     :key="lampiran.id"
-                                    class="p-3 bg-white rounded-lg border border-slate-200 text-xs flex items-center justify-between"
+                                    class="p-3 bg-surface rounded-lg border border-hairline text-xs flex items-center justify-between"
                                 >
                                     <div class="flex items-center gap-2 max-w-sm truncate">
-                                        <svg class="w-4 h-4 text-gov-navy-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg class="w-4 h-4 text-accent shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                                         </svg>
                                         <div class="truncate">
-                                            <div class="font-medium text-slate-800 truncate">{{ lampiran.nama_dokumen || lampiran.file_name }}</div>
-                                            <div class="text-xs text-slate-400 font-mono truncate">SHA: {{ lampiran.file_hash }}</div>
+                                            <div class="font-medium text-ink truncate">{{ lampiran.nama_dokumen || lampiran.file_name }}</div>
+                                            <div class="text-xs text-ink-muted font-mono truncate">SHA: {{ lampiran.file_hash }}</div>
                                         </div>
                                     </div>
 
@@ -438,7 +438,7 @@ function getStatusBadge(status) {
                                     </span>
                                 </div>
 
-                                <div v-if="!receipt.lampiran || receipt.lampiran.length === 0" class="p-3 bg-slate-50 rounded-lg text-center text-slate-400 text-xs">
+                                <div v-if="!receipt.lampiran || receipt.lampiran.length === 0" class="p-3 bg-raised rounded-lg text-center text-ink-muted text-xs">
                                     Belum ada lampiran berkas yang diunggah.
                                 </div>
                             </div>
@@ -446,24 +446,24 @@ function getStatusBadge(status) {
 
                         <!-- 4b. Pelaksana & Foto Keberangkatan SPPD -->
                         <div v-if="(receipt.sppd_peserta && receipt.sppd_peserta.length > 0) || receipt.sppd_foto_url" class="space-y-2">
-                            <h3 class="text-xs font-bold text-slate-500">
+                            <h3 class="text-xs font-bold text-ink-muted">
                                 Pelaksana Perjalanan Dinas (SPPD) &amp; Foto Keberangkatan
                             </h3>
-                            <div class="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100 text-xs">
+                            <div class="bg-surface rounded-lg border border-hairline divide-y divide-hairline text-xs">
                                 <div
                                     v-for="peserta in receipt.sppd_peserta || []"
                                     :key="peserta.id"
                                     class="p-3 flex items-center justify-between gap-3"
                                 >
                                     <div class="min-w-0">
-                                        <div class="font-semibold text-slate-800 truncate">
+                                        <div class="font-semibold text-ink truncate">
                                             {{ peserta.pegawai?.nama || `Pegawai #${peserta.pegawai_id}` }}
                                         </div>
-                                        <div class="text-[11px] text-slate-500 font-mono tabular-nums">
+                                        <div class="text-xs text-ink-muted font-mono tabular-nums">
                                             NIP {{ peserta.pegawai?.nip || '-' }} •
                                             {{ (peserta.tanggal_berangkat || '').slice(0, 10) }} s/d {{ (peserta.tanggal_pulang || '').slice(0, 10) }}
                                         </div>
-                                        <div v-if="peserta.tujuan" class="text-[11px] text-slate-600 mt-0.5 truncate">
+                                        <div v-if="peserta.tujuan" class="text-xs text-ink-secondary mt-0.5 truncate">
                                             Tujuan: {{ peserta.tujuan }}
                                         </div>
                                     </div>
@@ -477,23 +477,23 @@ function getStatusBadge(status) {
                                         <img
                                             :src="peserta.foto_url || receipt.sppd_foto_url"
                                             alt="Foto Keberangkatan"
-                                            class="w-11 h-11 rounded-md object-cover border border-slate-200 group-hover:ring-2 group-hover:ring-gov-navy-700"
+                                            class="w-11 h-11 rounded-md object-cover border border-hairline group-hover:ring-2 group-hover:ring-accent"
                                         />
                                     </a>
                                 </div>
                                 <div v-if="receipt.sppd_foto_url && (!receipt.sppd_peserta || receipt.sppd_peserta.length === 0)" class="p-3 flex items-center justify-between">
-                                    <span class="text-slate-600">Foto Keberangkatan Rombongan</span>
-                                    <a :href="receipt.sppd_foto_url" target="_blank" class="text-gov-navy-700 font-medium underline">Lihat Foto</a>
+                                    <span class="text-ink-secondary">Foto Keberangkatan Rombongan</span>
+                                    <a :href="receipt.sppd_foto_url" target="_blank" class="text-accent font-medium underline">Lihat Foto</a>
                                 </div>
                             </div>
                         </div>
 
                         <!-- 5. Jejak Audit BPK (Timeline) -->
                         <div class="space-y-3 pt-2">
-                            <h3 class="text-xs font-bold text-slate-500 ">
+                            <h3 class="text-xs font-bold text-ink-muted ">
                                 Jejak Audit BPK & Riwayat Transisi Status
                             </h3>
-                            <div class="bg-white p-4 rounded-xl border border-slate-200">
+                            <div class="bg-surface p-4 rounded-xl border border-hairline">
                                 <AuditTimeline :events="receipt.riwayat || []" />
                             </div>
                         </div>
@@ -501,7 +501,7 @@ function getStatusBadge(status) {
                 </div>
 
                 <!-- Drawer Footer: Aksi Kontekstual Berdasarkan Role -->
-                <div v-if="receipt" class="p-4 bg-slate-50 border-t border-slate-200 space-y-2">
+                <div v-if="receipt" class="p-4 bg-raised border-t border-hairline space-y-2">
                     <div class="flex items-center justify-between gap-3">
                         <GovButton @click="closeDrawer" variant="secondary" size="sm">
                             Tutup
@@ -525,7 +525,7 @@ function getStatusBadge(status) {
                                 variant="primary"
                                 size="sm"
                                 :disabled="isActionLoading"
-                                class="shadow-sm"
+                                class="shadow-subtle"
                             >
                                 {{ isActionLoading ? 'Memproses...' : (currentUser?.can_auto_finalize_receipt ? 'Ajukan & Finalisasi' : 'Ajukan Verifikasi') }}
                             </GovButton>
