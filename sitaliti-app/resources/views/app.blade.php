@@ -8,10 +8,6 @@
         <link rel="icon" type="image/webp" href="/Lambang_Kabupaten_Garut.svg.webp">
         <link rel="apple-touch-icon" href="/Lambang_Kabupaten_Garut.svg.webp">
 
-        <!-- Fonts -->
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=plus-jakarta-sans:400,500,600|jetbrains-mono:400,500&display=swap" rel="stylesheet" />
-
         <!-- Scripts -->
         @routes
         @vite(['resources/js/app.js', "resources/js/Pages/{$page['component']}.vue"])
