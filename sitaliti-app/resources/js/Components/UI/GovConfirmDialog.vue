@@ -20,7 +20,7 @@ const VARIANT_CONFIG = {
         Icon: AlertTriangle,
     },
     primary: {
-        iconBg: 'bg-slate-100 text-accent border-hairline',
+        iconBg: 'bg-raised text-accent border-hairline',
         buttonVariant: 'primary',
         Icon: HelpCircle,
     },
@@ -64,7 +64,7 @@ function handleBackdropClick(event) {
     <dialog
         ref="dialogRef"
         aria-labelledby="gov-confirm-title"
-        class="gov-confirm-dialog w-[calc(100vw-2rem)] max-w-md rounded-xl bg-surface text-ink border border-hairline p-0 shadow-xl backdrop:bg-slate-900/50"
+        class="gov-confirm-dialog w-[calc(100vw-2rem)] max-w-md rounded-xl bg-surface text-ink border border-hairline p-0 shadow-floating backdrop:bg-ink/40"
         @cancel="handleNativeCancel"
         @pointerdown="handlePointerDown"
         @click="handleBackdropClick"
@@ -77,7 +77,7 @@ function handleBackdropClick(event) {
                 >
                     <component
                         :is="(VARIANT_CONFIG[confirmState.variant] || VARIANT_CONFIG.primary).Icon"
-                        class="w-4.5 h-4.5"
+                        class="w-4 h-4"
                         :stroke-width="1.8"
                     />
                 </div>
@@ -108,7 +108,7 @@ function handleBackdropClick(event) {
                     rows="3"
                     :disabled="confirmState.loading"
                     :placeholder="confirmState.reasonPlaceholder"
-                    class="w-full rounded-lg border border-hairline bg-surface px-3 py-2 text-xs text-ink placeholder:text-slate-400 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 disabled:opacity-60"
+                    class="w-full rounded-lg border border-hairline bg-surface px-3 py-2 text-xs text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 disabled:opacity-60"
                 />
             </div>
 

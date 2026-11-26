@@ -3,6 +3,7 @@ import GovAppLayout from '@/Layouts/GovAppLayout.vue';
 import GovCard from '@/Components/UI/GovCard.vue';
 import GovBadge from '@/Components/UI/GovBadge.vue';
 import GovButton from '@/Components/UI/GovButton.vue';
+import GovSkeleton from '@/Components/UI/GovSkeleton.vue';
 import { formatRupiah } from '@/Utils/currency';
 import { formatTanggalIndo } from '@/Utils/date';
 import { STATUS_LABELS, STATUS_VARIANTS } from '@/Constants/workflowStatus';
@@ -68,8 +69,13 @@ function handleGatekeeperSelected(context) {
         </template>
 
         <!-- Loading State -->
-        <div v-if="loading" class="py-12 text-center text-sm text-ink-muted">
-            Memuat ringkasan anggaran dan aktivitas SPJ...
+        <div v-if="loading" class="space-y-6" aria-busy="true" aria-label="Memuat ringkasan anggaran">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <GovSkeleton v-for="i in 4" :key="i" variant="card" />
+            </div>
+            <div class="bg-surface rounded-xl border border-hairline shadow-subtle overflow-hidden">
+                <GovSkeleton variant="table-row" :rows="5" :columns="4" />
+            </div>
         </div>
 
         <!-- Main Content -->

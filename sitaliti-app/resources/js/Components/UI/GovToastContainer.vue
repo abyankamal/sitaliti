@@ -76,7 +76,7 @@ onMounted(() => {
                 :key="item.id"
                 :role="item.type === 'error' ? 'alert' : 'status'"
                 :aria-live="item.type === 'error' ? 'assertive' : 'polite'"
-                class="pointer-events-auto flex items-start gap-3 rounded-xl border px-3.5 py-3 shadow-lg transition-all duration-200"
+                class="pointer-events-auto flex items-start gap-3 rounded-xl border px-3.5 py-3 shadow-floating transition-[opacity,transform] duration-200 ease-unslop"
                 :class="(TYPE_STYLES[item.type] || TYPE_STYLES.info).container"
                 @mouseenter="pause(item.id)"
                 @mouseleave="resume(item.id)"
