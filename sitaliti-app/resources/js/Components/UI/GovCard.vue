@@ -20,7 +20,7 @@ defineProps({
         <div v-if="title || $slots.header || $slots.actions" class="px-5 py-4 border-b border-hairline flex items-center justify-between gap-4">
             <div>
                 <slot name="header">
-                    <h3 class="text-base font-medium text-ink">{{ title }}</h3>
+                    <h3 class="text-base font-semibold text-ink">{{ title }}</h3>
                     <p v-if="subtitle" class="text-xs text-ink-muted mt-0.5">{{ subtitle }}</p>
                 </slot>
             </div>

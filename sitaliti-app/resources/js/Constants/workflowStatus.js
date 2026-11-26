@@ -16,6 +16,8 @@ export const WORKFLOW_STATUS = {
     REVISION_MAJOR: 'REVISION_MAJOR',   // Ditolak / revisi substansi mayor
     VERIFIED: 'VERIFIED',               // Lolos Verifikasi, Terbit Lembar Kendali QR
     BUNDLED: 'BUNDLED',                 // Telah masuk bundel SPP (GU/TU/LS)
+    TERVERIFIKASI: 'TERVERIFIKASI',
+    SYNCED_SIPD: 'SYNCED_SIPD',
 };
 
 export const STATUS_LABELS = {
@@ -36,6 +38,8 @@ export const STATUS_LABELS = {
     [WORKFLOW_STATUS.REVISION_MAJOR]: 'Ditolak (Revisi Mayor)',
     [WORKFLOW_STATUS.VERIFIED]: 'Terverifikasi Akuntabel',
     [WORKFLOW_STATUS.BUNDLED]: 'Dalam Bundel SPP',
+    [WORKFLOW_STATUS.TERVERIFIKASI]: 'Lolos Verifikasi',
+    [WORKFLOW_STATUS.SYNCED_SIPD]: 'Cair (SIPD-RI)',
 };
 
 export const STATUS_VARIANTS = {
@@ -56,4 +60,13 @@ export const STATUS_VARIANTS = {
     [WORKFLOW_STATUS.REVISION_MAJOR]: 'danger',
     [WORKFLOW_STATUS.VERIFIED]: 'success',
     [WORKFLOW_STATUS.BUNDLED]: 'primary',
+    [WORKFLOW_STATUS.TERVERIFIKASI]: 'success',
+    [WORKFLOW_STATUS.SYNCED_SIPD]: 'success',
 };
+
+export function getStatusMeta(status) {
+    return {
+        label: STATUS_LABELS[status] || status || '-',
+        variant: STATUS_VARIANTS[status] || 'neutral',
+    };
+}

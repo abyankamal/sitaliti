@@ -20,10 +20,10 @@ defineProps({
             size === 'sm' ? 'px-2 py-0.5' : 'px-2.5 py-1',
             variant === 'neutral' && 'bg-raised text-ink-secondary border-hairline',
             variant === 'primary' && 'bg-accent-soft text-accent border-accent-border',
-            variant === 'success' && 'bg-emerald-50/70 text-semantic-success border-emerald-200',
-            variant === 'warning' && 'bg-amber-50/70 text-semantic-warning border-amber-200',
-            variant === 'danger' && 'bg-red-50/70 text-semantic-danger border-red-200',
-            variant === 'info' && 'bg-sky-50/70 text-semantic-info border-sky-200',
+            variant === 'success' && 'bg-emerald-50 text-emerald-800 border-emerald-200',
+            variant === 'warning' && 'bg-amber-50 text-amber-900 border-amber-200',
+            variant === 'danger' && 'bg-red-50 text-red-800 border-red-200',
+            variant === 'info' && 'bg-sky-50 text-sky-900 border-sky-200',
         ]"
     >
         <span
