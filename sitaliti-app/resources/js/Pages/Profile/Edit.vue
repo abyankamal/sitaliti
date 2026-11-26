@@ -15,12 +15,12 @@ defineProps({
 </script>
 
 <template>
-    <Head title="Profile" />
+    <Head title="Profil Pengguna" />
 
     <GovAppLayout>
         <template #header>
             <h2 class="text-xl font-semibold leading-tight text-ink">
-                Profile
+                Profil Pengguna
             </h2>
         </template>
 
