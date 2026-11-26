@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue';
+import { Check, FileText, Upload } from 'lucide-vue-next';
 import GovBadge from '@/Components/UI/GovBadge.vue';
 import GovButton from '@/Components/UI/GovButton.vue';
 
@@ -65,25 +66,25 @@ function handleRemoveFile(index) {
 </script>
 
 <template>
-    <div class="bg-white rounded-xl border border-gov-surface-border p-5 shadow-sm space-y-4">
+    <div class="bg-surface rounded-xl border border-hairline p-5 shadow-subtle space-y-4">
         <!-- Checklist Header -->
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-gov-surface-border pb-3">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-hairline pb-3">
             <div>
                 <div class="flex items-center gap-2">
-                    <h3 class="text-sm font-bold text-gov-navy-950">
+                    <h3 class="text-sm font-semibold text-ink">
                         Checklist Kelengkapan Dokumen Wajib
                     </h3>
-                    <span class="px-2 py-0.5 rounded text-xs font-bold bg-gov-navy-900 text-white font-mono">
+                    <span class="px-2 py-0.5 rounded text-xs font-semibold bg-accent text-white font-mono">
                         {{ categoryCode }}
                     </span>
                 </div>
-                <p class="text-xs text-slate-500 mt-0.5">
+                <p class="text-xs text-ink-muted mt-0.5">
                     Standar dokumen bukti pertanggungjawaban untuk {{ categoryName || 'Kategori Belanja' }}
                 </p>
             </div>
-            <div class="text-xs text-slate-500 font-medium">
+            <div class="text-xs text-ink-muted font-medium">
                 Kelengkapan Dokumen:
-                <span class="font-bold text-gov-navy-950">
+                <span class="font-semibold text-ink font-mono tabular-nums">
                     {{ items.filter(d => d.file).length }} / {{ items.length }}
                 </span>
             </div>
@@ -108,8 +109,8 @@ function handleRemoveFile(index) {
                     doc.file
                         ? 'bg-emerald-50/40 border-emerald-200'
                         : doc.required
-                            ? 'bg-slate-50 border-slate-200'
-                            : 'bg-white border-dashed border-slate-200'
+                            ? 'bg-raised border-hairline'
+                            : 'bg-surface border-dashed border-hairline'
                 ]"
             >
                 <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
@@ -117,52 +118,48 @@ function handleRemoveFile(index) {
                     <div class="flex items-start gap-3 flex-1">
                         <!-- Status Icon -->
                         <div
-                            class="w-7 h-7 rounded-md flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold"
+                            class="w-7 h-7 rounded-md flex items-center justify-center shrink-0 mt-0.5 text-xs font-semibold"
                             :class="[
                                 doc.file
-                                    ? 'bg-emerald-500 text-white'
+                                    ? 'bg-semantic-success text-white'
                                     : doc.required
                                         ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                                        : 'bg-slate-100 text-slate-400'
+                                        : 'bg-raised text-ink-muted'
                             ]"
                         >
-                            <svg v-if="doc.file" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                            </svg>
+                            <Check v-if="doc.file" class="w-4 h-4" :stroke-width="1.75" />
                             <span v-else>{{ idx + 1 }}</span>
                         </div>
 
                         <div>
                             <div class="flex items-center gap-2 flex-wrap">
-                                <h4 class="text-xs font-bold text-gov-navy-900">{{ doc.name }}</h4>
+                                <h4 class="text-xs font-semibold text-ink">{{ doc.name }}</h4>
                                 <span
                                     v-if="doc.required"
-                                    class="text-xs font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200"
+                                    class="text-xs font-semibold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200"
                                 >
                                     Wajib
                                 </span>
                                 <span
                                     v-else
-                                    class="text-xs font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded"
+                                    class="text-xs font-medium text-ink-muted bg-raised px-1.5 py-0.5 rounded"
                                 >
                                     Kondisional / Opsional
                                 </span>
                             </div>
-                            <p class="text-xs text-slate-500 mt-0.5 leading-tight">{{ doc.description }}</p>
+                            <p class="text-xs text-ink-muted mt-0.5 leading-tight">{{ doc.description }}</p>
 
                             <!-- Uploaded File Badge -->
                             <div v-if="doc.file" class="mt-2 flex items-center gap-2">
                                 <span class="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-800 bg-emerald-100/70 px-2.5 py-1 rounded-md">
-                                    <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
+                                    <FileText class="w-3.5 h-3.5 text-semantic-success" :stroke-width="1.5" />
                                     <span class="max-w-xs truncate">{{ doc.file_name }}</span>
                                     <span class="text-xs text-emerald-700 font-mono">({{ doc.file_size }})</span>
                                 </span>
                                 <button
                                     type="button"
                                     @click="handleRemoveFile(idx)"
-                                    class="text-xs text-rose-600 hover:text-rose-800 hover:underline"
+                                    class="text-xs text-semantic-danger hover:underline"
                                 >
                                     Hapus
                                 </button>
@@ -173,16 +170,14 @@ function handleRemoveFile(index) {
                     <!-- Right: Upload Button Action -->
                     <div class="sm:self-center shrink-0">
                         <label
-                            class="cursor-pointer inline-flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors shadow-sm"
+                            class="cursor-pointer inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors shadow-subtle"
                             :class="[
                                 doc.file
-                                    ? 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-                                    : 'bg-gov-navy-900 text-white border-transparent hover:bg-gov-navy-800'
+                                    ? 'bg-surface text-ink-secondary border-hairline hover:bg-raised'
+                                    : 'bg-accent text-white border-transparent hover:bg-accent-hover'
                             ]"
                         >
-                            <svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                            </svg>
+                            <Upload class="w-3.5 h-3.5" :stroke-width="1.5" />
                             <span>{{ doc.file ? 'Ganti File' : 'Unggah Berkas' }}</span>
                             <input
                                 type="file"

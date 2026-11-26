@@ -399,13 +399,13 @@ async function openDeleteAttachmentModal(att) {
             <!-- Header -->
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                    <div class="flex items-center gap-2 text-xs text-slate-500 mb-1">
-                        <Link href="/receipts" class="hover:text-teal-700 font-medium">Daftar Kuitansi</Link>
+                    <div class="flex items-center gap-2 text-xs text-ink-muted mb-1">
+                        <Link href="/receipts" class="hover:text-accent font-medium">Daftar Kuitansi</Link>
                         <span>/</span>
-                        <span class="text-slate-700 font-semibold">Edit / Revisi</span>
+                        <span class="text-ink font-semibold">Edit / Revisi</span>
                     </div>
                     <div class="flex items-center gap-3">
-                        <h1 class="text-2xl font-bold text-slate-900 tracking-tight">
+                        <h1 class="text-xl font-semibold text-ink tracking-tight">
                             {{ receipt?.nomor_kuitansi || 'Memuat Kuitansi...' }}
                         </h1>
                         <GovBadge v-if="receipt" :variant="statusMeta.variant">
@@ -415,7 +415,7 @@ async function openDeleteAttachmentModal(att) {
                 </div>
 
                 <Link href="/receipts">
-                    <GovButton variant="outline">Kembali ke Daftar</GovButton>
+                    <GovButton variant="secondary">Kembali ke Daftar</GovButton>
                 </Link>
             </div>
 
@@ -435,32 +435,32 @@ async function openDeleteAttachmentModal(att) {
                 </p>
             </div>
 
-            <div v-if="isLoading" class="py-16 text-center text-sm text-slate-500">
+            <div v-if="isLoading" class="py-16 text-center text-sm text-ink-muted">
                 Memuat detail kuitansi...
             </div>
 
             <template v-else-if="receipt">
                 <!-- Context Card -->
-                <GovCard title="Informasi Rekening & Anggaran" :class="isMinorRevision ? 'bg-slate-50/70' : ''">
+                <GovCard title="Informasi Rekening & Anggaran" :class="isMinorRevision ? 'bg-raised/70' : ''">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                         <div>
-                            <span class="text-xs font-semibold text-slate-500 block">Unit Kerja</span>
-                            <span class="font-bold text-slate-900">{{ receipt.unit_kerja?.nama_unit || receipt.rekening?.unit_kerja?.nama_unit || '-' }}</span>
+                            <span class="text-xs font-semibold text-ink-muted block">Unit Kerja</span>
+                            <span class="font-semibold text-ink">{{ receipt.unit_kerja?.nama_unit || receipt.rekening?.unit_kerja?.nama_unit || '-' }}</span>
                         </div>
                         <div>
-                            <span class="text-xs font-semibold text-slate-500 block">Rekening Belanja</span>
-                            <span class="font-mono text-xs text-teal-800 font-bold">{{ receipt.rekening?.kode_rekening }}</span>
-                            <p class="text-xs text-slate-700 font-medium">{{ receipt.rekening?.nama_rekening }}</p>
+                            <span class="text-xs font-semibold text-ink-muted block">Rekening Belanja</span>
+                            <span class="font-mono text-xs text-accent font-semibold">{{ receipt.rekening?.kode_rekening }}</span>
+                            <p class="text-xs text-ink-secondary font-medium">{{ receipt.rekening?.nama_rekening }}</p>
                         </div>
                         <div>
-                            <label class="text-xs font-semibold text-slate-500 block mb-1">
+                            <label class="text-xs font-semibold text-ink-muted block mb-1">
                                 Bulan Anggaran
                                 <span v-if="isMinorRevision" class="text-amber-700">(Terkunci)</span>
                             </label>
                             <select
                                 v-model.number="form.bulan_anggaran"
                                 :disabled="isMinorRevision"
-                                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-100 disabled:text-slate-500"
+                                class="w-full rounded-lg border border-hairline bg-surface px-3 py-2 text-sm disabled:bg-raised disabled:text-ink-muted"
                             >
                                 <option v-for="b in bulanOptions" :key="b.value" :value="b.value">
                                     {{ b.label }}
@@ -504,15 +504,15 @@ async function openDeleteAttachmentModal(att) {
                     </div>
 
                     <!-- Parameter Pajak Kontekstual -->
-                    <div class="mt-4 pt-4 border-t border-slate-200 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                        <label class="flex items-center gap-2 text-slate-700">
-                            <input v-model="form.has_npwp" type="checkbox" class="rounded border-slate-300 text-teal-700" />
+                    <div class="mt-4 pt-4 border-t border-hairline grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <label class="flex items-center gap-2 text-ink-secondary">
+                            <input v-model="form.has_npwp" type="checkbox" class="rounded border-hairline text-accent focus:ring-accent" />
                             <span>Penerima Memiliki NPWP</span>
                         </label>
 
                         <div v-if="normalizedCategory === 'B.3'">
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">Golongan ASN / Penerima Honor</label>
-                            <select v-model="form.golongan_asn" class="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm">
+                            <label class="block text-xs font-semibold text-ink-secondary mb-1">Golongan ASN / Penerima Honor</label>
+                            <select v-model="form.golongan_asn" class="w-full rounded-lg border border-hairline bg-surface px-3 py-1.5 text-sm">
                                 <option value="GOLONGAN_I_II">PNS Golongan I / II (0%)</option>
                                 <option value="GOLONGAN_III">Golongan III (5%)</option>
                                 <option value="GOLONGAN_IV">Golongan IV (15%)</option>
@@ -520,13 +520,13 @@ async function openDeleteAttachmentModal(att) {
                             </select>
                         </div>
 
-                        <label v-if="normalizedCategory === 'B.4'" class="flex items-center gap-2 text-slate-700">
-                            <input v-model="form.is_sewa_kendaraan" type="checkbox" class="rounded border-slate-300 text-teal-700" />
+                        <label v-if="normalizedCategory === 'B.4'" class="flex items-center gap-2 text-ink-secondary">
+                            <input v-model="form.is_sewa_kendaraan" type="checkbox" class="rounded border-hairline text-accent focus:ring-accent" />
                             <span>Transaksi Sewa Kendaraan (PPh 23 2%)</span>
                         </label>
 
-                        <label v-if="normalizedCategory === 'B.5'" class="flex items-center gap-2 text-slate-700">
-                            <input v-model="form.is_pkp" type="checkbox" class="rounded border-slate-300 text-teal-700" />
+                        <label v-if="normalizedCategory === 'B.5'" class="flex items-center gap-2 text-ink-secondary">
+                            <input v-model="form.is_pkp" type="checkbox" class="rounded border-hairline text-accent focus:ring-accent" />
                             <span>Penyedia Pengusaha Kena Pajak (PKP)</span>
                         </label>
                     </div>
@@ -550,7 +550,7 @@ async function openDeleteAttachmentModal(att) {
                         <div
                             v-for="(item, idx) in form.items"
                             :key="idx"
-                            class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-slate-50 p-3 rounded-lg border border-slate-200"
+                            class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-raised p-3 rounded-lg border border-hairline"
                         >
                             <div class="md:col-span-4">
                                 <GovInput v-model="item.nama_barang" label="Nama Barang / Jasa" required />
@@ -600,23 +600,23 @@ async function openDeleteAttachmentModal(att) {
                         </div>
 
                         <div class="flex items-center justify-between pt-2">
-                            <GovButton v-if="!isMinorRevision" type="button" variant="outline" size="sm" @click="addItemRow">
+                            <GovButton v-if="!isMinorRevision" type="button" variant="secondary" size="sm" @click="addItemRow">
                                 + Tambah Baris Item
                             </GovButton>
                             <span v-else class="text-xs text-amber-700 font-medium">
-                                Nominal Bruto terkunci: {{ formatRupiah(receipt.nominal_bruto) }}
+                                Nominal Bruto terkunci: <span class="font-mono tabular-nums">{{ formatRupiah(receipt.nominal_bruto) }}</span>
                             </span>
 
                             <div class="text-right text-sm space-y-1">
                                 <div>
-                                    <span class="text-slate-500">Total Bruto:</span>
-                                    <span class="font-bold text-slate-900 ml-2">{{ formatRupiah(totalNilaiBelanja) }}</span>
+                                    <span class="text-ink-muted">Total Bruto:</span>
+                                    <span class="font-semibold text-ink font-mono tabular-nums ml-2">{{ formatRupiah(totalNilaiBelanja) }}</span>
                                 </div>
-                                <div class="text-xs text-slate-600">
+                                <div class="text-xs text-ink-secondary">
                                     Potongan Pajak ({{ isValidatingTax ? 'menghitung...' : 'backend' }}):
-                                    <span class="font-semibold text-amber-700 ml-1">{{ formatRupiah(estimasiPajak.totalPajak) }}</span>
+                                    <span class="font-semibold text-semantic-warning font-mono tabular-nums ml-1">{{ formatRupiah(estimasiPajak.totalPajak) }}</span>
                                     | Neto Dibayar:
-                                    <span class="font-bold text-teal-700 ml-1">{{ formatRupiah(estimasiPajak.totalNetto) }}</span>
+                                    <span class="font-semibold text-semantic-success font-mono tabular-nums ml-1">{{ formatRupiah(estimasiPajak.totalNetto) }}</span>
                                 </div>
                             </div>
                         </div>
@@ -625,20 +625,20 @@ async function openDeleteAttachmentModal(att) {
 
                 <!-- Lampiran Eksisting -->
                 <GovCard title="Berkas Lampiran Tersimpan">
-                    <div v-if="existingAttachments.length === 0" class="text-sm text-slate-500 italic">
+                    <div v-if="existingAttachments.length === 0" class="text-sm text-ink-muted italic">
                         Belum ada lampiran tersimpan pada kuitansi ini.
                     </div>
-                    <ul v-else class="divide-y divide-slate-200">
+                    <ul v-else class="divide-y divide-hairline">
                         <li
                             v-for="att in existingAttachments"
                             :key="att.id"
                             class="py-3 flex flex-wrap items-center justify-between gap-3"
                         >
                             <div>
-                                <p class="text-sm font-semibold text-slate-900">
+                                <p class="text-sm font-semibold text-ink">
                                     {{ att.nama_dokumen || att.file_name || att.nama_file_asli }}
                                 </p>
-                                <p class="text-xs text-slate-500">
+                                <p class="text-xs text-ink-muted">
                                     Kode: <span class="font-mono">{{ att.checklist_code || '-' }}</span> • {{ att.file_name || att.nama_file_asli }}
                                 </p>
                             </div>
@@ -647,13 +647,13 @@ async function openDeleteAttachmentModal(att) {
                                     :href="`/receipts/${receipt.id}/attachments/${att.id}/preview`"
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    class="text-xs font-semibold text-teal-700 hover:underline px-2 py-1"
+                                    class="text-xs font-semibold text-accent hover:underline px-2 py-1"
                                 >
                                     Pratinjau
                                 </a>
                                 <button
                                     type="button"
-                                    class="text-xs font-semibold text-rose-600 hover:text-rose-800 px-2 py-1"
+                                    class="text-xs font-semibold text-semantic-danger hover:underline px-2 py-1"
                                     @click="openDeleteAttachmentModal(att)"
                                 >
                                     Hapus
@@ -674,7 +674,7 @@ async function openDeleteAttachmentModal(att) {
 
                 <!-- Action Bar -->
                 <div class="flex flex-wrap items-center justify-end gap-3 pt-2">
-                    <GovButton variant="outline" :disabled="isSaving" @click="handleSaveChanges(false)">
+                    <GovButton variant="secondary" :disabled="isSaving" @click="handleSaveChanges(false)">
                         {{ isSaving ? 'Menyimpan...' : 'Simpan Perubahan' }}
                     </GovButton>
                     <GovButton variant="primary" :disabled="isSaving" @click="handleSaveChanges(true)">

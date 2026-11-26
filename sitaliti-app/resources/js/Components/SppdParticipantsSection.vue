@@ -294,7 +294,7 @@ onBeforeUnmount(() => {
             >
                 <div class="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-end">
                     <div class="md:col-span-4">
-                        <label class="block text-[11px] font-medium text-ink-secondary mb-1">
+                        <label class="block text-xs font-medium text-ink-secondary mb-1">
                             Pegawai #{{ index + 1 }} <span class="text-semantic-danger">*</span>
                         </label>
                         <select
@@ -309,7 +309,7 @@ onBeforeUnmount(() => {
                     </div>
 
                     <div class="md:col-span-2">
-                        <label class="block text-[11px] font-medium text-ink-secondary mb-1">Tgl Berangkat</label>
+                        <label class="block text-xs font-medium text-ink-secondary mb-1">Tgl Berangkat</label>
                         <input
                             v-model="row.tanggal_berangkat"
                             type="date"
@@ -318,7 +318,7 @@ onBeforeUnmount(() => {
                     </div>
 
                     <div class="md:col-span-2">
-                        <label class="block text-[11px] font-medium text-ink-secondary mb-1">Tgl Pulang</label>
+                        <label class="block text-xs font-medium text-ink-secondary mb-1">Tgl Pulang</label>
                         <input
                             v-model="row.tanggal_pulang"
                             type="date"
@@ -328,7 +328,7 @@ onBeforeUnmount(() => {
                     </div>
 
                     <div class="md:col-span-3">
-                        <label class="block text-[11px] font-medium text-ink-secondary mb-1">Tujuan / Lokasi</label>
+                        <label class="block text-xs font-medium text-ink-secondary mb-1">Tujuan / Lokasi</label>
                         <input
                             v-model="row.tujuan"
                             type="text"
@@ -350,7 +350,7 @@ onBeforeUnmount(() => {
                 </div>
 
                 <!-- Foto Opsional Per Peserta -->
-                <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-hairline/70 text-[11px]">
+                <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-hairline/70 text-xs">
                     <div class="flex items-center gap-2">
                         <label class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface border border-hairline text-ink-secondary hover:text-ink cursor-pointer">
                             <Camera class="w-3.5 h-3.5" />
@@ -391,7 +391,7 @@ onBeforeUnmount(() => {
         <div class="p-3 bg-canvas border border-hairline rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div class="space-y-0.5">
                 <p class="text-xs font-semibold text-ink">Foto Keberangkatan Bersama (Rombongan)</p>
-                <p class="text-[11px] text-ink-muted">
+                <p class="text-xs text-ink-muted">
                     Format JPG/PNG, maks 10MB. Jika diunggah, berlaku untuk seluruh peserta pada kuitansi ini.
                 </p>
             </div>
