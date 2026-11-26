@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue';
+import { FileText, ZoomOut, ZoomIn, RotateCw, FilePlus2 } from 'lucide-vue-next';
 
 const props = defineProps({
     fileUrl: {
@@ -40,20 +41,18 @@ function resetView() {
 </script>
 
 <template>
-    <div class="h-full flex flex-col bg-slate-900 text-white rounded-xl overflow-hidden border border-slate-700 shadow-md">
+    <div class="h-full flex flex-col bg-surface text-ink rounded-xl overflow-hidden border border-hairline shadow-subtle">
         <!-- Viewer Control Bar -->
-        <div class="bg-gov-navy-950 px-4 py-2.5 border-b border-gov-navy-800 flex items-center justify-between shrink-0">
+        <div class="bg-surface px-4 py-2.5 border-b border-hairline flex items-center justify-between shrink-0">
             <div class="flex items-center gap-2 overflow-hidden mr-2">
-                <span class="p-1 rounded bg-gov-navy-800 text-gov-gold-400">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
+                <span class="p-1 rounded bg-accent-soft text-accent">
+                    <FileText class="w-4 h-4" :stroke-width="1.5" />
                 </span>
-                <span class="text-xs font-medium text-slate-200 truncate">{{ fileName }}</span>
-                <span v-if="isImage" class="text-xs px-1.5 py-0.5 rounded bg-emerald-900/60 text-emerald-300 font-mono">
+                <span class="text-xs font-medium text-ink truncate">{{ fileName }}</span>
+                <span v-if="isImage" class="text-xs px-1.5 py-0.5 rounded bg-emerald-50 text-semantic-success border border-emerald-200 font-mono">
                     IMAGE
                 </span>
-                <span v-else-if="fileUrl" class="text-xs px-1.5 py-0.5 rounded bg-sky-900/60 text-sky-300 font-mono">
+                <span v-else-if="fileUrl" class="text-xs px-1.5 py-0.5 rounded bg-accent-soft text-accent border border-accent-border font-mono">
                     PDF
                 </span>
             </div>
@@ -62,39 +61,33 @@ function resetView() {
                 <button
                     type="button"
                     @click="zoomOut"
-                    class="p-1.5 rounded hover:bg-gov-navy-800 text-slate-300 hover:text-white"
+                    class="p-1.5 rounded hover:bg-raised text-ink-secondary hover:text-ink"
                     title="Zoom Out"
                 >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
-                    </svg>
+                    <ZoomOut class="w-4 h-4" :stroke-width="1.5" />
                 </button>
-                <span class="text-xs font-mono text-slate-400 w-10 text-center">{{ zoomLevel }}%</span>
+                <span class="text-xs font-mono text-ink-muted w-10 text-center tabular-nums">{{ zoomLevel }}%</span>
                 <button
                     type="button"
                     @click="zoomIn"
-                    class="p-1.5 rounded hover:bg-gov-navy-800 text-slate-300 hover:text-white"
+                    class="p-1.5 rounded hover:bg-raised text-ink-secondary hover:text-ink"
                     title="Zoom In"
                 >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
+                    <ZoomIn class="w-4 h-4" :stroke-width="1.5" />
                 </button>
-                <div class="h-4 w-px bg-slate-700 mx-1"></div>
+                <div class="h-4 w-px bg-hairline mx-1"></div>
                 <button
                     type="button"
                     @click="rotateDoc"
-                    class="p-1.5 rounded hover:bg-gov-navy-800 text-slate-300 hover:text-white"
+                    class="p-1.5 rounded hover:bg-raised text-ink-secondary hover:text-ink"
                     title="Putar Dokumen 90 Derajat"
                 >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
+                    <RotateCw class="w-4 h-4" :stroke-width="1.5" />
                 </button>
                 <button
                     type="button"
                     @click="resetView"
-                    class="px-2 py-1 text-xs rounded hover:bg-gov-navy-800 text-slate-400 hover:text-white"
+                    class="px-2 py-1 text-xs rounded hover:bg-raised text-ink-muted hover:text-ink"
                 >
                     Reset
                 </button>
@@ -102,10 +95,10 @@ function resetView() {
         </div>
 
         <!-- Document Preview Canvas Area -->
-        <div class="flex-1 overflow-auto p-4 flex items-center justify-center bg-slate-900/90 relative">
+        <div class="flex-1 min-h-0 overflow-auto scrollbar-thin p-4 bg-raised relative">
             <div
                 v-if="fileUrl"
-                class="transition-colors duration-150 ease-unslop duration-200 shadow-2xl origin-center bg-white rounded flex items-center justify-center overflow-hidden min-h-[500px] w-full"
+                class="transition-transform duration-150 ease-unslop shadow-subtle origin-top-left bg-surface rounded border border-hairline overflow-hidden h-full min-h-[420px] w-full flex flex-col"
                 :style="{
                     transform: `scale(${zoomLevel / 100}) rotate(${rotation}deg)`
                 }"
@@ -115,22 +108,20 @@ function resetView() {
                     v-if="isImage"
                     :src="fileUrl"
                     :alt="fileName"
-                    class="max-w-full max-h-[650px] object-contain p-2"
+                    class="max-w-full max-h-full object-contain m-auto p-2"
                 />
 
                 <!-- Native Iframe Viewer untuk Dokumen PDF -->
                 <iframe
                     v-else
                     :src="fileUrl"
-                    class="w-full h-[650px] border-0"
+                    class="w-full flex-1 min-h-[420px] border-0"
                     title="PDF Viewer"
                 ></iframe>
             </div>
 
-            <div v-else class="text-center text-slate-500 text-xs py-16">
-                <svg class="w-12 h-12 mx-auto text-slate-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
+            <div v-else class="text-center text-ink-muted text-xs py-16">
+                <FilePlus2 class="w-10 h-10 mx-auto text-ink-muted mb-2" :stroke-width="1.5" />
                 <p>Pilih salah satu dokumen checklist di panel kanan untuk meneliti fisik berkas bukti.</p>
             </div>
         </div>

@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue';
+import { AlertTriangle, X } from 'lucide-vue-next';
 import GovButton from '@/Components/UI/GovButton.vue';
 
 const props = defineProps({
@@ -8,7 +9,7 @@ const props = defineProps({
         default: false,
     },
     receiptId: {
-        type: String,
+        type: [String, Number],
         required: true,
     },
     actionType: {
@@ -40,29 +41,29 @@ function handleConfirm() {
 <template>
     <div v-if="show" class="fixed inset-0 z-50 overflow-y-auto">
         <!-- Backdrop -->
-        <div class="fixed inset-0 bg-gov-navy-950/70 backdrop-blur-sm transition-opacity" @click="$emit('close')"></div>
+        <div class="fixed inset-0 bg-ink/40 transition-opacity" @click="$emit('close')"></div>
 
         <div class="flex min-h-full items-center justify-center p-4">
-            <div class="relative w-full max-w-lg rounded-xl bg-white shadow-2xl border border-gov-surface-border overflow-hidden">
+            <div class="relative w-full max-w-lg rounded-xl bg-surface shadow-floating border border-hairline overflow-hidden">
                 <!-- Header -->
                 <div
-                    class="px-5 py-4 border-b text-white flex items-center justify-between"
-                    :class="[actionType === 'REVISION_MAJOR' ? 'bg-rose-700' : 'bg-amber-600']"
+                    class="px-5 py-4 border-b border-hairline text-white flex items-center justify-between"
+                    :class="[actionType === 'REVISION_MAJOR' ? 'bg-semantic-danger' : 'bg-semantic-warning']"
                 >
                     <div class="flex items-center gap-2.5">
-                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                        <h3 class="text-sm font-bold text-white">
+                        <AlertTriangle class="w-5 h-5 text-white" :stroke-width="1.5" />
+                        <h3 class="text-sm font-semibold text-white">
                             {{ actionType === 'REVISION_MAJOR' ? 'Tolak Berkas (Revisi Mayor)' : 'Pengembalian Berkas (Revisi Minor)' }}
                         </h3>
                     </div>
-                    <button @click="$emit('close')" class="text-white/80 hover:text-white">Tutup</button>
+                    <button @click="$emit('close')" class="text-white/80 hover:text-white p-1 rounded" aria-label="Tutup">
+                        <X class="w-4 h-4" :stroke-width="1.5" />
+                    </button>
                 </div>
 
                 <!-- Body -->
                 <div class="p-5 space-y-3.5">
-                    <div class="text-xs text-slate-600 leading-relaxed">
+                    <div class="text-xs text-ink-secondary leading-relaxed">
                         <span v-if="actionType === 'REVISION_MAJOR'">
                             <strong>Revisi Mayor:</strong> Berkas ditolak karena kesalahan mendasar (misal: kesalahan kodifikasi rekening belanja, ketidaksesuaian RAK, atau penyalahgunaan anggaran). Berkas kuitansi dibatalkan.
                         </span>
@@ -72,23 +73,23 @@ function handleConfirm() {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-gov-navy-900  mb-1">
-                            Uraian Temuan / Instruksi Perbaikan <span class="text-rose-500">*</span>
+                        <label class="block text-xs font-semibold text-ink mb-1">
+                            Uraian Temuan / Instruksi Perbaikan <span class="text-semantic-danger">*</span>
                         </label>
                         <textarea
                             v-model="notes"
                             rows="4"
                             placeholder="Tuliskan secara jelas dokumen yang perlu diperbaiki atau dasar penolakan..."
-                            class="w-full text-xs rounded-lg border-gov-surface-border p-3 focus:border-gov-navy-800 focus:ring-1 focus:ring-gov-navy-800"
+                            class="w-full text-xs rounded-lg border-hairline p-3 focus:border-accent focus:ring-1 focus:ring-accent"
                         ></textarea>
-                        <p v-if="errorMessage" class="mt-1.5 text-xs font-semibold text-rose-600">
+                        <p v-if="errorMessage" class="mt-1.5 text-xs font-semibold text-semantic-danger">
                             {{ errorMessage }}
                         </p>
                     </div>
                 </div>
 
                 <!-- Footer -->
-                <div class="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2.5">
+                <div class="px-5 py-3.5 bg-raised border-t border-hairline flex items-center justify-end gap-2.5">
                     <GovButton variant="secondary" size="sm" @click="$emit('close')">
                         Batal
                     </GovButton>

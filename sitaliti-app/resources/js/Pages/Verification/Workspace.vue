@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { ArrowLeft, Download, Check, RotateCcw, ClipboardList, Clock } from 'lucide-vue-next';
 import GovButton from '@/Components/UI/GovButton.vue';
 import GovBadge from '@/Components/UI/GovBadge.vue';
 import PdfViewer from '@/Modules/Verification/PdfViewer.vue';
@@ -214,43 +215,39 @@ async function openQuickAuth(type) {
     <Head :title="`Verifikasi ${detail?.id || 'Kuitansi'}`" />
 
     <!-- Fullscreen Workspace Layout -->
-    <div class="h-screen flex flex-col bg-slate-100 overflow-hidden font-sans">
+    <div class="min-h-screen lg:h-screen flex flex-col bg-canvas lg:overflow-hidden font-sans text-ink">
         <!-- Top Workspace Bar -->
-        <header class="bg-gov-navy-950 text-white border-b border-gov-navy-800 px-6 py-3 flex items-center justify-between shrink-0 shadow-md">
-            <div class="flex items-center gap-4">
+        <header class="bg-surface text-ink border-b border-hairline px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3 shrink-0">
+            <div class="flex items-center gap-3 min-w-0">
                 <Link
                     :href="route('verification.index')"
-                    class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-gov-navy-900 flex items-center gap-1.5 text-xs"
+                    class="p-1.5 rounded-lg text-ink-secondary hover:text-ink hover:bg-raised flex items-center gap-1.5 text-xs shrink-0"
                 >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
+                    <ArrowLeft class="w-4 h-4" :stroke-width="1.5" />
                     <span>Kembali ke Antrean</span>
                 </Link>
 
-                <div class="h-5 w-px bg-slate-700"></div>
+                <div class="h-5 w-px bg-hairline shrink-0"></div>
 
-                <div v-if="detail" class="flex items-center gap-3">
-                    <span class="font-bold text-sm text-white tracking-wide font-mono">{{ detail.nomor_kuitansi || detail.id }}</span>
+                <div v-if="detail" class="flex items-center gap-2.5 min-w-0 flex-wrap">
+                    <span class="font-semibold text-sm text-ink tracking-wide font-mono truncate">{{ detail.nomor_kuitansi || detail.id }}</span>
                     <GovBadge :variant="STATUS_VARIANTS[detail.status]">
                         {{ STATUS_LABELS[detail.status] }}
                     </GovBadge>
-                    <span class="text-xs text-slate-400">{{ formatTanggalIndo(detail.tanggal_transaksi || detail.tanggal) }}</span>
+                    <span class="text-xs text-ink-muted">{{ formatTanggalIndo(detail.tanggal_transaksi || detail.tanggal) }}</span>
                 </div>
             </div>
 
             <!-- Action Buttons Berdasarkan Wewenang & Status Kuitansi -->
-            <div v-if="detail" class="flex items-center gap-2.5">
+            <div v-if="detail" class="flex items-center gap-2 flex-wrap">
                 <!-- 1. Unduh PDF Lembar Kendali jika Lolos Verifikasi -->
                 <a
                     v-if="detail.status === 'LOLOS_VERIFIKASI' || detail.qr_token"
                     :href="route('control-sheet.download-pdf', { id: detail.id || props.id })"
                     target="_blank"
-                    class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-gov-gold-500 text-gov-navy-950 hover:bg-gov-gold-400 shadow-sm transition"
+                    class="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium bg-accent text-white hover:bg-accent-hover shadow-subtle transition-colors"
                 >
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
+                    <Download class="w-3.5 h-3.5" :stroke-width="1.5" />
                     Unduh PDF Lembar Kendali
                 </a>
 
@@ -259,10 +256,8 @@ async function openQuickAuth(type) {
                     <GovButton variant="danger" size="sm" @click="openQuickAuth('REJECT')">
                         Tolak Kuitansi
                     </GovButton>
-                    <GovButton variant="primary" size="sm" class="bg-emerald-600 hover:bg-emerald-700 text-white" @click="openQuickAuth('APPROVE')">
-                        <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                        </svg>
+                    <GovButton variant="success" size="sm" @click="openQuickAuth('APPROVE')">
+                        <Check class="w-3.5 h-3.5" :stroke-width="1.5" />
                         Setujui PPTK
                     </GovButton>
                 </template>
@@ -270,9 +265,7 @@ async function openQuickAuth(type) {
                 <!-- 4. Aksi Tim VERIFIKATOR Kecamatan jika status MENUNGGU_VERIFIKASI atau REVISI_MINOR -->
                 <template v-if="isVerifikator && ['MENUNGGU_VERIFIKASI', 'REVISI_MINOR'].includes(detail.status)">
                     <GovButton variant="secondary" size="sm" @click="openRevisionModal('REVISION_MINOR')">
-                        <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
+                        <RotateCcw class="w-3.5 h-3.5 text-semantic-warning" :stroke-width="1.5" />
                         Revisi Minor
                     </GovButton>
 
@@ -286,29 +279,27 @@ async function openQuickAuth(type) {
                         :disabled="!allMandatoryVerified"
                         @click="handleApprove"
                     >
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                        </svg>
+                        <Check class="w-3.5 h-3.5" :stroke-width="1.5" />
                         Lolos Verifikasi
                     </GovButton>
                 </template>
             </div>
         </header>
 
-        <!-- Main Split-Screen Workspace (55% Kiri / 45% Kanan) -->
-        <div v-if="detail" class="flex-1 flex overflow-hidden p-3 gap-3">
+        <!-- Main Split-Screen Workspace (55% Kiri / 45% Kanan di Desktop, Stack di Mobile) -->
+        <div v-if="detail" class="flex-1 flex flex-col lg:flex-row lg:overflow-hidden p-3 gap-3 min-h-0">
             <!-- SISI KIRI (55%): PDF / Document Viewer -->
-            <div class="w-[55%] h-full flex flex-col gap-2">
-                <div v-if="lampiranList.length > 0" class="flex items-center gap-1.5 overflow-x-auto pb-1 shrink-0">
+            <div class="w-full lg:w-[55%] min-h-[420px] lg:h-full flex flex-col gap-2 min-h-0">
+                <div v-if="lampiranList.length > 0" class="flex items-center gap-1.5 overflow-x-auto scrollbar-thin pb-1 shrink-0">
                     <button
                         v-for="(att, idx) in lampiranList"
                         :key="att.id || idx"
                         type="button"
                         @click="activeAttachmentIndex = idx"
-                        class="px-2.5 py-1 rounded-lg text-xs font-semibold border whitespace-nowrap transition"
+                        class="px-2.5 py-1 rounded-lg text-xs font-semibold border whitespace-nowrap transition-colors"
                         :class="activeAttachmentIndex === idx
-                            ? 'bg-gov-navy-900 text-white border-gov-navy-900'
-                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'"
+                            ? 'bg-accent text-white border-accent'
+                            : 'bg-surface text-ink-secondary border-hairline hover:bg-raised'"
                     >
                         {{ att.checklist_code ? `[${att.checklist_code}] ` : '' }}{{ att.nama_dokumen }}
                     </button>
@@ -322,38 +313,36 @@ async function openQuickAuth(type) {
             </div>
 
             <!-- SISI KANAN (45%): Checklist Dokumen & Validasi Nilai -->
-            <div class="w-[45%] h-full flex flex-col bg-white rounded-xl border border-gov-surface-border shadow-sm overflow-hidden">
+            <div class="w-full lg:w-[45%] lg:h-full flex flex-col bg-surface rounded-xl border border-hairline shadow-subtle overflow-hidden min-h-0">
                 <!-- Panel Tab & Meta -->
-                <div class="bg-gov-surface-subtle p-4 border-b border-gov-surface-border shrink-0">
+                <div class="bg-raised p-4 border-b border-hairline shrink-0">
                     <div class="flex items-center justify-between text-xs gap-2">
-                        <span class="text-slate-500">
-                            Unit: <strong class="text-gov-navy-950">{{ detail.unit_kerja?.nama_unit || detail.unit || '-' }}</strong>
+                        <span class="text-ink-muted">
+                            Unit: <strong class="text-ink">{{ detail.unit_kerja?.nama_unit || detail.unit || '-' }}</strong>
                         </span>
                         <div class="text-right">
-                            <span class="text-base font-bold text-gov-navy-950 tabular-nums block">
+                            <span class="text-base font-semibold text-ink font-mono tabular-nums block">
                                 {{ formatRupiah(detail.nominal_bruto ?? detail.nominal ?? 0) }}
                             </span>
-                            <span class="text-xs text-emerald-700 font-semibold tabular-nums">
+                            <span class="text-xs text-semantic-success font-semibold font-mono tabular-nums">
                                 Neto: {{ formatRupiah(detail.nominal_neto ?? detail.nominal_bruto ?? 0) }}
                             </span>
                         </div>
                     </div>
-                    <p class="text-xs text-slate-700 mt-1 line-clamp-2 leading-relaxed">{{ detail.uraian }}</p>
+                    <p class="text-xs text-ink-secondary mt-1 line-clamp-2 leading-relaxed">{{ detail.uraian }}</p>
 
                     <!-- Tab Navigation: Checklist | Riwayat Audit -->
-                    <div class="flex items-center gap-1 mt-3 border-t border-gov-surface-border pt-3">
+                    <div class="flex items-center gap-1 mt-3 border-t border-hairline pt-3">
                         <button
                             type="button"
                             @click="activeTab = 'checklist'"
                             class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
                             :class="activeTab === 'checklist'
-                                ? 'bg-gov-navy-900 text-white shadow-sm'
-                                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'"
+                                ? 'bg-accent text-white shadow-subtle'
+                                : 'text-ink-muted hover:bg-surface hover:text-ink'"
                         >
                             <span class="flex items-center gap-1.5">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                                </svg>
+                                <ClipboardList class="w-3.5 h-3.5" :stroke-width="1.5" />
                                 Checklist Dokumen
                             </span>
                         </button>
@@ -362,15 +351,13 @@ async function openQuickAuth(type) {
                             @click="activeTab = 'timeline'"
                             class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
                             :class="activeTab === 'timeline'
-                                ? 'bg-gov-navy-900 text-white shadow-sm'
-                                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'"
+                                ? 'bg-accent text-white shadow-subtle'
+                                : 'text-ink-muted hover:bg-surface hover:text-ink'"
                         >
                             <span class="flex items-center gap-1.5">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
+                                <Clock class="w-3.5 h-3.5" :stroke-width="1.5" />
                                 Riwayat Audit
-                                <span v-if="auditHistory.length > 0" class="ml-0.5 px-1.5 py-0.5 rounded-md bg-gov-navy-100 text-gov-navy-800 text-xs font-bold">
+                                <span v-if="auditHistory.length > 0" class="ml-0.5 px-1.5 py-0.5 rounded-md bg-accent-soft text-accent text-xs font-semibold">
                                     {{ auditHistory.length }}
                                 </span>
                             </span>
@@ -379,10 +366,10 @@ async function openQuickAuth(type) {
                 </div>
 
                 <!-- Tab Content: Checklist Dokumen Fisik -->
-                <div v-show="activeTab === 'checklist'" class="flex-1 overflow-y-auto p-4 space-y-3">
-                    <div class="flex items-center justify-between text-xs font-bold text-gov-navy-900 border-b pb-2">
+                <div v-show="activeTab === 'checklist'" class="flex-1 overflow-y-auto scrollbar-thin p-4 space-y-3">
+                    <div class="flex items-center justify-between text-xs font-semibold text-ink border-b border-hairline pb-2">
                         <span>Checklist Hasil Pemeriksaan Fisik Dokumen</span>
-                        <span class="text-xs font-normal text-slate-500">
+                        <span class="text-xs font-normal text-ink-muted">
                             {{ detail.checklist?.length || 0 }} butir • {{ lampiranList.length }} lampiran
                         </span>
                     </div>
@@ -402,39 +389,39 @@ async function openQuickAuth(type) {
 
                     <div
                         v-if="(detail.pajak || []).length > 0"
-                        class="p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs space-y-2"
+                        class="p-3 rounded-lg bg-raised border border-hairline text-xs space-y-2"
                     >
-                        <div class="font-semibold text-gov-navy-900">
+                        <div class="font-semibold text-ink">
                             Status Setor Pajak (Kode Billing &amp; NTPN)
                         </div>
                         <div class="space-y-1.5">
                             <div
                                 v-for="pj in detail.pajak"
                                 :key="pj.id"
-                                class="flex items-center justify-between gap-2 bg-white p-2 rounded border border-slate-200"
+                                class="flex items-center justify-between gap-2 bg-surface p-2 rounded border border-hairline"
                             >
                                 <div class="min-w-0">
-                                    <div class="font-medium text-slate-800">{{ pj.nama_pajak }}</div>
-                                    <div class="text-[11px] text-slate-500 font-mono tabular-nums">
+                                    <div class="font-medium text-ink">{{ pj.nama_pajak }}</div>
+                                    <div class="text-xs text-ink-muted font-mono tabular-nums">
                                         {{ formatRupiah(pj.nominal) }}
                                         <span v-if="pj.ntpn"> • NTPN: {{ pj.ntpn }}</span>
                                     </div>
                                 </div>
                                 <span
                                     v-if="pj.kode_pajak === 'BEA_METERAI'"
-                                    class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[11px] font-semibold shrink-0"
+                                    class="px-1.5 py-0.5 rounded bg-raised text-ink-secondary text-xs font-semibold shrink-0"
                                 >
                                     Dokumen Fisik
                                 </span>
                                 <span
                                     v-else-if="pj.ntpn"
-                                    class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[11px] font-semibold shrink-0"
+                                    class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-xs font-semibold shrink-0"
                                 >
                                     NTPN Terverifikasi
                                 </span>
                                 <span
                                     v-else
-                                    class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[11px] font-semibold shrink-0"
+                                    class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-xs font-semibold shrink-0"
                                 >
                                     Belum Setor
                                 </span>
@@ -444,23 +431,23 @@ async function openQuickAuth(type) {
 
                     <div
                         v-if="(detail.sppd_peserta && detail.sppd_peserta.length > 0) || detail.sppd_foto_url"
-                        class="p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs space-y-2"
+                        class="p-3 rounded-lg bg-raised border border-hairline text-xs space-y-2"
                     >
-                        <div class="font-semibold text-gov-navy-900">
+                        <div class="font-semibold text-ink">
                             Pelaksana SPPD ({{ detail.sppd_peserta?.length || 0 }} Orang) &amp; Foto Keberangkatan
                         </div>
                         <div class="space-y-1.5">
                             <div
                                 v-for="peserta in detail.sppd_peserta || []"
                                 :key="peserta.id"
-                                class="flex items-center justify-between gap-2 bg-white p-2 rounded border border-slate-200"
+                                class="flex items-center justify-between gap-2 bg-surface p-2 rounded border border-hairline"
                             >
                                 <div class="min-w-0">
-                                    <div class="font-medium text-slate-800 truncate">{{ peserta.pegawai?.nama || '-' }}</div>
-                                    <div class="text-[11px] text-slate-500 font-mono tabular-nums">
+                                    <div class="font-medium text-ink truncate">{{ peserta.pegawai?.nama || '-' }}</div>
+                                    <div class="text-xs text-ink-muted font-mono tabular-nums">
                                         {{ peserta.pegawai?.nip || '-' }} • {{ peserta.tanggal_berangkat }} s/d {{ peserta.tanggal_pulang }}
                                     </div>
-                                    <div v-if="peserta.tujuan" class="text-[11px] text-slate-600 truncate">{{ peserta.tujuan }}</div>
+                                    <div v-if="peserta.tujuan" class="text-xs text-ink-secondary truncate">{{ peserta.tujuan }}</div>
                                 </div>
                                 <a
                                     v-if="peserta.effective_foto_url"
@@ -472,7 +459,7 @@ async function openQuickAuth(type) {
                                     <img
                                         :src="peserta.effective_foto_url"
                                         alt="Foto Keberangkatan"
-                                        class="w-10 h-10 rounded object-cover border border-slate-200"
+                                        class="w-10 h-10 rounded object-cover border border-hairline"
                                     />
                                 </a>
                             </div>
@@ -497,31 +484,31 @@ async function openQuickAuth(type) {
                         v-for="(item, idx) in detail.checklist || []"
                         :key="item.item_id || item.kode_item || idx"
                         @click="selectAttachmentForChecklist(item)"
-                        class="p-3 rounded-lg border transition-colors duration-150 ease-unslop cursor-pointer text-xs border-gov-surface-border bg-white hover:bg-slate-50"
+                        class="p-3 rounded-lg border transition-colors duration-150 ease-unslop cursor-pointer text-xs border-hairline bg-surface hover:bg-raised"
                     >
                         <div class="flex items-start justify-between gap-2">
                             <div class="flex items-start gap-2 flex-1">
                                 <span
-                                    class="w-5 h-5 rounded-md flex items-center justify-center shrink-0 text-xs font-bold"
+                                    class="w-5 h-5 rounded-md flex items-center justify-center shrink-0 text-xs font-semibold"
                                     :class="[
                                         item.ui_status === 'VALID' ? 'bg-emerald-100 text-emerald-800' :
-                                        item.ui_status === 'REVISION_NEEDED' ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-600'
+                                        item.ui_status === 'REVISION_NEEDED' ? 'bg-rose-100 text-rose-800' : 'bg-raised text-ink-secondary'
                                     ]"
                                 >
                                     {{ idx + 1 }}
                                 </span>
                                 <div>
                                     <div class="flex items-center gap-1.5 flex-wrap">
-                                        <span class="font-mono text-xs text-slate-500">{{ item.kode_item }}</span>
-                                        <h4 class="font-bold text-gov-navy-950">{{ item.nama_item }}</h4>
-                                        <span v-if="item.is_required" class="text-xs font-bold text-rose-600 bg-rose-50 px-1 rounded">
+                                        <span class="font-mono text-xs text-ink-muted">{{ item.kode_item }}</span>
+                                        <h4 class="font-semibold text-ink">{{ item.nama_item }}</h4>
+                                        <span v-if="item.is_required" class="text-xs font-semibold text-semantic-danger bg-rose-50 px-1 rounded">
                                             Wajib
                                         </span>
-                                        <span v-else class="text-xs font-semibold text-slate-500 bg-slate-100 px-1 rounded">
+                                        <span v-else class="text-xs font-medium text-ink-muted bg-raised px-1 rounded">
                                             Opsional
                                         </span>
                                     </div>
-                                    <p v-if="item.deskripsi" class="text-xs text-slate-500 mt-0.5">{{ item.deskripsi }}</p>
+                                    <p v-if="item.deskripsi" class="text-xs text-ink-muted mt-0.5">{{ item.deskripsi }}</p>
                                 </div>
                             </div>
 
@@ -530,16 +517,16 @@ async function openQuickAuth(type) {
                                 <button
                                     type="button"
                                     @click.stop="setChecklistStatus(idx, 'VALID')"
-                                    class="px-2 py-1 rounded text-xs font-bold transition-colors"
-                                    :class="item.ui_status === 'VALID' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                                    class="px-2 py-1 rounded text-xs font-semibold transition-colors"
+                                    :class="item.ui_status === 'VALID' ? 'bg-semantic-success text-white' : 'bg-raised text-ink-secondary hover:bg-hairline'"
                                 >
                                     Lolos
                                 </button>
                                 <button
                                     type="button"
                                     @click.stop="setChecklistStatus(idx, 'REVISION_NEEDED')"
-                                    class="px-2 py-1 rounded text-xs font-bold transition-colors"
-                                    :class="item.ui_status === 'REVISION_NEEDED' ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                                    class="px-2 py-1 rounded text-xs font-semibold transition-colors"
+                                    :class="item.ui_status === 'REVISION_NEEDED' ? 'bg-semantic-danger text-white' : 'bg-raised text-ink-secondary hover:bg-hairline'"
                                 >
                                     Ada Catatan
                                 </button>
@@ -547,7 +534,7 @@ async function openQuickAuth(type) {
                             <div v-else class="shrink-0">
                                 <span
                                     class="px-2 py-0.5 rounded text-xs font-semibold"
-                                    :class="item.ui_status === 'VALID' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'"
+                                    :class="item.ui_status === 'VALID' ? 'bg-emerald-100 text-emerald-800' : 'bg-raised text-ink-secondary'"
                                 >
                                     {{ item.ui_status === 'VALID' ? 'Lolos' : 'Pending' }}
                                 </span>
@@ -561,8 +548,8 @@ async function openQuickAuth(type) {
                     </div>
 
                     <!-- Riwayat Revisi Terdahulu (Audit Trail) -->
-                    <div v-if="detail.revision_history?.length > 0" class="mt-4 pt-3 border-t">
-                        <h5 class="text-xs font-bold text-slate-700  mb-2">Riwayat Revisi Berkas</h5>
+                    <div v-if="detail.revision_history?.length > 0" class="mt-4 pt-3 border-t border-hairline">
+                        <h5 class="text-xs font-semibold text-ink-secondary mb-2">Riwayat Revisi Berkas</h5>
                         <div class="space-y-2">
                             <div
                                 v-for="(rev, rIdx) in detail.revision_history"
@@ -573,29 +560,29 @@ async function openQuickAuth(type) {
                                     <span>{{ rev.author }}</span>
                                     <span>{{ rev.timestamp }}</span>
                                 </div>
-                                <p class="text-xs text-slate-700 mt-1">{{ rev.note }}</p>
+                                <p class="text-xs text-ink-secondary mt-1">{{ rev.note }}</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Tab Content: Riwayat Audit Timeline -->
-                <div v-show="activeTab === 'timeline'" class="flex-1 overflow-y-auto p-4">
+                <div v-show="activeTab === 'timeline'" class="flex-1 overflow-y-auto scrollbar-thin p-4">
                     <div v-if="loadingHistory" class="flex items-center justify-center py-10">
-                        <div class="text-sm text-slate-400 ">Memuat riwayat audit...</div>
+                        <div class="text-sm text-ink-muted">Memuat riwayat audit...</div>
                     </div>
                     <AuditTimeline v-else :events="auditHistory" />
                 </div>
 
                 <!-- Footer Rangkuman Kas -->
-                <div class="p-3 bg-gov-surface-subtle border-t border-gov-surface-border flex items-center justify-between text-xs shrink-0">
-                    <span class="text-slate-500">
+                <div class="p-3 bg-raised border-t border-hairline flex items-center justify-between text-xs shrink-0">
+                    <span class="text-ink-muted">
                         Status Kelayakan:
-                        <strong :class="allMandatoryVerified ? 'text-emerald-700' : 'text-amber-700'">
+                        <strong :class="allMandatoryVerified ? 'text-semantic-success' : 'text-semantic-warning'">
                             {{ allMandatoryVerified ? 'Siap Lolos Verifikasi' : 'Belum Semua Dokumen Lolos' }}
                         </strong>
                     </span>
-                    <span class="text-xs text-slate-400">Pemeriksa: {{ currentUser?.name || 'Verifikator' }}</span>
+                    <span class="text-xs text-ink-muted">Pemeriksa: {{ currentUser?.name || 'Verifikator' }}</span>
                 </div>
             </div>
         </div>

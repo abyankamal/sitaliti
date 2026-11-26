@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
+import { Clock, Check, X, Eye } from 'lucide-vue-next';
 import GovAppLayout from '@/Layouts/GovAppLayout.vue';
 import GovCard from '@/Components/UI/GovCard.vue';
 import GovBadge from '@/Components/UI/GovBadge.vue';
@@ -99,13 +100,13 @@ async function openAuthModal(item, role, action) {
         <template #header>
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 class="text-lg font-bold text-gov-navy-950 flex items-center gap-2">
-                        <span>Antrean Verifikasi & Otorisasi Kuitansi</span>
-                        <span class="text-xs px-2.5 py-0.5 rounded-md font-semibold bg-gov-navy-100 text-gov-navy-900 border border-gov-navy-200">
+                    <h1 class="text-lg font-semibold text-ink flex items-center gap-2">
+                        <span>Antrean Verifikasi &amp; Otorisasi Kuitansi</span>
+                        <span class="text-xs px-2.5 py-0.5 rounded-md font-semibold bg-accent-soft text-accent border border-accent-border">
                             {{ isKelurahan ? (user.unit_kerja?.nama_unit || 'Kelurahan') : 'Tim Verifikator & PPK' }}
                         </span>
                     </h1>
-                    <p class="text-xs text-slate-500 mt-1">
+                    <p class="text-xs text-ink-muted mt-1">
                         Pemeriksaan bukti kepatuhan akuntabilitas dan alur pengesahan bertingkat sebelum dibundel menjadi SPJ
                     </p>
                 </div>
@@ -114,14 +115,14 @@ async function openAuthModal(item, role, action) {
 
         <div class="space-y-4">
             <!-- Filter Tabs -->
-            <div class="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto text-xs font-medium">
+            <div class="flex items-center gap-2 border-b border-hairline pb-2 overflow-x-auto text-xs font-medium">
                 <button
                     @click="activeTab = 'ALL'"
                     :class="[
                         'px-3 py-1.5 rounded-lg transition whitespace-nowrap',
                         activeTab === 'ALL'
-                            ? 'bg-gov-navy-950 text-white font-bold'
-                            : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                            ? 'bg-accent text-white font-semibold'
+                            : 'bg-surface text-ink-secondary hover:bg-raised border border-hairline'
                     ]"
                 >
                     Semua Berkas ({{ queue.length }})
@@ -131,12 +132,12 @@ async function openAuthModal(item, role, action) {
                     :class="[
                         'px-3 py-1.5 rounded-lg transition whitespace-nowrap flex items-center gap-1.5',
                         activeTab === 'MENUNGGU_PPTK'
-                            ? 'bg-amber-600 text-white font-bold'
-                            : 'bg-white text-amber-700 hover:bg-amber-50 border border-amber-200'
+                            ? 'bg-amber-600 text-white font-semibold'
+                            : 'bg-surface text-amber-700 hover:bg-amber-50 border border-amber-200'
                     ]"
                 >
                     <span>Persetujuan PPTK</span>
-                    <span v-if="countPptk > 0" class="px-1.5 py-0.5 rounded-md text-xs bg-raised text-ink-secondary font-bold">
+                    <span v-if="countPptk > 0" class="px-1.5 py-0.5 rounded-md text-xs bg-raised text-ink-secondary font-semibold">
                         {{ countPptk }}
                     </span>
                 </button>
@@ -146,12 +147,12 @@ async function openAuthModal(item, role, action) {
                     :class="[
                         'px-3 py-1.5 rounded-lg transition whitespace-nowrap flex items-center gap-1.5',
                         activeTab === 'MENUNGGU_LURAH'
-                            ? 'bg-purple-700 text-white font-bold'
-                            : 'bg-white text-purple-800 hover:bg-purple-50 border border-purple-200'
+                            ? 'bg-accent text-white font-semibold'
+                            : 'bg-surface text-accent hover:bg-accent-soft border border-accent-border'
                     ]"
                 >
                     <span>Otorisasi Lurah</span>
-                    <span v-if="countLurah > 0" class="px-1.5 py-0.5 rounded-md text-xs bg-raised text-ink-secondary font-bold">
+                    <span v-if="countLurah > 0" class="px-1.5 py-0.5 rounded-md text-xs bg-raised text-ink-secondary font-semibold">
                         {{ countLurah }}
                     </span>
                 </button>
@@ -160,12 +161,12 @@ async function openAuthModal(item, role, action) {
                     :class="[
                         'px-3 py-1.5 rounded-lg transition whitespace-nowrap flex items-center gap-1.5',
                         activeTab === 'MENUNGGU_VERIFIKASI'
-                            ? 'bg-blue-600 text-white font-bold'
-                            : 'bg-white text-blue-700 hover:bg-blue-50 border border-blue-200'
+                            ? 'bg-semantic-info text-white font-semibold'
+                            : 'bg-surface text-semantic-info hover:bg-sky-50 border border-sky-200'
                     ]"
                 >
                     <span>Verifikasi Teknis</span>
-                    <span v-if="countVerifikasi > 0" class="px-1.5 py-0.5 rounded-md text-xs bg-raised text-ink-secondary font-bold">
+                    <span v-if="countVerifikasi > 0" class="px-1.5 py-0.5 rounded-md text-xs bg-raised text-ink-secondary font-semibold">
                         {{ countVerifikasi }}
                     </span>
                 </button>
@@ -174,12 +175,12 @@ async function openAuthModal(item, role, action) {
                     :class="[
                         'px-3 py-1.5 rounded-lg transition whitespace-nowrap flex items-center gap-1.5',
                         activeTab === 'REVISI_MINOR'
-                            ? 'bg-rose-600 text-white font-bold'
-                            : 'bg-white text-rose-700 hover:bg-rose-50 border border-rose-200'
+                            ? 'bg-semantic-danger text-white font-semibold'
+                            : 'bg-surface text-semantic-danger hover:bg-rose-50 border border-rose-200'
                     ]"
                 >
                     <span>Revisi / SLA</span>
-                    <span v-if="countRevisi > 0" class="px-1.5 py-0.5 rounded-md text-xs bg-red-50 text-semantic-danger font-bold">
+                    <span v-if="countRevisi > 0" class="px-1.5 py-0.5 rounded-md text-xs bg-red-50 text-semantic-danger font-semibold">
                         {{ countRevisi }}
                     </span>
                 </button>
@@ -188,12 +189,12 @@ async function openAuthModal(item, role, action) {
                     :class="[
                         'px-3 py-1.5 rounded-lg transition whitespace-nowrap flex items-center gap-1.5',
                         activeTab === 'LOLOS_VERIFIKASI'
-                            ? 'bg-emerald-600 text-white font-bold'
-                            : 'bg-white text-emerald-700 hover:bg-emerald-50 border border-emerald-200'
+                            ? 'bg-semantic-success text-white font-semibold'
+                            : 'bg-surface text-semantic-success hover:bg-emerald-50 border border-emerald-200'
                     ]"
                 >
                     <span>Lolos Verifikasi</span>
-                    <span v-if="countLolos > 0" class="px-1.5 py-0.5 rounded-md text-xs bg-emerald-50 text-semantic-success font-bold">
+                    <span v-if="countLolos > 0" class="px-1.5 py-0.5 rounded-md text-xs bg-emerald-50 text-semantic-success font-semibold">
                         {{ countLolos }}
                     </span>
                 </button>
@@ -201,11 +202,11 @@ async function openAuthModal(item, role, action) {
 
             <GovCard :no-padding="true">
                 <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gov-surface-border text-left">
-                        <thead class="bg-gov-surface-subtle text-xs  font-semibold text-slate-600">
+                    <table class="min-w-full divide-y divide-hairline text-left">
+                        <thead class="bg-raised text-xs font-semibold text-ink-secondary">
                             <tr>
                                 <th class="py-3 px-4">No. Bukti / Tanggal</th>
-                                <th class="py-3 px-4">Unit Kerja & Subkegiatan</th>
+                                <th class="py-3 px-4">Unit Kerja &amp; Subkegiatan</th>
                                 <th class="py-3 px-4">Uraian / Penyedia</th>
                                 <th class="py-3 px-4 text-center">Kategori</th>
                                 <th class="py-3 px-4 text-right">Nominal</th>
@@ -213,36 +214,36 @@ async function openAuthModal(item, role, action) {
                                 <th class="py-3 px-4 text-center">Aksi Pemeriksaan</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gov-surface-border text-xs">
+                        <tbody class="divide-y divide-hairline text-xs">
                             <tr v-if="loading">
-                                <td colspan="7" class="py-8 text-center text-slate-400">
+                                <td colspan="7" class="py-8 text-center text-ink-muted">
                                     Memuat antrean berkas...
                                 </td>
                             </tr>
                             <tr v-else-if="filteredQueue.length === 0">
-                                <td colspan="7" class="py-8 text-center text-slate-400">
+                                <td colspan="7" class="py-8 text-center text-ink-muted">
                                     Tidak ada dokumen dalam kategori antrean ini.
                                 </td>
                             </tr>
-                            <tr v-for="item in filteredQueue" :key="item.id" class="hover:bg-slate-50">
+                            <tr v-for="item in filteredQueue" :key="item.id" class="hover:bg-raised/60">
                                 <td class="py-3 px-4">
-                                    <div class="font-bold text-gov-navy-900">{{ item.id }}</div>
-                                    <div class="text-xs text-slate-400">{{ formatTanggalIndo(item.tanggal) }}</div>
+                                    <div class="font-semibold text-ink font-mono">{{ item.id }}</div>
+                                    <div class="text-xs text-ink-muted">{{ formatTanggalIndo(item.tanggal) }}</div>
                                 </td>
                                 <td class="py-3 px-4">
-                                    <div class="font-medium text-slate-800">{{ item.unit }}</div>
-                                    <div class="text-xs text-slate-500 max-w-xs truncate">{{ item.sub_activity }}</div>
+                                    <div class="font-medium text-ink">{{ item.unit }}</div>
+                                    <div class="text-xs text-ink-muted max-w-xs truncate">{{ item.sub_activity }}</div>
                                 </td>
                                 <td class="py-3 px-4">
-                                    <div class="text-slate-800 max-w-xs truncate font-medium">{{ item.uraian }}</div>
-                                    <div class="text-xs text-slate-400 font-mono">{{ item.vendor }}</div>
+                                    <div class="text-ink max-w-xs truncate font-medium">{{ item.uraian }}</div>
+                                    <div class="text-xs text-ink-muted font-mono">{{ item.vendor }}</div>
                                 </td>
                                 <td class="py-3 px-4 text-center">
-                                    <span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-100 text-gov-navy-900 border border-slate-200">
+                                    <span class="px-2 py-0.5 rounded text-xs font-semibold bg-raised text-ink border border-hairline">
                                         {{ item.category }}
                                     </span>
                                 </td>
-                                <td class="py-3 px-4 text-right font-bold text-gov-navy-950 tabular-nums">
+                                <td class="py-3 px-4 text-right font-semibold text-ink font-mono tabular-nums">
                                     {{ formatRupiah(item.nominal) }}
                                 </td>
                                 <td class="py-3 px-4 text-center">
@@ -255,21 +256,17 @@ async function openAuthModal(item, role, action) {
                                         <template v-if="item.status === 'REVISI_MINOR'">
                                             <span
                                                 v-if="item.is_sla_breached"
-                                                class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300 "
+                                                class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-semibold bg-rose-100 text-rose-800 border border-rose-300"
                                                 title="SLA Terlampaui (Lebih dari 2 hari kerja)"
                                             >
-                                                <svg class="w-3 h-3 text-rose-600" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
-                                                </svg>
+                                                <Clock class="w-3 h-3 text-semantic-danger" :stroke-width="1.5" />
                                                 SLA Terlewat
                                             </span>
                                             <span
                                                 v-else-if="item.sla_remaining_hours !== null && item.sla_remaining_hours !== undefined"
                                                 class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200"
                                             >
-                                                <svg class="w-3 h-3 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
-                                                </svg>
+                                                <Clock class="w-3 h-3 text-semantic-warning" :stroke-width="1.5" />
                                                 Sisa {{ Math.max(0, Math.round(item.sla_remaining_hours)) }} jam
                                             </span>
                                         </template>
@@ -281,28 +278,24 @@ async function openAuthModal(item, role, action) {
                                         <button
                                             v-if="userRole === 'PPTK'"
                                             @click="openAuthModal(item, 'PPTK', 'APPROVE')"
-                                            class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
+                                            class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-semantic-success text-white hover:bg-emerald-700 shadow-subtle"
                                             title="Setujui dan teruskan ke tahapan berikutnya"
                                         >
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                            </svg>
+                                            <Check class="w-3.5 h-3.5" :stroke-width="1.5" />
                                             Setujui
                                         </button>
                                         <button
                                             v-if="userRole === 'PPTK'"
                                             @click="openAuthModal(item, 'PPTK', 'REJECT')"
-                                            class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-600 text-white hover:bg-rose-700 shadow-sm"
+                                            class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-semantic-danger text-white hover:bg-red-700 shadow-subtle"
                                             title="Tolak dan pulihkan pagu kas"
                                         >
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                            </svg>
+                                            <X class="w-3.5 h-3.5" :stroke-width="1.5" />
                                             Tolak
                                         </button>
                                         <Link
                                             :href="route('verification.workspace', { id: item.id })"
-                                            class="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200"
+                                            class="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium bg-raised text-ink-secondary hover:bg-hairline"
                                             title="Periksa kelengkapan berkas"
                                         >
                                             Review
@@ -313,7 +306,7 @@ async function openAuthModal(item, role, action) {
                                     <div v-else-if="item.status === 'MENUNGGU_LURAH'" class="flex items-center justify-center gap-1.5">
                                         <Link
                                             :href="route('verification.workspace', { id: item.id })"
-                                            class="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200"
+                                            class="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium bg-raised text-ink-secondary hover:bg-hairline"
                                             title="Periksa kelengkapan berkas"
                                         >
                                             Review
@@ -324,12 +317,9 @@ async function openAuthModal(item, role, action) {
                                     <div v-else class="flex items-center justify-center gap-1.5">
                                         <Link
                                             :href="route('verification.workspace', { id: item.id })"
-                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gov-navy-900 text-white hover:bg-gov-navy-800 shadow-sm"
+                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover shadow-subtle"
                                         >
-                                            <svg class="w-3.5 h-3.5 text-gov-gold-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                            </svg>
+                                            <Eye class="w-3.5 h-3.5" :stroke-width="1.5" />
                                             Buka Workspace
                                         </Link>
                                     </div>
