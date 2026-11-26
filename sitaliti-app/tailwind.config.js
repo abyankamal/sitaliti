@@ -17,29 +17,29 @@ export default {
                 mono: ['"JetBrains Mono"', ...defaultTheme.fontFamily.mono],
             },
             colors: {
-                // Light Graphite Neutral Ramp (Unslop Design System)
-                canvas: '#FAFAFA',
-                surface: '#FFFFFF',
-                raised: '#F4F4F5',
-                hairline: '#E5E5E5',
+                // Warm Civic Ledger Neutral Ramp (Archival Stone & Ivory Paper)
+                canvas: '#F5F3EE',
+                surface: '#FDFCFA',
+                raised: '#ECE8DF',
+                hairline: '#DDD7CA',
                 ink: {
-                    DEFAULT: '#171717',
-                    secondary: '#525252',
-                    muted: '#737373',
+                    DEFAULT: '#1C1917',
+                    secondary: '#44403C',
+                    muted: '#57534E',
                 },
-                // Institutional Navy Accent
+                // Primary Institutional Accent (Deep Civic Navy — Single Deliberate Accent)
                 accent: {
-                    DEFAULT: '#15324C',
-                    hover: '#0F2537',
-                    soft: '#EEF2F6',
-                    border: '#CBD5E1',
+                    DEFAULT: '#162C46',
+                    hover: '#0F1F33',
+                    soft: '#EAF0F6',
+                    border: '#C5D3E2',
                 },
-                // Calibrated Semantic Colors
+                // Calibrated Semantic Colors (Emerald reserved exclusively for success/realization)
                 semantic: {
-                    success: '#15803D',
+                    success: '#047857',
                     warning: '#B45309',
-                    danger: '#DC2626',
-                    info: '#0369A1',
+                    danger: '#B91C1C',
+                    info: '#1D4ED8',
                 },
                 // Deep Government Navy Theme (dipertahankan untuk kompatibilitas transisi bertahap)
                 gov: {

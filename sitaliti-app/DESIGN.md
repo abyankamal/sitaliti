@@ -24,26 +24,26 @@ Rekan Anda telah meletakkan fondasi fungsional yang sangat baik (tema warna *Dee
 
 ## 2. Fondasi Visual (Design Tokens)
 
-### 2.1 Palet Warna Resmi (Deep Civic Navy & Paper)
+### 2.1 Palet Warna Resmi (Warm Civic Ledger)
 
-Palet warna SI-TALITI dirancang mencerminkan wibawa institusi pemerintah (*State Audit & Public Finance*), ketenangan visual, dan keterbacaan tinggi di berbagai monitor dinas:
+Palet warna SI-TALITI dirancang mencerminkan wibawa institusi pemerintah (*State Audit & Public Finance*), ketenangan visual di atas kertas arsip hangat, dan keterbacaan tinggi (WCAG AA >= 4.5:1) di berbagai monitor dinas:
 
 ```
-canvas:         #F7F8FA   /* Latar belakang aplikasi (warm neutral) */
-surface:        #FFFFFF   /* Latar belakang kartu, tabel, dan drawer */
-raised:         #F1F3F6   /* Permukaan sekunder (header tabel, hover halus) */
-hairline:       #E4E7EC   /* Garis batas kartu & pembatas kolom tabel */
-ink:            #0F172A   /* Teks judul dan angka utama */
-ink-secondary:  #475569   /* Label pendukung dan keterangan */
-ink-muted:      #64748B   /* Teks mikro / metadata */
-accent:         #1E3A5F   /* Aksen institusional primer (tombol utama, fokus) */
-accent-hover:   #152A45   /* Hover state aksen primer */
-accent-soft:    #EFF4FA   /* Latar lembut untuk state aktif */
-accent-border:  #C7D6EA   /* Border lembut untuk state aktif */
+canvas:         #F5F3EE   /* Latar belakang aplikasi (kertas arsip hangat) */
+surface:        #FDFCFA   /* Latar belakang kartu, tabel, form, dan dokumen */
+raised:         #ECE8DF   /* Permukaan sekunder (header tabel, hover halus) */
+hairline:       #DDD7CA   /* Garis batas kartu & pembatas kolom tabel */
+ink:            #1C1917   /* Teks judul dan angka utama */
+ink-secondary:  #44403C   /* Label pendukung dan keterangan */
+ink-muted:      #57534E   /* Teks mikro / metadata (WCAG AA >= 4.5:1) */
+accent:         #162C46   /* Aksen institusional tunggal: top bar, CTA primer, nav aktif, fokus */
+accent-hover:   #0F1F33   /* Hover state aksen primer */
+accent-soft:    #EAF0F6   /* Latar lembut untuk state aktif */
+accent-border:  #C5D3E2   /* Border lembut untuk state aktif */
 ```
 
 #### Aturan Aksen Status Fungsional (Functional State Colors — `semantic.*`):
-- **Lolos Verifikasi / Tersedia (`semantic.success`)**: `#047857` (Badge: `#ECFDF5`, Border: `#A7F3D0`).
+- **Lolos Verifikasi / Tersedia / Serapan Positif (`semantic.success`)**: `#047857` (Hijau Zamrud Tua, khusus status keberhasilan & realisasi positif agar tidak bertabrakan dengan `accent` primer).
 - **Revisi Minor / Terkunci Komitmen (`semantic.warning`)**: `#B45309` (Badge: `#FFFBEB`, Border: `#FDE68A`).
 - **Revisi Mayor / Ditolak / Overlimit (`semantic.danger`)**: `#B91C1C` (Badge: `#FEF2F2`, Border: `#FECACA`).
 - **Informasi / Pagu Terkunci (`semantic.info`)**: `#1D4ED8` (Badge: `#EFF6FF`, Border: `#BFDBFE`).
