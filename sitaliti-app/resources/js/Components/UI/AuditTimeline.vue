@@ -74,8 +74,9 @@ const sortedEvents = computed(() => {
 <template>
     <div class="relative">
         <!-- Empty state -->
-        <div v-if="sortedEvents.length === 0" class="text-center py-6">
-            <div class="text-ink-muted text-sm">Belum ada riwayat aktivitas</div>
+        <div v-if="sortedEvents.length === 0" class="rounded-lg border border-dashed border-hairline bg-canvas/60 px-4 py-6 text-center">
+            <p class="text-sm font-medium text-ink-secondary">Belum ada riwayat aktivitas</p>
+            <p class="mt-1 text-xs text-ink-muted">Jejak audit akan tercatat otomatis saat kuitansi disimpan, diajukan, atau diverifikasi.</p>
         </div>
 
         <!-- Timeline -->

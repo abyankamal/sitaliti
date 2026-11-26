@@ -10,17 +10,17 @@ const pointerStartedOnBackdrop = ref(false);
 
 const VARIANT_CONFIG = {
     danger: {
-        iconBg: 'bg-rose-50 text-rose-600 border-rose-200',
+        iconBg: 'bg-red-50 text-semantic-danger border-red-200',
         buttonVariant: 'danger',
         Icon: ShieldAlert,
     },
     warning: {
-        iconBg: 'bg-amber-50 text-amber-600 border-amber-200',
+        iconBg: 'bg-amber-50 text-semantic-warning border-amber-200',
         buttonVariant: 'primary',
         Icon: AlertTriangle,
     },
     primary: {
-        iconBg: 'bg-raised text-accent border-hairline',
+        iconBg: 'bg-accent-soft text-accent border-accent-border',
         buttonVariant: 'primary',
         Icon: HelpCircle,
     },
@@ -108,14 +108,14 @@ function handleBackdropClick(event) {
                     rows="3"
                     :disabled="confirmState.loading"
                     :placeholder="confirmState.reasonPlaceholder"
-                    class="w-full rounded-lg border border-hairline bg-surface px-3 py-2 text-xs text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 disabled:opacity-60"
+                    class="w-full rounded-lg border border-hairline bg-surface px-3 py-2 text-xs text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/20 disabled:opacity-60"
                 />
             </div>
 
             <div
                 v-if="confirmState.error"
                 role="alert"
-                class="rounded-lg bg-rose-50 border border-rose-200 px-3 py-2 text-xs text-rose-800"
+                class="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-900"
             >
                 {{ confirmState.error }}
             </div>

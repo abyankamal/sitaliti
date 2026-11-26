@@ -9,17 +9,17 @@ const containerRef = ref(null);
 const TYPE_STYLES = {
     success: {
         container: 'bg-emerald-50 border-emerald-200 text-emerald-900',
-        icon: 'text-emerald-600',
+        icon: 'text-semantic-success',
         Component: CheckCircle2,
     },
     error: {
-        container: 'bg-rose-50 border-rose-200 text-rose-900',
-        icon: 'text-rose-600',
+        container: 'bg-red-50 border-red-200 text-red-900',
+        icon: 'text-semantic-danger',
         Component: AlertCircle,
     },
     warning: {
         container: 'bg-amber-50 border-amber-200 text-amber-900',
-        icon: 'text-amber-600',
+        icon: 'text-semantic-warning',
         Component: AlertTriangle,
     },
     info: {
@@ -101,7 +101,7 @@ onMounted(() => {
 
                 <button
                     type="button"
-                    class="p-0.5 rounded-md opacity-60 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-accent shrink-0"
+                    class="p-1 rounded-md opacity-70 hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent shrink-0"
                     aria-label="Tutup notifikasi"
                     @click="dismiss(item.id)"
                 >

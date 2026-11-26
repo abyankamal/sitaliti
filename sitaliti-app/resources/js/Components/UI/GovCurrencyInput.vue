@@ -2,7 +2,13 @@
 import { computed } from 'vue';
 import { formatRupiah, parseRupiah } from '@/Utils/currency';
 
+let nextCurrencyId = 0;
+
 const props = defineProps({
+    id: {
+        type: String,
+        default: null,
+    },
     modelValue: {
         type: [Number, String],
         default: 0,
@@ -31,6 +37,9 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue']);
 
+const fallbackId = `gov-currency-${++nextCurrencyId}`;
+const inputId = computed(() => props.id || fallbackId);
+
 const formattedDisplay = computed(() => {
     if (props.modelValue === null || props.modelValue === undefined || props.modelValue === '') return '';
     return formatRupiah(props.modelValue, false);
@@ -45,7 +54,7 @@ function handleInput(event) {
 
 <template>
     <div class="w-full">
-        <label v-if="label" class="block text-xs font-medium text-ink-secondary mb-1.5">
+        <label v-if="label" :for="inputId" class="block text-xs font-medium text-ink-secondary mb-1.5">
             {{ label }} <span v-if="required" class="text-semantic-danger">*</span>
         </label>
         <div class="relative rounded-lg">
@@ -53,11 +62,13 @@ function handleInput(event) {
                 <span class="text-xs font-medium text-ink-muted">Rp</span>
             </div>
             <input
+                :id="inputId"
                 type="text"
                 :value="formattedDisplay"
                 @input="handleInput"
                 :disabled="disabled"
                 :placeholder="placeholder"
+                :aria-invalid="error ? 'true' : undefined"
                 class="block w-full h-10 rounded-lg border-hairline bg-surface pl-10 pr-3.5 text-right text-sm font-mono font-medium tabular-nums text-ink placeholder:text-ink-muted shadow-subtle focus:border-accent focus:ring-1 focus:ring-accent disabled:bg-raised disabled:text-ink-muted disabled:cursor-not-allowed transition-colors duration-150 ease-unslop"
                 :class="[error ? 'border-semantic-danger focus:border-semantic-danger focus:ring-semantic-danger' : '']"
             />
