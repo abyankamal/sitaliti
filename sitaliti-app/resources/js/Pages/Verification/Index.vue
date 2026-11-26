@@ -294,7 +294,7 @@ async function openAuthModal(item, role, action) {
                                             Tolak
                                         </button>
                                         <Link
-                                            :href="route('verification.workspace', { id: item.id })"
+                                            :href="route('verification.workspace', { id: item.kuitansi_id ?? item.id })"
                                             class="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium bg-raised text-ink-secondary hover:bg-hairline"
                                             title="Periksa kelengkapan berkas"
                                         >
@@ -305,7 +305,7 @@ async function openAuthModal(item, role, action) {
                                     <!-- Aksi Spesifik LURAH jika status MENUNGGU_LURAH (historis) -->
                                     <div v-else-if="item.status === 'MENUNGGU_LURAH'" class="flex items-center justify-center gap-1.5">
                                         <Link
-                                            :href="route('verification.workspace', { id: item.id })"
+                                            :href="route('verification.workspace', { id: item.kuitansi_id ?? item.id })"
                                             class="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium bg-raised text-ink-secondary hover:bg-hairline"
                                             title="Periksa kelengkapan berkas"
                                         >
@@ -316,7 +316,7 @@ async function openAuthModal(item, role, action) {
                                     <!-- Aksi Verifikator jika status sudah lewat persetujuan -->
                                     <div v-else class="flex items-center justify-center gap-1.5">
                                         <Link
-                                            :href="route('verification.workspace', { id: item.id })"
+                                            :href="route('verification.workspace', { id: item.kuitansi_id ?? item.id })"
                                             class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover shadow-subtle"
                                         >
                                             <Eye class="w-3.5 h-3.5" :stroke-width="1.5" />
