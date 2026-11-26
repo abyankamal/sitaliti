@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import { Head, usePage } from '@inertiajs/vue3';
+import { X } from 'lucide-vue-next';
 import GovAppLayout from '@/Layouts/GovAppLayout.vue';
 import GovBadge from '@/Components/UI/GovBadge.vue';
 import GovButton from '@/Components/UI/GovButton.vue';
@@ -262,10 +263,10 @@ async function submitEdit() {
         <template #header>
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 class="text-xl font-bold text-gov-navy-950">
+                    <h1 class="text-xl font-bold text-ink">
                         Kelola Anggaran &amp; Kode Rekening (RAK)
                     </h1>
-                    <p class="text-xs text-slate-500 mt-1">
+                    <p class="text-xs text-ink-muted mt-1">
                         Tambahkan kode rekening belanja baru beserta jadwal alokasi pagu kas 12 bulan untuk seluruh unit kerja.
                     </p>
                 </div>
@@ -275,15 +276,15 @@ async function submitEdit() {
             </div>
         </template>
 
-        <div class="p-6 max-w-7xl mx-auto space-y-5">
+        <div class="max-w-7xl mx-auto space-y-5">
             <!-- Filter Bar -->
-            <div class="bg-white rounded-xl border border-gov-surface-border p-4 shadow-sm flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+            <div class="bg-surface rounded-xl border border-hairline p-4 shadow-subtle flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
                 <div class="flex flex-col sm:flex-row gap-3 flex-1">
                     <select
                         v-if="isSkpdWide"
                         v-model="filterUnitId"
                         @change="fetchRekenings(1)"
-                        class="rounded-lg border-gov-surface-border text-sm text-slate-700 py-2 px-3 sm:w-64"
+                        class="rounded-lg border-hairline text-sm text-ink-secondary py-2 px-3 sm:w-64"
                     >
                         <option value="">Semua Unit Kerja</option>
                         <option v-for="unit in units" :key="unit.id" :value="unit.id">
@@ -296,7 +297,7 @@ async function submitEdit() {
                         type="text"
                         placeholder="Cari kode rekening, uraian, atau subkegiatan..."
                         @keyup.enter="fetchRekenings(1)"
-                        class="rounded-lg border-gov-surface-border text-sm text-slate-700 py-2 px-3 flex-1"
+                        class="rounded-lg border-hairline text-sm text-ink-secondary py-2 px-3 flex-1"
                     />
                 </div>
                 <GovButton variant="secondary" size="sm" @click="fetchRekenings(1)">
@@ -305,10 +306,10 @@ async function submitEdit() {
             </div>
 
             <!-- Table -->
-            <div class="bg-white rounded-xl border border-gov-surface-border shadow-sm overflow-hidden">
+            <div class="bg-surface rounded-xl border border-hairline shadow-subtle overflow-hidden">
                 <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-slate-200 text-sm">
-                        <thead class="bg-slate-50 text-xs font-bold  text-slate-600">
+                    <table class="min-w-full divide-y divide-hairline text-sm">
+                        <thead class="bg-raised text-xs font-bold  text-ink-secondary">
                             <tr>
                                 <th class="px-4 py-3 text-left">Unit Kerja</th>
                                 <th class="px-4 py-3 text-left">Subkegiatan</th>
@@ -320,29 +321,29 @@ async function submitEdit() {
                                 <th class="px-4 py-3 text-center">Aksi</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-slate-100">
+                        <tbody class="divide-y divide-hairline">
                             <tr v-if="loading">
-                                <td colspan="8" class="px-4 py-8 text-center text-slate-500">Memuat data rekening anggaran...</td>
+                                <td colspan="8" class="px-4 py-8 text-center text-ink-muted">Memuat data rekening anggaran...</td>
                             </tr>
                             <tr v-else-if="rekenings.length === 0">
-                                <td colspan="8" class="px-4 py-8 text-center text-slate-500">Belum ada rekening yang sesuai filter.</td>
+                                <td colspan="8" class="px-4 py-8 text-center text-ink-muted">Belum ada rekening yang sesuai filter.</td>
                             </tr>
-                            <tr v-for="row in rekenings" :key="row.id" class="hover:bg-slate-50/70">
-                                <td class="px-4 py-3 text-xs font-medium text-slate-700">
+                            <tr v-for="row in rekenings" :key="row.id" class="hover:bg-raised/70">
+                                <td class="px-4 py-3 text-xs font-medium text-ink-secondary">
                                     {{ row.unit_kerja?.nama_unit || '-' }}
                                 </td>
                                 <td class="px-4 py-3">
-                                    <div class="font-mono text-xs font-semibold text-gov-navy-900">{{ row.kode_sub_kegiatan }}</div>
-                                    <div class="text-xs text-slate-500 line-clamp-1">{{ row.nama_sub_kegiatan }}</div>
+                                    <div class="font-mono text-xs font-semibold text-ink">{{ row.kode_sub_kegiatan }}</div>
+                                    <div class="text-xs text-ink-muted line-clamp-1">{{ row.nama_sub_kegiatan }}</div>
                                 </td>
                                 <td class="px-4 py-3">
-                                    <div class="font-mono text-xs font-bold text-slate-900">{{ row.kode_rekening }}</div>
-                                    <div class="text-xs text-slate-600">{{ row.nama_rekening }}</div>
+                                    <div class="font-mono text-xs font-bold text-ink">{{ row.kode_rekening }}</div>
+                                    <div class="text-xs text-ink-secondary">{{ row.nama_rekening }}</div>
                                 </td>
                                 <td class="px-4 py-3 text-center">
                                     <GovBadge variant="info">{{ row.kategori_belanja }}</GovBadge>
                                 </td>
-                                <td class="px-4 py-3 text-right font-semibold tabular-nums text-slate-900">
+                                <td class="px-4 py-3 text-right font-semibold tabular-nums text-ink">
                                     {{ formatRupiah(row.total_alokasi) }}
                                 </td>
                                 <td class="px-4 py-3 text-right tabular-nums text-amber-700">
@@ -362,7 +363,7 @@ async function submitEdit() {
                 </div>
 
                 <!-- Pagination -->
-                <div v-if="pagination.last_page > 1" class="px-4 py-3 border-t border-slate-200 flex items-center justify-between text-xs text-slate-600">
+                <div v-if="pagination.last_page > 1" class="px-4 py-3 border-t border-hairline flex items-center justify-between text-xs text-ink-secondary">
                     <span>Total {{ pagination.total }} rekening • Halaman {{ pagination.current_page }} dari {{ pagination.last_page }}</span>
                     <div class="flex gap-2">
                         <GovButton
@@ -387,14 +388,14 @@ async function submitEdit() {
         </div>
 
         <!-- Modal Tambah Kode Rekening -->
-        <div v-if="showCreateModal" class="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 overflow-y-auto">
-            <div class="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[92vh] overflow-y-auto p-6 space-y-5">
-                <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+        <div v-if="showCreateModal" class="fixed inset-0 z-50 bg-ink/40 flex items-center justify-center p-4 overflow-y-auto">
+            <div class="bg-surface rounded-xl shadow-floating max-w-4xl w-full max-h-[92vh] overflow-y-auto scrollbar-thin p-6 space-y-5">
+                <div class="flex items-center justify-between border-b border-hairline pb-3">
                     <div>
-                        <h3 class="text-lg font-bold text-gov-navy-950">Tambah Kode Rekening &amp; Alokasi RAK 12 Bulan</h3>
-                        <p class="text-xs text-slate-500">Pastikan kode rekening dan kategori belanja sesuai ketentuan pajak &amp; SIPD.</p>
+                        <h3 class="text-lg font-bold text-ink">Tambah Kode Rekening &amp; Alokasi RAK 12 Bulan</h3>
+                        <p class="text-xs text-ink-muted">Pastikan kode rekening dan kategori belanja sesuai ketentuan pajak &amp; SIPD.</p>
                     </div>
-                    <button type="button" class="text-slate-400 hover:text-slate-600 text-xl leading-none" @click="showCreateModal = false">&times;</button>
+                    <button type="button" class="text-ink-muted hover:text-ink-secondary text-xl leading-none" @click="showCreateModal = false" aria-label="Tutup"><X class="w-4 h-4" :stroke-width="1.5" /></button>
                 </div>
 
                 <div v-if="formErrorGeneral" class="p-3 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-700 font-medium">
@@ -405,8 +406,8 @@ async function submitEdit() {
                     <!-- Unit Kerja & Kategori -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-xs font-semibold text-gov-navy-900 uppercase mb-1">Unit Kerja <span class="text-rose-500">*</span></label>
-                            <select v-model="form.unit_kerja_id" required :disabled="!isSkpdWide" class="w-full rounded-lg border-gov-surface-border text-sm py-2 px-3 disabled:bg-slate-100 disabled:text-slate-600">
+                            <label class="block text-xs font-semibold text-ink uppercase mb-1">Unit Kerja <span class="text-rose-500">*</span></label>
+                            <select v-model="form.unit_kerja_id" required :disabled="!isSkpdWide" class="w-full rounded-lg border-hairline text-sm py-2 px-3 disabled:bg-raised disabled:text-ink-secondary">
                                 <option value="" disabled>Pilih Unit Kerja</option>
                                 <option v-for="unit in units" :key="unit.id" :value="unit.id">
                                     {{ unit.name || unit.nama_unit }}
@@ -416,21 +417,21 @@ async function submitEdit() {
                         </div>
 
                         <div>
-                            <label class="block text-xs font-semibold text-gov-navy-900 uppercase mb-1">Kategori Belanja (Penentu Pajak) <span class="text-rose-500">*</span></label>
-                            <select v-model="form.kategori_belanja" required class="w-full rounded-lg border-gov-surface-border text-sm py-2 px-3">
+                            <label class="block text-xs font-semibold text-ink uppercase mb-1">Kategori Belanja (Penentu Pajak) <span class="text-rose-500">*</span></label>
+                            <select v-model="form.kategori_belanja" required class="w-full rounded-lg border-hairline text-sm py-2 px-3">
                                 <option v-for="cat in categoryOptions" :key="cat.code" :value="cat.code">
                                     {{ cat.code }} — {{ cat.name }}
                                 </option>
                             </select>
-                            <p class="mt-1 text-xs text-slate-500">{{ selectedCategoryInfo?.description }}</p>
+                            <p class="mt-1 text-xs text-ink-muted">{{ selectedCategoryInfo?.description }}</p>
                             <p v-if="formErrors.kategori_belanja" class="mt-1 text-xs text-rose-600">{{ formErrors.kategori_belanja[0] }}</p>
                         </div>
                     </div>
 
                     <!-- Subkegiatan -->
-                    <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                    <div class="p-3.5 rounded-xl bg-raised border border-hairline space-y-3">
                         <div class="flex items-center justify-between">
-                            <span class="text-xs font-bold uppercase text-gov-navy-900">Subkegiatan</span>
+                            <span class="text-xs font-bold uppercase text-ink">Subkegiatan</span>
                             <div class="flex gap-3 text-xs">
                                 <label class="inline-flex items-center gap-1.5 cursor-pointer">
                                     <input type="radio" v-model="subkegiatanMode" value="existing" :disabled="subActivities.length === 0" />
@@ -444,7 +445,7 @@ async function submitEdit() {
                         </div>
 
                         <div v-if="subkegiatanMode === 'existing'">
-                            <select v-model="selectedExistingSubkeg" class="w-full rounded-lg border-gov-surface-border text-sm py-2 px-3">
+                            <select v-model="selectedExistingSubkeg" class="w-full rounded-lg border-hairline text-sm py-2 px-3">
                                 <option value="" disabled>{{ loadingSubActivities ? 'Memuat...' : 'Pilih Subkegiatan' }}</option>
                                 <option v-for="sub in subActivities" :key="sub.kode_sub_kegiatan" :value="sub.kode_sub_kegiatan">
                                     {{ sub.kode_sub_kegiatan }} — {{ sub.nama_sub_kegiatan }}
@@ -454,13 +455,13 @@ async function submitEdit() {
 
                         <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-xs font-semibold text-slate-700 mb-1">Kode Subkegiatan (7.01.x.x.x.xxxx) <span class="text-rose-500">*</span></label>
-                                <input v-model="form.kode_sub_kegiatan" type="text" placeholder="7.01.01.2.01.0001" required class="w-full rounded-lg border-gov-surface-border text-sm py-2 px-3 font-mono" />
+                                <label class="block text-xs font-semibold text-ink-secondary mb-1">Kode Subkegiatan (7.01.x.x.x.xxxx) <span class="text-rose-500">*</span></label>
+                                <input v-model="form.kode_sub_kegiatan" type="text" placeholder="7.01.01.2.01.0001" required class="w-full rounded-lg border-hairline text-sm py-2 px-3 font-mono" />
                                 <p v-if="formErrors.kode_sub_kegiatan" class="mt-1 text-xs text-rose-600">{{ formErrors.kode_sub_kegiatan[0] }}</p>
                             </div>
                             <div>
-                                <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Subkegiatan <span class="text-rose-500">*</span></label>
-                                <input v-model="form.nama_sub_kegiatan" type="text" placeholder="Penyusunan Dokumen Perencanaan" required class="w-full rounded-lg border-gov-surface-border text-sm py-2 px-3" />
+                                <label class="block text-xs font-semibold text-ink-secondary mb-1">Nama Subkegiatan <span class="text-rose-500">*</span></label>
+                                <input v-model="form.nama_sub_kegiatan" type="text" placeholder="Penyusunan Dokumen Perencanaan" required class="w-full rounded-lg border-hairline text-sm py-2 px-3" />
                                 <p v-if="formErrors.nama_sub_kegiatan" class="mt-1 text-xs text-rose-600">{{ formErrors.nama_sub_kegiatan[0] }}</p>
                             </div>
                         </div>
@@ -469,13 +470,13 @@ async function submitEdit() {
                     <!-- Kode & Nama Rekening -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-xs font-semibold text-gov-navy-900 uppercase mb-1">Kode Rekening (5.x.x.x.x.x) <span class="text-rose-500">*</span></label>
-                            <input v-model="form.kode_rekening" type="text" placeholder="5.1.02.01.01.0099" required class="w-full rounded-lg border-gov-surface-border text-sm py-2 px-3 font-mono" />
+                            <label class="block text-xs font-semibold text-ink uppercase mb-1">Kode Rekening (5.x.x.x.x.x) <span class="text-rose-500">*</span></label>
+                            <input v-model="form.kode_rekening" type="text" placeholder="5.1.02.01.01.0099" required class="w-full rounded-lg border-hairline text-sm py-2 px-3 font-mono" />
                             <p v-if="formErrors.kode_rekening" class="mt-1 text-xs text-rose-600">{{ formErrors.kode_rekening[0] }}</p>
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-gov-navy-900 uppercase mb-1">Nama / Uraian Rekening <span class="text-rose-500">*</span></label>
-                            <input v-model="form.nama_rekening" type="text" placeholder="Belanja Alat Tulis Kantor" required class="w-full rounded-lg border-gov-surface-border text-sm py-2 px-3" />
+                            <label class="block text-xs font-semibold text-ink uppercase mb-1">Nama / Uraian Rekening <span class="text-rose-500">*</span></label>
+                            <input v-model="form.nama_rekening" type="text" placeholder="Belanja Alat Tulis Kantor" required class="w-full rounded-lg border-hairline text-sm py-2 px-3" />
                             <p v-if="formErrors.nama_rekening" class="mt-1 text-xs text-rose-600">{{ formErrors.nama_rekening[0] }}</p>
                         </div>
                     </div>
@@ -483,8 +484,8 @@ async function submitEdit() {
                     <!-- Alokasi 12 Bulan -->
                     <div class="space-y-2">
                         <div class="flex items-center justify-between">
-                            <span class="text-xs font-bold uppercase text-gov-navy-900">Alokasi Pagu Kas 12 Bulan <span class="text-rose-500">*</span></span>
-                            <span class="text-sm font-bold text-gov-navy-900">
+                            <span class="text-xs font-bold uppercase text-ink">Alokasi Pagu Kas 12 Bulan <span class="text-rose-500">*</span></span>
+                            <span class="text-sm font-bold text-ink">
                                 Total Tahunan: <span class="text-emerald-700 tabular-nums">{{ formatRupiah(totalAlokasi) }}</span>
                             </span>
                         </div>
@@ -500,7 +501,7 @@ async function submitEdit() {
                         </div>
                     </div>
 
-                    <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
+                    <div class="flex items-center justify-end gap-3 pt-3 border-t border-hairline">
                         <GovButton type="button" variant="secondary" :disabled="saving" @click="showCreateModal = false">
                             Batal
                         </GovButton>
@@ -513,16 +514,16 @@ async function submitEdit() {
         </div>
 
         <!-- Modal Edit Pagu Bulanan -->
-        <div v-if="showEditModal && editingRekening" class="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 overflow-y-auto">
-            <div class="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[92vh] overflow-y-auto p-6 space-y-5">
-                <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+        <div v-if="showEditModal && editingRekening" class="fixed inset-0 z-50 bg-ink/40 flex items-center justify-center p-4 overflow-y-auto">
+            <div class="bg-surface rounded-xl shadow-floating max-w-4xl w-full max-h-[92vh] overflow-y-auto scrollbar-thin p-6 space-y-5">
+                <div class="flex items-center justify-between border-b border-hairline pb-3">
                     <div>
-                        <h3 class="text-lg font-bold text-gov-navy-950">Edit Alokasi Pagu Bulanan</h3>
-                        <p class="text-xs text-slate-500 font-mono">
+                        <h3 class="text-lg font-bold text-ink">Edit Alokasi Pagu Bulanan</h3>
+                        <p class="text-xs text-ink-muted font-mono">
                             {{ editingRekening.kode_rekening }} — {{ editingRekening.nama_rekening }}
                         </p>
                     </div>
-                    <button type="button" class="text-slate-400 hover:text-slate-600 text-xl leading-none" @click="showEditModal = false">&times;</button>
+                    <button type="button" class="text-ink-muted hover:text-ink-secondary text-xl leading-none" @click="showEditModal = false" aria-label="Tutup"><X class="w-4 h-4" :stroke-width="1.5" /></button>
                 </div>
 
                 <div v-if="editErrorGeneral" class="p-3 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-700 font-medium">
@@ -532,12 +533,12 @@ async function submitEdit() {
                 <form @submit.prevent="submitEdit" class="space-y-4">
                     <div class="flex flex-wrap items-center justify-between gap-2">
                         <div>
-                            <span class="text-xs font-bold uppercase text-gov-navy-900">Rincian Alokasi 12 Bulan</span>
-                            <p class="text-xs text-slate-500">
+                            <span class="text-xs font-bold uppercase text-ink">Rincian Alokasi 12 Bulan</span>
+                            <p class="text-xs text-ink-muted">
                                 Validasi minimum dihitung secara kumulatif dari Januari hingga bulan berjalan.
                             </p>
                         </div>
-                        <span class="text-sm font-bold text-gov-navy-900">
+                        <span class="text-sm font-bold text-ink">
                             Total Pagu Baru: <span class="text-emerald-700 tabular-nums">{{ formatRupiah(totalEditAlokasi) }}</span>
                         </span>
                     </div>
@@ -550,7 +551,7 @@ async function submitEdit() {
                             />
                             <p
                                 class="text-xs tabular-nums"
-                                :class="Math.round(editCumulativeAlokasi[idx] * 100) < Math.round(editCumulativeMin[idx] * 100) ? 'text-rose-600 font-semibold' : 'text-slate-500'"
+                                :class="Math.round(editCumulativeAlokasi[idx] * 100) < Math.round(editCumulativeMin[idx] * 100) ? 'text-rose-600 font-semibold' : 'text-ink-muted'"
                             >
                                 Terpakai bln ini: <span class="font-semibold">{{ formatRupiah(editMinRequired[idx]) }}</span>
                                 · Min. kumulatif: <span class="font-semibold">{{ formatRupiah(editCumulativeMin[idx]) }}</span>
@@ -558,7 +559,7 @@ async function submitEdit() {
                         </div>
                     </div>
 
-                    <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
+                    <div class="flex items-center justify-end gap-3 pt-3 border-t border-hairline">
                         <GovButton type="button" variant="secondary" :disabled="savingEdit" @click="showEditModal = false">
                             Batal
                         </GovButton>

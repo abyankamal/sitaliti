@@ -155,6 +155,13 @@ onMounted(loadData);
     <Head title="Pengaturan Kepatuhan & SBM" />
 
     <GovAppLayout title="Pengaturan Kepatuhan, Tarif Pajak & SBM">
+        <template #header>
+            <div>
+                <h1 class="text-lg font-semibold text-ink">Pengaturan Kepatuhan, Tarif Pajak &amp; SBM</h1>
+                <p class="text-xs text-ink-muted mt-0.5">Konfigurasi gerbang kepatuhan, tarif pajak per tahun anggaran, dan standar biaya masukan (SBM/SSH).</p>
+            </div>
+        </template>
+
         <div class="space-y-6">
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div class="flex items-center gap-2">
@@ -170,8 +177,8 @@ onMounted(loadData);
                         :class="[
                             'px-4 py-2 rounded-lg text-xs font-semibold transition-colors',
                             activeTab === tab.id
-                                ? 'bg-gov-navy-900 text-white shadow-sm'
-                                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50',
+                                ? 'bg-accent text-white shadow-subtle'
+                                : 'bg-surface text-ink-secondary border border-hairline hover:bg-raised',
                         ]"
                     >
                         {{ tab.label }}
@@ -179,30 +186,30 @@ onMounted(loadData);
                 </div>
 
                 <div class="flex items-center gap-2 text-xs">
-                    <label class="font-semibold text-slate-700">Tahun Anggaran:</label>
+                    <label class="font-semibold text-ink-secondary">Tahun Anggaran:</label>
                     <input
                         v-model.number="tahunAnggaran"
                         type="number"
                         min="2020"
                         max="2100"
                         @change="loadData"
-                        class="w-24 rounded-lg border-slate-300 text-xs py-1.5 px-2.5"
+                        class="w-24 rounded-lg border-hairline text-xs py-1.5 px-2.5"
                     />
                 </div>
             </div>
 
             <!-- Tab 1: Kebijakan Gerbang -->
             <GovCard v-show="activeTab === 'settings'" title="Kebijakan Gerbang Kepatuhan e-Verifikatur">
-                <div v-if="loading" class="text-xs text-slate-500 py-4">Memuat pengaturan...</div>
-                <div v-else class="divide-y divide-slate-200">
+                <div v-if="loading" class="text-xs text-ink-muted py-4">Memuat pengaturan...</div>
+                <div v-else class="divide-y divide-hairline">
                     <div
                         v-for="setting in settings"
                         :key="setting.key"
                         class="py-3.5 flex items-center justify-between gap-4"
                     >
                         <div>
-                            <div class="font-mono text-xs font-bold text-gov-navy-900">{{ setting.key }}</div>
-                            <p class="text-xs text-slate-600 mt-0.5">{{ setting.description }}</p>
+                            <div class="font-mono text-xs font-bold text-ink">{{ setting.key }}</div>
+                            <p class="text-xs text-ink-secondary mt-0.5">{{ setting.description }}</p>
                         </div>
                         <GovButton
                             :variant="isSettingActive(setting.value) ? 'primary' : 'secondary'"
@@ -220,24 +227,24 @@ onMounted(loadData);
                 <GovCard title="Tambah / Ubah Tarif Pajak">
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                         <div>
-                            <label class="block font-semibold text-slate-700 mb-1">Kode Pajak</label>
-                            <input v-model="taxForm.kode_pajak" type="text" class="w-full rounded border-slate-300 text-xs py-1.5 px-2.5 font-mono" />
+                            <label class="block font-semibold text-ink-secondary mb-1">Kode Pajak</label>
+                            <input v-model="taxForm.kode_pajak" type="text" class="w-full rounded border-hairline text-xs py-1.5 px-2.5 font-mono" />
                         </div>
                         <div class="sm:col-span-2">
-                            <label class="block font-semibold text-slate-700 mb-1">Nama Pajak</label>
-                            <input v-model="taxForm.nama_pajak" type="text" class="w-full rounded border-slate-300 text-xs py-1.5 px-2.5" />
+                            <label class="block font-semibold text-ink-secondary mb-1">Nama Pajak</label>
+                            <input v-model="taxForm.nama_pajak" type="text" class="w-full rounded border-hairline text-xs py-1.5 px-2.5" />
                         </div>
                         <div>
-                            <label class="block font-semibold text-slate-700 mb-1">Tarif Desimal (mis. 0.11)</label>
-                            <input v-model.number="taxForm.tarif" type="number" step="0.0001" min="0" max="1" class="w-full rounded border-slate-300 text-xs py-1.5 px-2.5" />
+                            <label class="block font-semibold text-ink-secondary mb-1">Tarif Desimal (mis. 0.11)</label>
+                            <input v-model.number="taxForm.tarif" type="number" step="0.0001" min="0" max="1" class="w-full rounded border-hairline text-xs py-1.5 px-2.5" />
                         </div>
                         <div>
-                            <label class="block font-semibold text-slate-700 mb-1">Ambang Batas (Rp)</label>
-                            <input v-model="taxForm.ambang_batas" type="number" min="0" class="w-full rounded border-slate-300 text-xs py-1.5 px-2.5" />
+                            <label class="block font-semibold text-ink-secondary mb-1">Ambang Batas (Rp)</label>
+                            <input v-model="taxForm.ambang_batas" type="number" min="0" class="w-full rounded border-hairline text-xs py-1.5 px-2.5" />
                         </div>
                         <div>
-                            <label class="block font-semibold text-slate-700 mb-1">Nominal Tetap (Rp)</label>
-                            <input v-model="taxForm.nominal_tetap" type="number" min="0" class="w-full rounded border-slate-300 text-xs py-1.5 px-2.5" />
+                            <label class="block font-semibold text-ink-secondary mb-1">Nominal Tetap (Rp)</label>
+                            <input v-model="taxForm.nominal_tetap" type="number" min="0" class="w-full rounded border-hairline text-xs py-1.5 px-2.5" />
                         </div>
                     </div>
                     <div class="mt-3 flex justify-end">
@@ -249,8 +256,8 @@ onMounted(loadData);
 
                 <GovCard :title="`Daftar Tarif Pajak Tahun ${tahunAnggaran}`">
                     <div class="overflow-x-auto">
-                        <table class="min-w-full text-xs divide-y divide-slate-200">
-                            <thead class="bg-slate-50 text-slate-600">
+                        <table class="min-w-full text-xs divide-y divide-hairline">
+                            <thead class="bg-raised text-ink-secondary">
                                 <tr>
                                     <th class="px-3 py-2 text-left font-semibold">Kode</th>
                                     <th class="px-3 py-2 text-left font-semibold">Nama Pajak</th>
@@ -259,14 +266,14 @@ onMounted(loadData);
                                     <th class="px-3 py-2 text-right font-semibold">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-100">
+                            <tbody class="divide-y divide-hairline">
                                 <tr v-for="row in taxRates" :key="row.id">
-                                    <td class="px-3 py-2 font-mono font-semibold text-gov-navy-900">{{ row.kode_pajak }}</td>
+                                    <td class="px-3 py-2 font-mono font-semibold text-ink">{{ row.kode_pajak }}</td>
                                     <td class="px-3 py-2">{{ row.nama_pajak }}</td>
                                     <td class="px-3 py-2 text-right tabular-nums">{{ (Number(row.tarif) * 100).toFixed(2) }}%</td>
                                     <td class="px-3 py-2 text-right tabular-nums">{{ row.ambang_batas ? formatRupiah(row.ambang_batas) : '-' }}</td>
                                     <td class="px-3 py-2 text-right">
-                                        <button type="button" @click="editTaxRow(row)" class="text-gov-navy-800 font-semibold hover:underline">
+                                        <button type="button" @click="editTaxRow(row)" class="text-accent font-semibold hover:underline">
                                             Edit
                                         </button>
                                     </td>
@@ -282,8 +289,8 @@ onMounted(loadData);
                 <GovCard title="Tambah / Ubah Standar Biaya Masukan (SBM/SSH)">
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                         <div>
-                            <label class="block font-semibold text-slate-700 mb-1">Kategori Belanja</label>
-                            <select v-model="sbmForm.kategori_belanja" class="w-full rounded border-slate-300 text-xs py-1.5 px-2.5">
+                            <label class="block font-semibold text-ink-secondary mb-1">Kategori Belanja</label>
+                            <select v-model="sbmForm.kategori_belanja" class="w-full rounded border-hairline text-xs py-1.5 px-2.5">
                                 <option value="B1_ATK">B1_ATK</option>
                                 <option value="B2_MAMIN">B2_MAMIN</option>
                                 <option value="B3_HONOR">B3_HONOR</option>
@@ -293,20 +300,20 @@ onMounted(loadData);
                             </select>
                         </div>
                         <div>
-                            <label class="block font-semibold text-slate-700 mb-1">Kode SBM</label>
-                            <input v-model="sbmForm.kode_sbm" type="text" placeholder="SBM-ATK-002" class="w-full rounded border-slate-300 text-xs py-1.5 px-2.5 font-mono" />
+                            <label class="block font-semibold text-ink-secondary mb-1">Kode SBM</label>
+                            <input v-model="sbmForm.kode_sbm" type="text" placeholder="SBM-ATK-002" class="w-full rounded border-hairline text-xs py-1.5 px-2.5 font-mono" />
                         </div>
                         <div>
-                            <label class="block font-semibold text-slate-700 mb-1">Satuan</label>
-                            <input v-model="sbmForm.satuan" type="text" placeholder="Rim / OK / OJ" class="w-full rounded border-slate-300 text-xs py-1.5 px-2.5" />
+                            <label class="block font-semibold text-ink-secondary mb-1">Satuan</label>
+                            <input v-model="sbmForm.satuan" type="text" placeholder="Rim / OK / OJ" class="w-full rounded border-hairline text-xs py-1.5 px-2.5" />
                         </div>
                         <div class="sm:col-span-2">
-                            <label class="block font-semibold text-slate-700 mb-1">Uraian Standar</label>
-                            <input v-model="sbmForm.uraian_standar" type="text" class="w-full rounded border-slate-300 text-xs py-1.5 px-2.5" />
+                            <label class="block font-semibold text-ink-secondary mb-1">Uraian Standar</label>
+                            <input v-model="sbmForm.uraian_standar" type="text" class="w-full rounded border-hairline text-xs py-1.5 px-2.5" />
                         </div>
                         <div>
-                            <label class="block font-semibold text-slate-700 mb-1">Harga Maksimal (Rp)</label>
-                            <input v-model.number="sbmForm.harga_maksimal" type="number" min="0" class="w-full rounded border-slate-300 text-xs py-1.5 px-2.5" />
+                            <label class="block font-semibold text-ink-secondary mb-1">Harga Maksimal (Rp)</label>
+                            <input v-model.number="sbmForm.harga_maksimal" type="number" min="0" class="w-full rounded border-hairline text-xs py-1.5 px-2.5" />
                         </div>
                     </div>
                     <div class="mt-3 flex justify-end">
@@ -318,8 +325,8 @@ onMounted(loadData);
 
                 <GovCard :title="`Daftar Master SBM/SSH Tahun ${tahunAnggaran}`">
                     <div class="overflow-x-auto">
-                        <table class="min-w-full text-xs divide-y divide-slate-200">
-                            <thead class="bg-slate-50 text-slate-600">
+                        <table class="min-w-full text-xs divide-y divide-hairline">
+                            <thead class="bg-raised text-ink-secondary">
                                 <tr>
                                     <th class="px-3 py-2 text-left font-semibold">Kode</th>
                                     <th class="px-3 py-2 text-left font-semibold">Kategori</th>
@@ -329,15 +336,15 @@ onMounted(loadData);
                                     <th class="px-3 py-2 text-right font-semibold">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-100">
+                            <tbody class="divide-y divide-hairline">
                                 <tr v-for="row in sbmItems" :key="row.id">
-                                    <td class="px-3 py-2 font-mono font-semibold text-gov-navy-900">{{ row.kode_sbm }}</td>
+                                    <td class="px-3 py-2 font-mono font-semibold text-ink">{{ row.kode_sbm }}</td>
                                     <td class="px-3 py-2">{{ row.kategori_belanja }}</td>
                                     <td class="px-3 py-2">{{ row.uraian_standar }}</td>
                                     <td class="px-3 py-2">{{ row.satuan }}</td>
                                     <td class="px-3 py-2 text-right tabular-nums font-semibold">{{ formatRupiah(row.harga_maksimal) }}</td>
                                     <td class="px-3 py-2 text-right">
-                                        <button type="button" @click="editSbmRow(row)" class="text-gov-navy-800 font-semibold hover:underline">
+                                        <button type="button" @click="editSbmRow(row)" class="text-accent font-semibold hover:underline">
                                             Edit
                                         </button>
                                     </td>
