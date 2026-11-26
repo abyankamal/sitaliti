@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { Head, Link } from '@inertiajs/vue3';
 import axios from 'axios';
+import { ArrowLeft, Download, Printer } from 'lucide-vue-next';
 import GovButton from '@/Components/UI/GovButton.vue';
 import VerificationQrCard from '@/Modules/ControlSheet/VerificationQrCard.vue';
 import { formatRupiah } from '@/Utils/currency';
@@ -45,21 +46,19 @@ function handlePrint() {
 <template>
     <Head :title="`Lembar Kendali Verifikasi - ${detail?.nomor_kuitansi || props.id}`" />
 
-    <div class="min-h-screen bg-slate-200 py-6 px-4 font-sans text-slate-800 print:bg-white print:p-0">
+    <div class="min-h-screen bg-canvas py-6 px-4 font-sans text-ink print:bg-white print:p-0">
         <!-- Floating Action Header (Disembunyikan saat dicetak) -->
-        <div class="max-w-4xl mx-auto mb-6 bg-gov-navy-950 text-white p-4 rounded-xl shadow-md border border-gov-navy-800 flex items-center justify-between print:hidden">
+        <div class="max-w-4xl mx-auto mb-6 bg-surface text-ink p-4 rounded-xl shadow-subtle border border-hairline flex items-center justify-between print:hidden">
             <div class="flex items-center gap-3">
                 <Link
                     :href="route('receipts.index')"
-                    class="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-gov-navy-900"
+                    class="p-2 rounded-lg text-ink-muted hover:text-ink hover:bg-raised"
                 >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
+                    <ArrowLeft class="w-5 h-5" />
                 </Link>
                 <div>
-                    <h2 class="text-sm font-bold text-white">Lembar Kendali Hasil Verifikasi Akuntabilitas SPJ</h2>
-                    <p class="text-xs text-slate-300">Dokumen tanda sah kelayakan administrasi sebelum diajukan ke SIPD-RI</p>
+                    <h2 class="text-sm font-bold text-ink">Lembar Kendali Hasil Verifikasi Akuntabilitas SPJ</h2>
+                    <p class="text-xs text-ink-secondary">Dokumen tanda sah kelayakan administrasi sebelum diajukan ke SIPD-RI</p>
                 </div>
             </div>
 
@@ -67,23 +66,19 @@ function handlePrint() {
                 <a
                     :href="route('control-sheet.download-pdf', { id: detail.id || props.id })"
                     target="_blank"
-                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gov-gold-500 text-gov-navy-950 hover:bg-gov-gold-400 shadow-sm transition"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover shadow-subtle transition"
                 >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
+                    <Download class="w-4 h-4" />
                     Unduh PDF Resmi
                 </a>
                 <GovButton variant="secondary" size="sm" @click="handlePrint">
-                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                    </svg>
+                    <Printer class="w-4 h-4" />
                     Cetak Halaman
                 </GovButton>
             </div>
         </div>
 
-        <div v-if="loading" class="max-w-4xl mx-auto bg-white p-12 text-center text-sm text-slate-500 rounded-sm shadow">
+        <div v-if="loading" class="max-w-4xl mx-auto bg-surface p-12 text-center text-sm text-ink-muted rounded-sm shadow-subtle border border-hairline">
             Memuat data Lembar Kendali...
         </div>
 
@@ -95,25 +90,27 @@ function handlePrint() {
         <!-- Official Control Sheet Document Paper (A4 / Folio Simulation) -->
         <div
             v-else-if="detail"
-            class="max-w-4xl mx-auto bg-white p-8 sm:p-12 shadow-xl border border-slate-300 rounded-sm print:shadow-none print:border-none print:p-6 print:m-0"
+            class="max-w-4xl mx-auto bg-surface print:bg-white p-8 sm:p-12 shadow-floating border border-hairline rounded-sm print:shadow-none print:border-none print:p-6 print:m-0"
         >
             <!-- Kop Dokumen Resmi Pemerintah Daerah -->
-            <div class="flex items-center gap-5 border-b-2 border-slate-900 pb-4 mb-6">
-                <div class="w-16 h-16 border-2 border-slate-900 rounded-lg flex items-center justify-center font-bold text-xs text-center shrink-0">
-                    KAB.<br />GARUT
-                </div>
+            <div class="flex items-center gap-5 border-b-2 border-ink pb-4 mb-6">
+                <img
+                    src="/Lambang_Kabupaten_Garut.svg.webp"
+                    alt="Lambang Kabupaten Garut"
+                    class="w-16 h-16 object-contain shrink-0"
+                />
 
                 <div class="flex-1 text-center">
-                    <h3 class="text-sm font-bold  text-slate-800">
+                    <h3 class="text-sm font-bold text-ink">
                         Pemerintah Daerah Kabupaten Garut
                     </h3>
-                    <h2 class="text-base font-semibold uppercase text-gov-navy-950">
+                    <h2 class="text-base font-semibold uppercase text-ink">
                         Kecamatan Tarogong Kidul
                     </h2>
-                    <p class="text-xs text-slate-600">
-                        Jl. Suherman No. 27, Tarogong Kidul, Kabupaten Garut, Jawa Barat 44151
+                    <p class="text-xs text-ink-secondary">
+                        Jalan Simpang No. 1, Tarogong Kidul, Kabupaten Garut, Jawa Barat 44151
                     </p>
-                    <p class="text-xs text-slate-500 font-mono mt-0.5">
+                    <p class="text-xs text-ink-muted font-mono mt-0.5">
                         E - Verifikatur Kecamatan Tarogong Kidul
                     </p>
                 </div>
@@ -123,57 +120,57 @@ function handlePrint() {
 
             <!-- Document Title & Badge -->
             <div class="text-center mb-6">
-                <h1 class="text-sm font-bold  text-gov-navy-950 underline decoration-2">
+                <h1 class="text-sm font-bold text-ink underline decoration-2">
                     Lembar Kendali Verifikasi Akuntabilitas SPJ
                 </h1>
-                <p class="text-xs text-slate-600 font-mono mt-1">
+                <p class="text-xs text-ink-secondary font-mono mt-1">
                     No. Register: <strong>{{ detail.nomor_register }}</strong>
                 </p>
             </div>
 
             <!-- Bagian 1: Data Identitas Kuitansi Transaksi -->
             <div class="mb-6">
-                <h4 class="text-xs font-bold  text-gov-navy-950 bg-slate-100 px-3 py-1.5 border-l-4 border-gov-navy-900 mb-3">
+                <h4 class="text-xs font-bold text-ink bg-raised px-3 py-1.5 border border-hairline rounded-md mb-3">
                     I. Informasi Dokumen Kuitansi & Anggaran
                 </h4>
                 <table class="w-full text-xs">
                     <tbody>
-                        <tr class="border-b border-slate-100">
-                            <td class="py-1.5 font-semibold text-slate-600 w-44">Nomor Bukti Transaksi</td>
-                            <td class="py-1.5 font-bold text-slate-900">: {{ detail.nomor_kuitansi }}</td>
-                            <td class="py-1.5 font-semibold text-slate-600 w-36">Tanggal Transaksi</td>
-                            <td class="py-1.5 text-slate-900">: {{ formatTanggalIndo(detail.tanggal_transaksi) }}</td>
+                        <tr class="border-b border-hairline">
+                            <td class="py-1.5 font-semibold text-ink-secondary w-44">Nomor Bukti Transaksi</td>
+                            <td class="py-1.5 font-bold text-ink">: {{ detail.nomor_kuitansi }}</td>
+                            <td class="py-1.5 font-semibold text-ink-secondary w-36">Tanggal Transaksi</td>
+                            <td class="py-1.5 text-ink">: {{ formatTanggalIndo(detail.tanggal_transaksi) }}</td>
                         </tr>
-                        <tr class="border-b border-slate-100">
-                            <td class="py-1.5 font-semibold text-slate-600">Unit Organisasi (SKPD)</td>
-                            <td class="py-1.5 text-slate-900" colspan="3">: {{ detail.unit_kerja?.nama_unit || '-' }}</td>
+                        <tr class="border-b border-hairline">
+                            <td class="py-1.5 font-semibold text-ink-secondary">Unit Organisasi (SKPD)</td>
+                            <td class="py-1.5 text-ink" colspan="3">: {{ detail.unit_kerja?.nama_unit || '-' }}</td>
                         </tr>
-                        <tr class="border-b border-slate-100">
-                            <td class="py-1.5 font-semibold text-slate-600">Program & Subkegiatan</td>
-                            <td class="py-1.5 text-slate-900" colspan="3">
+                        <tr class="border-b border-hairline">
+                            <td class="py-1.5 font-semibold text-ink-secondary">Program & Subkegiatan</td>
+                            <td class="py-1.5 text-ink" colspan="3">
                                 : <span class="font-mono">{{ detail.rekening?.kode_sub_kegiatan || '-' }}</span> - {{ detail.rekening?.nama_sub_kegiatan || '-' }}
                             </td>
                         </tr>
-                        <tr class="border-b border-slate-100">
-                            <td class="py-1.5 font-semibold text-slate-600">Kode Rekening Belanja</td>
-                            <td class="py-1.5 text-slate-900" colspan="3">
+                        <tr class="border-b border-hairline">
+                            <td class="py-1.5 font-semibold text-ink-secondary">Kode Rekening Belanja</td>
+                            <td class="py-1.5 text-ink" colspan="3">
                                 : <span class="font-mono font-bold">{{ detail.rekening?.kode_rekening || '-' }}</span> - {{ detail.rekening?.nama_rekening || '-' }}
                             </td>
                         </tr>
-                        <tr class="border-b border-slate-100">
-                            <td class="py-1.5 font-semibold text-slate-600">Kategori Belanja</td>
-                            <td class="py-1.5 font-bold text-slate-900">: Kategori {{ detail.rekening?.kategori_belanja || '-' }}</td>
-                            <td class="py-1.5 font-semibold text-slate-600">Penyedia / Penerima</td>
-                            <td class="py-1.5 text-slate-900">: {{ detail.nama_penerima }}</td>
+                        <tr class="border-b border-hairline">
+                            <td class="py-1.5 font-semibold text-ink-secondary">Kategori Belanja</td>
+                            <td class="py-1.5 font-bold text-ink">: Kategori {{ detail.rekening?.kategori_belanja || '-' }}</td>
+                            <td class="py-1.5 font-semibold text-ink-secondary">Penyedia / Penerima</td>
+                            <td class="py-1.5 text-ink">: {{ detail.nama_penerima }}</td>
                         </tr>
-                        <tr class="border-b border-slate-100">
-                            <td class="py-1.5 font-semibold text-slate-600">Uraian Pengeluaran</td>
-                            <td class="py-1.5 text-slate-900 leading-relaxed" colspan="3">: {{ detail.uraian }}</td>
+                        <tr class="border-b border-hairline">
+                            <td class="py-1.5 font-semibold text-ink-secondary">Uraian Pengeluaran</td>
+                            <td class="py-1.5 text-ink leading-relaxed" colspan="3">: {{ detail.uraian }}</td>
                         </tr>
-                        <tr class="bg-slate-50 font-semibold">
-                            <td class="py-2 font-bold text-slate-800">Total Nilai Bruto</td>
-                            <td class="py-2 text-base font-bold text-gov-navy-950 tabular-nums">: {{ formatRupiah(detail.nominal_bruto) }}</td>
-                            <td class="py-2 font-bold text-slate-800">Jumlah Netto Kas</td>
+                        <tr class="bg-raised font-semibold">
+                            <td class="py-2 font-bold text-ink">Total Nilai Bruto</td>
+                            <td class="py-2 text-base font-bold text-ink tabular-nums">: {{ formatRupiah(detail.nominal_bruto) }}</td>
+                            <td class="py-2 font-bold text-ink">Jumlah Netto Kas</td>
                             <td class="py-2 text-base font-bold text-emerald-800 tabular-nums">: {{ formatRupiah(detail.nominal_neto) }}</td>
                         </tr>
                     </tbody>
@@ -182,40 +179,40 @@ function handlePrint() {
 
             <!-- Bagian 2: Hasil Pemeriksaan Checklist Dokumen Fisik -->
             <div class="mb-6">
-                <h4 class="text-xs font-bold  text-gov-navy-950 bg-slate-100 px-3 py-1.5 border-l-4 border-gov-navy-900 mb-3">
+                <h4 class="text-xs font-bold text-ink bg-raised px-3 py-1.5 border border-hairline rounded-md mb-3">
                     II. Checklist Hasil Uji Fisik Dokumen Pendukung
                 </h4>
-                <table class="w-full text-xs border border-slate-200">
-                    <thead class="bg-slate-100 text-xs font-bold uppercase text-slate-700">
+                <table class="w-full text-xs border border-hairline">
+                    <thead class="bg-raised text-xs font-bold text-ink-secondary">
                         <tr>
-                            <th class="py-2 px-3 border-b text-center w-10">No</th>
-                            <th class="py-2 px-3 border-b text-left">Nama Dokumen Bukti Pertanggungjawaban</th>
-                            <th class="py-2 px-3 border-b text-center w-24">Kode</th>
-                            <th class="py-2 px-3 border-b text-center w-32">Hasil Uji</th>
-                            <th class="py-2 px-3 border-b text-left">Catatan Verifikator</th>
+                            <th class="py-2 px-3 border-b border-hairline text-center w-10">No</th>
+                            <th class="py-2 px-3 border-b border-hairline text-left">Nama Dokumen Bukti Pertanggungjawaban</th>
+                            <th class="py-2 px-3 border-b border-hairline text-center w-24">Kode</th>
+                            <th class="py-2 px-3 border-b border-hairline text-center w-32">Hasil Uji</th>
+                            <th class="py-2 px-3 border-b border-hairline text-left">Catatan Verifikator</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-200">
+                    <tbody class="divide-y divide-hairline">
                         <tr v-for="(item, idx) in detail.checklist || []" :key="item.kode_item || idx">
-                            <td class="py-2 px-3 text-center text-slate-500 font-mono">{{ idx + 1 }}</td>
-                            <td class="py-2 px-3 font-medium text-slate-800">{{ item.nama_item || '-' }}</td>
-                            <td class="py-2 px-3 text-center font-mono text-xs text-slate-600">{{ item.kode_item || '-' }}</td>
+                            <td class="py-2 px-3 text-center text-ink-muted font-mono">{{ idx + 1 }}</td>
+                            <td class="py-2 px-3 font-medium text-ink">{{ item.nama_item || '-' }}</td>
+                            <td class="py-2 px-3 text-center font-mono text-xs text-ink-secondary">{{ item.kode_item || '-' }}</td>
                             <td class="py-2 px-3 text-center font-bold">
                                 <span
                                     :class="['SESUAI', 'VALID'].includes(item.status_kesesuaian)
                                         ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
                                         : 'text-amber-700 bg-amber-50 border-amber-200'"
-                                    class="px-2 py-0.5 rounded text-xs border"
+                                    class="px-2 py-0.5 rounded text-xs border [print-color-adjust:exact]"
                                 >
                                     {{ ['SESUAI', 'VALID'].includes(item.status_kesesuaian) ? 'MEMENUHI' : (item.status_kesesuaian || 'DIPERIKSA') }}
                                 </span>
                             </td>
-                            <td class="py-2 px-3 text-xs text-slate-600">
+                            <td class="py-2 px-3 text-xs text-ink-secondary">
                                 {{ item.catatan || 'Lengkap & Sesuai' }}
                             </td>
                         </tr>
                         <tr v-if="!detail.checklist || detail.checklist.length === 0">
-                            <td colspan="5" class="py-4 text-center text-slate-500 italic">
+                            <td colspan="5" class="py-4 text-center text-ink-muted italic">
                                 Tidak ada item checklist verifikasi tercatat.
                             </td>
                         </tr>
@@ -224,18 +221,18 @@ function handlePrint() {
             </div>
 
             <!-- Bagian 3: Kesimpulan & QR Code Otentikasi -->
-            <div class="mb-8 p-4 bg-slate-50 border border-slate-300 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-6">
+            <div class="mb-8 p-4 bg-raised border border-hairline rounded-lg flex flex-col sm:flex-row items-center justify-between gap-6 print:break-inside-avoid">
                 <div class="space-y-1.5 flex-1">
                     <div class="flex items-center gap-2">
-                        <span class="w-3 h-3 rounded-md bg-emerald-500"></span>
-                        <h4 class="text-xs font-bold  text-gov-navy-950">
+                        <span class="w-3 h-3 rounded-md bg-emerald-500 [print-color-adjust:exact]"></span>
+                        <h4 class="text-xs font-bold text-ink">
                             Kesimpulan Verifikasi Pre-Audit E - Verifikatur:
                         </h4>
                     </div>
                     <p class="text-xs font-bold text-emerald-800">
                         DINYATAKAN LOLOS & MEMENUHI SYARAT KELENGKAPAN AKUNTABILITAS SPJ
                     </p>
-                    <p class="text-xs text-slate-600 leading-relaxed">
+                    <p class="text-xs text-ink-secondary leading-relaxed">
                         {{ detail.catatan_verifikasi || 'Dokumen ini telah diperiksa kesesuaian SSH/SBM, ketersediaan alokasi RAK, dan kelengkapan bukti fisik pengeluaran kas. Berkas ini siap dibundel dalam pengesahan SPP sebelum diproses resmi melalui SIPD-RI.' }}
                     </p>
                 </div>
@@ -247,36 +244,36 @@ function handlePrint() {
                         :label="detail.qr_token ? `TOKEN: ${detail.qr_token}` : 'TOKEN: -'"
                         :size="100"
                     />
-                    <p class="text-xs text-slate-400 mt-1">Pindai untuk validasi</p>
+                    <p class="text-xs text-ink-muted mt-1">Pindai untuk validasi</p>
                 </div>
             </div>
 
             <!-- Bagian 4: Lembar Tanda Tangan Resmi Pengesahan -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-8 text-xs text-center pt-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-8 text-xs text-center pt-4 print:break-inside-avoid">
                 <div>
-                    <p class="text-slate-600">Diverifikasi oleh,</p>
-                    <p class="font-bold text-gov-navy-950">
+                    <p class="text-ink-secondary">Diverifikasi oleh,</p>
+                    <p class="font-bold text-ink">
                         {{ detail.verifikator?.jabatan || 'Tim Verifikasi Akuntabilitas SPJ' }}
                     </p>
                     <div class="h-20"></div>
-                    <p class="font-bold text-slate-900 underline">
+                    <p class="font-bold text-ink underline">
                         {{ detail.verifikator?.name || 'Verifikator Kecamatan' }}
                     </p>
-                    <p class="text-xs text-slate-500">
+                    <p class="text-xs text-ink-muted">
                         NIP. {{ detail.verifikator?.nip || '-' }}
                     </p>
                 </div>
 
                 <div>
-                    <p class="text-slate-600">
+                    <p class="text-ink-secondary">
                         Tarogong Kidul, {{ formatTanggalIndo(detail.tanggal_verifikasi || new Date()) }}
                     </p>
-                    <p class="font-bold text-gov-navy-950">Dokumen Tervalidasi Sistem</p>
+                    <p class="font-bold text-ink">Dokumen Tervalidasi Sistem</p>
                     <div class="h-20"></div>
-                    <p class="font-mono text-xs font-bold text-slate-700">
+                    <p class="font-mono text-xs font-bold text-ink-secondary">
                         {{ detail.nomor_register }}
                     </p>
-                    <p class="text-xs text-slate-500">
+                    <p class="text-xs text-ink-muted">
                         Status: {{ detail.status }}
                     </p>
                 </div>
@@ -284,3 +281,11 @@ function handlePrint() {
         </div>
     </div>
 </template>
+
+<style scoped>
+@media print {
+    @page {
+        margin: 12mm;
+    }
+}
+</style>

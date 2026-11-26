@@ -48,7 +48,7 @@ watch(() => props.value, () => {
 
 <template>
     <div class="inline-flex flex-col items-center">
-        <div class="p-2 bg-white rounded-lg border border-slate-300 shadow-xs inline-block">
+        <div class="p-2 bg-surface rounded-lg border border-hairline shadow-subtle inline-block">
             <img
                 v-if="qrDataUrl"
                 :src="qrDataUrl"
@@ -60,12 +60,12 @@ watch(() => props.value, () => {
             <div
                 v-else
                 :style="{ width: `${size}px`, height: `${size}px` }"
-                class="bg-slate-100 flex items-center justify-center text-xs text-slate-400"
+                class="bg-raised flex items-center justify-center text-xs text-ink-muted"
             >
                 Memuat QR...
             </div>
         </div>
-        <span v-if="label" class="text-xs text-slate-500 font-mono mt-1 text-center truncate max-w-[140px]">
+        <span v-if="label" class="text-xs text-ink-muted font-mono mt-1 text-center truncate max-w-[140px]">
             {{ label }}
         </span>
     </div>
