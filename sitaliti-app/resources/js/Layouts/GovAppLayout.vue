@@ -174,29 +174,31 @@ function isNavActive(item) {
 
 <template>
     <div class="min-h-screen bg-canvas flex flex-col font-sans text-ink antialiased">
-        <!-- Top App Bar - Light Graphite & Institutional Navy -->
-        <header class="bg-surface text-ink border-b border-hairline sticky top-0 z-40 print:hidden">
+        <!-- Top App Bar - Deep Civic Navy (Warm Civic Ledger) -->
+        <header class="bg-accent text-white border-b border-white/15 sticky top-0 z-40 print:hidden">
             <div class="px-4 sm:px-6">
                 <div class="flex items-center justify-between gap-3 h-14">
                     <!-- Left: Logo & Identity -->
                     <div class="flex items-center gap-3 min-w-0">
                         <button
                             @click="isSidebarOpen = !isSidebarOpen"
-                            class="w-9 h-9 inline-flex items-center justify-center rounded-lg text-ink-muted hover:text-ink hover:bg-raised focus:outline-none focus:ring-2 focus:ring-accent transition-colors duration-150 ease-unslop shrink-0"
+                            class="min-w-[44px] min-h-[44px] lg:min-w-0 lg:min-h-0 lg:w-9 lg:h-9 inline-flex items-center justify-center rounded-lg text-white/80 hover:text-white hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 transition-colors duration-150 ease-unslop shrink-0"
                             title="Buka/Tutup Sidebar"
                         >
                             <Menu class="w-4 h-4" :stroke-width="1.5" />
                         </button>
 
                         <div class="flex items-center gap-3 min-w-0">
-                            <img
-                                src="/Lambang_Kabupaten_Garut.svg.webp"
-                                alt="Lambang Kabupaten Garut"
-                                class="w-8 h-8 object-contain shrink-0"
-                            />
+                            <div class="w-9 h-9 rounded-lg bg-surface/95 p-1 flex items-center justify-center shrink-0 shadow-subtle">
+                                <img
+                                    src="/Lambang_Kabupaten_Garut.svg.webp"
+                                    alt="Lambang Kabupaten Garut"
+                                    class="w-full h-full object-contain"
+                                />
+                            </div>
                             <div class="leading-tight min-w-0">
-                                <span class="font-semibold tracking-tight text-ink text-base block truncate">E - Verifikatur</span>
-                                <p class="text-xs text-ink-muted font-normal truncate">
+                                <span class="font-semibold tracking-tight text-white text-base block truncate">E - Verifikatur</span>
+                                <p class="text-xs text-white/75 font-normal truncate">
                                     {{ user.is_kelurahan_scoped && user.unit_kerja ? `${user.unit_kerja.nama_unit} • Kec. Tarogong Kidul` : 'Kecamatan Tarogong Kidul • Kab. Garut' }}
                                 </p>
                             </div>
@@ -205,26 +207,26 @@ function isNavActive(item) {
 
                     <!-- Right: Context Info & Profile -->
                     <div class="flex items-center gap-3 sm:gap-4 shrink-0">
-                        <div class="hidden md:flex items-center gap-2 text-xs text-ink-secondary">
-                            <span class="w-1.5 h-1.5 rounded-[50%] bg-semantic-success shrink-0"></span>
+                        <div class="hidden md:flex items-center gap-2 text-xs text-white/85">
+                            <span class="w-1.5 h-1.5 rounded-[50%] bg-emerald-400 shrink-0"></span>
                             <span class="font-medium tabular-nums">TA {{ new Date().getFullYear() }} (RAK Perubahan)</span>
                         </div>
 
-                        <div class="h-6 w-px bg-hairline hidden md:block"></div>
+                        <div class="h-6 w-px bg-white/15 hidden md:block"></div>
 
                         <!-- User Profile & Logout -->
-                        <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2 sm:gap-3">
                             <Link
                                 :href="route().has('profile.edit') ? route('profile.edit') : '#'"
-                                class="flex items-center gap-2.5 rounded-lg px-1.5 py-1 hover:bg-raised transition-colors duration-150 ease-unslop"
+                                class="min-h-[44px] lg:min-h-0 flex items-center gap-2.5 rounded-lg px-2 py-1 hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 transition-colors duration-150 ease-unslop"
                                 title="Pengaturan Profil"
                             >
-                                <div class="w-8 h-8 rounded-[50%] bg-accent-soft border border-accent-border flex items-center justify-center text-xs font-semibold text-accent shrink-0">
+                                <div class="w-8 h-8 rounded-[50%] bg-white/15 border border-white/25 flex items-center justify-center text-xs font-semibold text-white shrink-0">
                                     {{ user.name?.charAt(0) || 'U' }}
                                 </div>
                                 <div class="hidden sm:block text-left leading-tight">
-                                    <p class="text-xs font-medium text-ink">{{ user.name }}</p>
-                                    <p class="text-xs text-ink-muted">
+                                    <p class="text-xs font-medium text-white">{{ user.name }}</p>
+                                    <p class="text-xs text-white/75">
                                         {{ roleDisplayName }}<span v-if="user.unit_kerja?.nama_unit"> · {{ user.unit_kerja.nama_unit }}</span>
                                     </p>
                                 </div>
@@ -234,7 +236,7 @@ function isNavActive(item) {
                                 method="post"
                                 as="button"
                                 type="button"
-                                class="ml-1 inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium text-ink-secondary bg-surface hover:bg-raised hover:text-semantic-danger border border-hairline transition-colors duration-150 ease-unslop"
+                                class="min-h-[44px] lg:min-h-0 lg:h-8 inline-flex items-center gap-1.5 px-3 rounded-lg text-xs font-medium text-white/90 bg-white/10 hover:bg-white/20 hover:text-white border border-white/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 transition-colors duration-150 ease-unslop"
                                 title="Keluar dari aplikasi"
                             >
                                 <LogOut class="w-4 h-4" :stroke-width="1.5" />
@@ -257,7 +259,7 @@ function isNavActive(item) {
             <!-- Sidebar Navigation -->
             <aside
                 :class="[isSidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full lg:translate-x-0 lg:w-16 w-64']"
-                class="fixed inset-y-0 left-0 top-14 z-30 lg:static lg:top-0 bg-canvas border-r border-hairline transition-[width,transform] duration-200 ease-unslop flex flex-col justify-between shrink-0 print:hidden"
+                class="fixed inset-y-0 left-0 top-14 z-30 lg:static lg:top-0 bg-surface border-r border-hairline transition-[width,transform] duration-200 ease-unslop flex flex-col justify-between shrink-0 print:hidden"
             >
                 <nav class="p-3 space-y-4 overflow-y-auto scrollbar-thin flex-1">
                     <div v-for="group in navGroups" :key="group.label" class="space-y-1">
@@ -272,10 +274,10 @@ function isNavActive(item) {
                             :key="item.name"
                             :href="route().has(item.route) ? route(item.route) : '#'"
                             :title="!isSidebarOpen ? item.name : undefined"
-                            class="flex items-center gap-2.5 h-9 px-2.5 rounded-lg text-sm transition-colors duration-150 ease-unslop"
+                            class="flex items-center gap-2.5 min-h-[44px] lg:min-h-0 lg:h-9 px-2.5 rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-accent transition-colors duration-150 ease-unslop"
                             :class="[
                                 isNavActive(item)
-                                    ? 'bg-accent-soft text-accent font-medium'
+                                    ? 'bg-accent-soft text-accent font-semibold'
                                     : 'text-ink-secondary hover:text-ink hover:bg-raised font-normal'
                             ]"
                         >
@@ -291,7 +293,7 @@ function isNavActive(item) {
                 </nav>
 
                 <!-- Gatekeeper Status Footer in Sidebar -->
-                <div v-if="isSidebarOpen" class="px-3 py-3 m-3 rounded-lg bg-surface border border-hairline text-xs shrink-0">
+                <div v-if="isSidebarOpen" class="px-3 py-3 m-3 rounded-lg bg-canvas border border-hairline text-xs shrink-0">
                     <div class="flex items-center justify-between text-ink-secondary">
                         <span>Pre-Audit Gateway</span>
                         <span class="inline-flex items-center gap-1.5 text-semantic-success font-medium">
