@@ -255,7 +255,7 @@ onMounted(loadData);
                 </GovCard>
 
                 <GovCard :title="`Daftar Tarif Pajak Tahun ${tahunAnggaran}`">
-                    <div class="overflow-x-auto">
+                    <div class="overflow-x-auto scrollbar-thin">
                         <table class="min-w-full text-xs divide-y divide-hairline">
                             <thead class="bg-raised text-ink-secondary">
                                 <tr>
@@ -324,7 +324,7 @@ onMounted(loadData);
                 </GovCard>
 
                 <GovCard :title="`Daftar Master SBM/SSH Tahun ${tahunAnggaran}`">
-                    <div class="overflow-x-auto">
+                    <div class="overflow-x-auto scrollbar-thin">
                         <table class="min-w-full text-xs divide-y divide-hairline">
                             <thead class="bg-raised text-ink-secondary">
                                 <tr>

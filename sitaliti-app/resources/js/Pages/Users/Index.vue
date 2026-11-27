@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { Head, usePage } from '@inertiajs/vue3';
 import { X } from 'lucide-vue-next';
 import GovAppLayout from '@/Layouts/GovAppLayout.vue';
@@ -10,6 +10,20 @@ import { useConfirm } from '@/Composables/useConfirm';
 
 const page = usePage();
 const currentUser = computed(() => page.props.auth?.user);
+
+function handleEscapeKey(event) {
+    if (event.key === 'Escape' && showFormModal.value) {
+        closeFormModal();
+    }
+}
+
+onMounted(() => {
+    window.addEventListener('keydown', handleEscapeKey);
+});
+
+onUnmounted(() => {
+    window.removeEventListener('keydown', handleEscapeKey);
+});
 
 const ROLES = [
     { value: 'BPP', label: 'BPP Kelurahan' },
@@ -333,7 +347,7 @@ onMounted(async () => {
 
             <!-- Tabel Pengguna Kompak -->
             <div class="overflow-hidden rounded-lg border border-hairline bg-surface shadow-subtle">
-                <div class="overflow-x-auto">
+                <div class="overflow-x-auto scrollbar-thin">
                     <table class="min-w-full divide-y divide-hairline text-left text-xs">
                         <thead class="bg-raised text-xs font-semibold  text-ink-muted">
                             <tr>
@@ -439,9 +453,10 @@ onMounted(async () => {
                     </h2>
                     <button
                         type="button"
-                        class="text-ink-muted hover:text-ink"
+                        class="min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 inline-flex items-center justify-center p-1 rounded text-white/80 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
                         @click="closeFormModal"
-                     aria-label="Tutup">
+                        aria-label="Tutup"
+                    >
                         <X class="w-4 h-4" :stroke-width="1.5" />
                     </button>
                 </div>
