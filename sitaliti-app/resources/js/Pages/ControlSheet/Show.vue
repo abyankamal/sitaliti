@@ -82,7 +82,7 @@ function handlePrint() {
             Memuat data Lembar Kendali...
         </div>
 
-        <div v-else-if="errorMessage" class="max-w-4xl mx-auto bg-rose-50 border border-rose-200 text-rose-800 p-6 rounded-xl text-sm">
+        <div v-else-if="errorMessage" class="max-w-4xl mx-auto bg-red-50 border border-red-200 text-red-900 p-6 rounded-xl text-sm">
             <p class="font-bold">Lembar Kendali Tidak Tersedia</p>
             <p class="mt-1">{{ errorMessage }}</p>
         </div>
@@ -182,19 +182,19 @@ function handlePrint() {
                 <h4 class="text-xs font-bold text-ink bg-raised px-3 py-1.5 border border-hairline rounded-md mb-3">
                     II. Checklist Hasil Uji Fisik Dokumen Pendukung
                 </h4>
-                <table class="w-full text-xs border border-hairline">
-                    <thead class="bg-raised text-xs font-bold text-ink-secondary">
+                <table class="w-full text-xs border border-hairline print:border-black">
+                    <thead class="bg-raised print:bg-white text-xs font-bold text-ink-secondary print:text-black">
                         <tr>
-                            <th class="py-2 px-3 border-b border-hairline text-center w-10">No</th>
-                            <th class="py-2 px-3 border-b border-hairline text-left">Nama Dokumen Bukti Pertanggungjawaban</th>
-                            <th class="py-2 px-3 border-b border-hairline text-center w-24">Kode</th>
-                            <th class="py-2 px-3 border-b border-hairline text-center w-32">Hasil Uji</th>
-                            <th class="py-2 px-3 border-b border-hairline text-left">Catatan Verifikator</th>
+                            <th class="py-2 px-3 border-b border-hairline print:border-black text-center w-10">No</th>
+                            <th class="py-2 px-3 border-b border-hairline print:border-black text-left">Nama Dokumen Bukti Pertanggungjawaban</th>
+                            <th class="py-2 px-3 border-b border-hairline print:border-black text-center w-24">Kode</th>
+                            <th class="py-2 px-3 border-b border-hairline print:border-black text-center w-32">Hasil Uji</th>
+                            <th class="py-2 px-3 border-b border-hairline print:border-black text-left">Catatan Verifikator</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-hairline">
-                        <tr v-for="(item, idx) in detail.checklist || []" :key="item.kode_item || idx">
-                            <td class="py-2 px-3 text-center text-ink-muted font-mono">{{ idx + 1 }}</td>
+                    <tbody class="divide-y divide-hairline print:divide-black">
+                        <tr v-for="(item, idx) in detail.checklist || []" :key="item.kode_item || idx" class="print:break-inside-avoid">
+                            <td class="py-2 px-3 text-center text-ink-muted print:text-black font-mono">{{ idx + 1 }}</td>
                             <td class="py-2 px-3 font-medium text-ink">{{ item.nama_item || '-' }}</td>
                             <td class="py-2 px-3 text-center font-mono text-xs text-ink-secondary">{{ item.kode_item || '-' }}</td>
                             <td class="py-2 px-3 text-center font-bold">
@@ -221,19 +221,22 @@ function handlePrint() {
             </div>
 
             <!-- Bagian 3: Kesimpulan & QR Code Otentikasi -->
-            <div class="mb-8 p-4 bg-raised border border-hairline rounded-lg flex flex-col sm:flex-row items-center justify-between gap-6 print:break-inside-avoid">
+            <div class="mb-8 p-4 bg-raised print:bg-white border border-hairline print:border-black rounded-lg flex flex-col sm:flex-row items-center justify-between gap-6 print:break-inside-avoid">
                 <div class="space-y-1.5 flex-1">
                     <div class="flex items-center gap-2">
-                        <span class="w-3 h-3 rounded-md bg-emerald-500 [print-color-adjust:exact]"></span>
-                        <h4 class="text-xs font-bold text-ink">
+                        <span class="w-3 h-3 rounded-md bg-semantic-success [print-color-adjust:exact]"></span>
+                        <h4 class="text-xs font-bold text-ink print:text-black">
                             Kesimpulan Verifikasi Pre-Audit E - Verifikatur:
                         </h4>
                     </div>
-                    <p class="text-xs font-bold text-emerald-800">
+                    <p class="text-xs font-bold text-emerald-800 print:text-black">
                         DINYATAKAN LOLOS & MEMENUHI SYARAT KELENGKAPAN AKUNTABILITAS SPJ
                     </p>
-                    <p class="text-xs text-ink-secondary leading-relaxed">
+                    <p class="text-xs text-ink-secondary print:text-black leading-relaxed">
                         {{ detail.catatan_verifikasi || 'Dokumen ini telah diperiksa kesesuaian SSH/SBM, ketersediaan alokasi RAK, dan kelengkapan bukti fisik pengeluaran kas. Berkas ini siap dibundel dalam pengesahan SPP sebelum diproses resmi melalui SIPD-RI.' }}
+                    </p>
+                    <p class="text-xs font-medium text-ink print:text-black pt-1">
+                        Dokumen ini telah diverifikasi akuntabilitasnya melalui sistem SI-TALITI v2.0.
                     </p>
                 </div>
 

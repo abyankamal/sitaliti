@@ -51,11 +51,11 @@ const props = defineProps({
                     :class="verification.is_valid ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'"
                 >
                     <div
-                        class="w-14 h-14 mx-auto mb-3 rounded-md flex items-center justify-center shadow-subtle"
-                        :class="verification.is_valid ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'"
+                        class="w-14 h-14 mx-auto mb-3 rounded-lg flex items-center justify-center shadow-subtle border"
+                        :class="verification.is_valid ? 'bg-emerald-700 text-white border-emerald-800' : 'bg-amber-100 text-amber-900 border-amber-300'"
                     >
-                        <CheckCircle2 v-if="verification.is_valid" class="w-8 h-8" />
-                        <AlertTriangle v-else class="w-8 h-8" />
+                        <CheckCircle2 v-if="verification.is_valid" class="w-7 h-7" :stroke-width="1.5" />
+                        <AlertTriangle v-else class="w-7 h-7" :stroke-width="1.5" />
                     </div>
 
                     <h2 class="text-lg font-semibold text-ink">
@@ -100,18 +100,18 @@ const props = defineProps({
                         </div>
                         <div class="flex items-baseline justify-between py-1 border-b border-hairline text-xs">
                             <span class="text-ink-secondary">Potongan Pajak (PPN/PPh/PBJT)</span>
-                            <span class="font-bold text-rose-600 tabular-nums">- {{ formatRupiah(verification.total_pajak) }}</span>
+                            <span class="font-bold text-semantic-danger tabular-nums">- {{ formatRupiah(verification.total_pajak) }}</span>
                         </div>
                         <div class="flex items-baseline justify-between pt-2 text-sm">
                             <span class="font-bold text-ink">Nominal Neto Diterima</span>
-                            <span class="font-semibold text-emerald-700 text-base tabular-nums">{{ formatRupiah(verification.nominal_neto) }}</span>
+                            <span class="font-semibold text-semantic-success text-base tabular-nums">{{ formatRupiah(verification.nominal_neto) }}</span>
                         </div>
                     </div>
 
                     <!-- Rekanan / Vendor (Data Disamarkan / Privacy-Protected) -->
-                    <div class="p-3 bg-amber-50/60 border border-amber-200 rounded-xl">
-                        <div class="flex items-center gap-1.5 text-amber-800 font-bold text-xs mb-1">
-                            <Lock class="w-3.5 h-3.5" />
+                    <div class="p-3.5 bg-accent-soft border border-accent-border rounded-xl">
+                        <div class="flex items-center gap-1.5 text-accent font-semibold text-xs mb-1.5">
+                            <Lock class="w-3.5 h-3.5" :stroke-width="1.5" />
                             <span>Data Rekanan Disamarkan (UU Perlindungan Data Pribadi)</span>
                         </div>
                         <div class="grid grid-cols-2 gap-2 text-xs pt-1">
@@ -142,27 +142,24 @@ const props = defineProps({
             </div>
 
             <!-- Error State / Token Tidak Ditemukan -->
-            <div v-else class="bg-surface rounded-xl shadow-subtle border border-rose-200 p-8 text-center">
-                <div class="w-16 h-16 mx-auto mb-4 bg-rose-100 text-rose-600 rounded-md flex items-center justify-center">
-                    <XCircle class="w-8 h-8" />
+            <div v-else class="bg-surface rounded-xl shadow-subtle border border-red-200 p-8 text-center">
+                <div class="w-16 h-16 mx-auto mb-4 bg-red-50 text-semantic-danger border border-red-200 rounded-lg flex items-center justify-center">
+                    <XCircle class="w-8 h-8" :stroke-width="1.5" />
                 </div>
                 <h2 class="text-lg font-bold text-ink mb-2">QR Code Tidak Valid</h2>
-                <p class="text-xs text-ink-secondary max-w-sm mx-auto mb-6">
+                <p class="text-xs text-ink-secondary max-w-sm mx-auto mb-4 leading-relaxed">
                     {{ error || 'Dokumen Lembar Kendali tidak ditemukan dalam database resmi E - Verifikatur Kecamatan Tarogong Kidul. Mohon pastikan dokumen fisik asli dan diterbitkan secara resmi.' }}
                 </p>
-                <Link
-                    href="/"
-                    class="inline-block px-4 py-2 bg-accent text-white rounded-lg text-xs font-semibold hover:bg-accent-hover"
-                >
-                    Kembali ke Halaman Utama
-                </Link>
+                <p class="text-xs text-ink-muted max-w-sm mx-auto">
+                    Silakan periksa kembali kode QR pada Lembar Kendali fisik atau hubungi Subbagian Keuangan Kecamatan Tarogong Kidul.
+                </p>
             </div>
         </main>
 
         <!-- Footer -->
         <footer class="py-4 text-center text-xs text-ink-muted">
             E - Verifikatur Kecamatan Tarogong Kidul<br/>
-            Kecamatan Tarogong Kidul & 5 Kelurahan — Kabupaten Garut © 2026
+            Kecamatan Tarogong Kidul &amp; 5 Kelurahan · Kabupaten Garut © 2026
         </footer>
     </div>
 </template>

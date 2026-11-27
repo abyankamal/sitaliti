@@ -18,22 +18,24 @@ const props = defineProps({
 });
 
 const qrDataUrl = ref('');
+const qrError = ref(false);
 
 async function generateQr() {
     if (!props.value) return;
+    qrError.value = false;
     try {
         qrDataUrl.value = await QRCode.toDataURL(props.value, {
             width: props.size,
             margin: 1,
             color: {
-                dark: '#0f172a',
-                light: '#ffffff'
-            }
+                dark: '#1C1917',
+                light: '#ffffff',
+            },
         });
     } catch (err) {
         console.error('Error generating offline QR code:', err);
-        // Fallback jika terjadi error
-        qrDataUrl.value = `https://api.qrserver.com/v1/create-qr-code/?size=${props.size}x${props.size}&data=${encodeURIComponent(props.value)}&margin=4`;
+        qrDataUrl.value = '';
+        qrError.value = true;
     }
 }
 
@@ -57,6 +59,16 @@ watch(() => props.value, () => {
                 :height="size"
                 class="block"
             />
+            <div
+                v-else-if="qrError"
+                :style="{ width: `${size}px`, height: `${size}px` }"
+                class="bg-red-50 border border-red-200 flex flex-col items-center justify-center p-2 text-center text-xs text-red-900"
+            >
+                <span>QR gagal dimuat</span>
+                <button type="button" class="underline font-semibold mt-1" @click="generateQr">
+                    Coba lagi
+                </button>
+            </div>
             <div
                 v-else
                 :style="{ width: `${size}px`, height: `${size}px` }"
