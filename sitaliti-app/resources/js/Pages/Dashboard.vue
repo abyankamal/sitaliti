@@ -8,27 +8,75 @@ import { formatRupiah } from '@/Utils/currency';
 import { formatTanggalIndo } from '@/Utils/date';
 import { STATUS_LABELS, STATUS_VARIANTS } from '@/Constants/workflowStatus';
 import { ref, computed, onMounted } from 'vue';
-import { Download, Plus, Info } from 'lucide-vue-next';
+import { Download, Plus, ArrowRight, RefreshCw, AlertCircle } from 'lucide-vue-next';
 import { budgetService } from '@/Services/budgetService';
 import { receiptService } from '@/Services/receiptService';
-import { Head, router, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import RAKSelectorModal from '@/Modules/Gatekeeper/RAKSelectorModal.vue';
 
 const page = usePage();
 const currentUser = computed(() => page.props.auth?.user);
+const userRole = computed(() => currentUser.value?.role || 'BPP');
 const isKelurahan = computed(() => currentUser.value?.is_kelurahan_scoped);
-const canCreateReceipt = computed(() => ['BPP', 'BP', 'VERIFIKATOR'].includes(currentUser.value?.role));
+const canCreateReceipt = computed(() => ['BPP', 'BP', 'VERIFIKATOR'].includes(userRole.value));
+const isVerifierOrPptk = computed(() => ['PPTK', 'VERIFIKATOR'].includes(userRole.value));
+const isMonitoring = computed(() => ['KPA', 'LURAH'].includes(userRole.value));
 
 const loading = ref(true);
+const errorMessage = ref('');
 const dashboardData = ref(null);
 const showGatekeeperModal = ref(false);
 
-onMounted(async () => {
+async function loadDashboard() {
+    loading.value = true;
+    errorMessage.value = '';
     try {
         dashboardData.value = await budgetService.getDashboardSummary();
+    } catch (err) {
+        errorMessage.value =
+            err?.response?.data?.message || 'Gagal memuat ringkasan anggaran dari server. Silakan coba lagi.';
     } finally {
         loading.value = false;
     }
+}
+
+onMounted(() => {
+    loadDashboard();
+});
+
+const absorptionBar = computed(() => {
+    const summary = dashboardData.value?.summary;
+    if (!summary) {
+        return { empty: true, overCommitted: false, realizedPct: 0, lockedPct: 0, remainingPct: 0 };
+    }
+    const pagu = Number(summary.total_pagu || 0);
+    const realized = Math.max(0, Number(summary.total_terserap || 0));
+    const locked = Math.max(0, Number(summary.total_terkunci || 0));
+    const remaining = Math.max(0, Number(summary.total_sisa || 0));
+
+    if (pagu <= 0) {
+        return { empty: true, overCommitted: false, realizedPct: 0, lockedPct: 0, remainingPct: 0 };
+    }
+
+    const totalUsed = realized + locked;
+    const overCommitted = totalUsed > pagu;
+    const denominator = overCommitted ? totalUsed : pagu;
+
+    const realizedPct = (realized / denominator) * 100;
+    const lockedPct = (locked / denominator) * 100;
+    const remainingPct = overCommitted ? 0 : Math.max(0, (remaining / denominator) * 100);
+
+    return {
+        empty: false,
+        overCommitted,
+        realizedPct: Number(realizedPct.toFixed(2)),
+        lockedPct: Number(lockedPct.toFixed(2)),
+        remainingPct: Number(remainingPct.toFixed(2)),
+        realized,
+        locked,
+        remaining,
+        pagu,
+    };
 });
 
 function handleGatekeeperSelected(context) {
@@ -70,7 +118,7 @@ function handleGatekeeperSelected(context) {
 
         <!-- Loading State -->
         <div v-if="loading" class="space-y-6" aria-busy="true" aria-label="Memuat ringkasan anggaran">
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                 <GovSkeleton v-for="i in 4" :key="i" variant="card" />
             </div>
             <div class="bg-surface rounded-xl border border-hairline shadow-subtle overflow-hidden">
@@ -78,25 +126,120 @@ function handleGatekeeperSelected(context) {
             </div>
         </div>
 
+        <!-- Error State -->
+        <div
+            v-else-if="errorMessage"
+            role="alert"
+            class="bg-red-50 border border-red-200 rounded-xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+        >
+            <div class="flex items-start gap-3">
+                <AlertCircle class="w-5 h-5 text-semantic-danger shrink-0 mt-0.5" :stroke-width="1.5" />
+                <div>
+                    <h2 class="text-sm font-semibold text-red-900">Ringkasan Anggaran Gagal Dimuat</h2>
+                    <p class="text-xs text-red-800 mt-1">{{ errorMessage }}</p>
+                </div>
+            </div>
+            <GovButton variant="secondary" size="sm" class="shrink-0 min-h-[44px] sm:min-h-0" @click="loadDashboard">
+                <RefreshCw class="w-4 h-4" :stroke-width="1.5" />
+                Muat Ulang
+            </GovButton>
+        </div>
+
         <!-- Main Content -->
         <div v-else-if="dashboardData" class="space-y-6">
-            <!-- Contextual Note: Pre-Audit Clearing House Info -->
-            <div class="bg-surface rounded-xl px-4 py-3.5 border border-hairline shadow-subtle flex items-center justify-between gap-4">
-                <div class="flex items-start gap-3">
-                    <Info class="w-4 h-4 text-accent mt-0.5 shrink-0" :stroke-width="1.5" />
-                    <p class="text-xs text-ink-secondary leading-relaxed">
-                        <span class="font-medium text-ink">Prinsip Pre-Audit:</span>
-                        E - Verifikatur Kecamatan Tarogong Kidul memverifikasi kepatuhan, keabsahan SSH/SBM, kelengkapan pajak, dan validasi pagu RAK. Penerbitan SP2D serta pencairan kas tetap menjadi otoritas SIPD-RI.
-                    </p>
+            <!-- Role-Driven Priority Strip -->
+            <div class="bg-surface rounded-xl px-4 py-3.5 border border-hairline shadow-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="flex items-center gap-2.5 text-xs text-ink-secondary">
+                    <span class="w-2 h-2 rounded-[50%] bg-semantic-success shrink-0"></span>
+                    <template v-if="isVerifierOrPptk">
+                        <span>
+                            <strong class="font-semibold text-ink tabular-nums">{{ dashboardData.summary.pending_verification_count }} berkas</strong>
+                            menunggu pemeriksaan pada antrean verifikasi.
+                        </span>
+                    </template>
+                    <template v-else-if="isMonitoring">
+                        <span>
+                            <strong class="font-semibold text-ink">Mode Monitoring Akuntabilitas:</strong>
+                            {{ isKelurahan && currentUser?.unit_kerja ? currentUser.unit_kerja.nama_unit : 'Kecamatan Tarogong Kidul & 5 Kelurahan' }}.
+                        </span>
+                    </template>
+                    <template v-else>
+                        <span>
+                            <strong class="font-semibold text-ink">RAK Terkunci Real-Time:</strong>
+                            Pagu tervalidasi sebelum penerbitan SP2D di SIPD-RI.
+                        </span>
+                    </template>
                 </div>
-                <div class="hidden lg:flex items-center gap-2 shrink-0 text-xs text-ink-secondary">
-                    <span class="w-1.5 h-1.5 rounded-[50%] bg-semantic-success"></span>
-                    <span class="font-medium">RAK Terkunci Real-Time</span>
+                <div class="flex items-center gap-2 shrink-0">
+                    <Link
+                        v-if="isVerifierOrPptk"
+                        :href="route('verification.index')"
+                        class="inline-flex items-center gap-1.5 min-h-[44px] sm:min-h-0 sm:h-8 px-3 rounded-lg text-xs font-medium bg-accent text-white hover:bg-accent-hover transition-colors duration-150 ease-unslop focus-visible:ring-2 focus-visible:ring-accent"
+                    >
+                        <span>Buka Antrean Verifikasi</span>
+                        <ArrowRight class="w-3.5 h-3.5" :stroke-width="1.5" />
+                    </Link>
+                    <Link
+                        v-else
+                        :href="route('receipts.index')"
+                        class="inline-flex items-center gap-1.5 min-h-[44px] sm:min-h-0 sm:h-8 px-3 rounded-lg text-xs font-medium bg-raised text-ink hover:bg-hairline/70 border border-hairline transition-colors duration-150 ease-unslop focus-visible:ring-2 focus-visible:ring-accent"
+                    >
+                        <span>Lihat Daftar Kuitansi</span>
+                        <ArrowRight class="w-3.5 h-3.5" :stroke-width="1.5" />
+                    </Link>
                 </div>
             </div>
 
+            <!-- Proportional Budget Absorption Bar (Focal Moment) -->
+            <GovCard
+                title="Komposisi Serapan Anggaran (RAK-P)"
+                subtitle="Proporsi realisasi cair, pagu terkunci komitmen, dan sisa pagu bebas"
+            >
+                <div v-if="absorptionBar.empty" class="space-y-2">
+                    <div class="w-full h-3 rounded-md bg-raised border border-hairline"></div>
+                    <p class="text-xs text-ink-muted">Pagu RAK-P belum ditetapkan (Rp 0).</p>
+                </div>
+                <div v-else class="space-y-3">
+                    <div class="w-full h-3.5 rounded-md bg-[#D6D0C4] overflow-hidden flex" role="img" aria-label="Bilah proporsional serapan anggaran">
+                        <div
+                            v-if="absorptionBar.realized > 0"
+                            class="bg-semantic-success h-full min-w-[4px] transition-[width] duration-300 ease-unslop"
+                            :style="{ width: `${absorptionBar.realizedPct}%` }"
+                        ></div>
+                        <div
+                            v-if="absorptionBar.locked > 0"
+                            class="bg-semantic-warning h-full min-w-[4px] border-l border-surface transition-[width] duration-300 ease-unslop"
+                            :style="{ width: `${absorptionBar.lockedPct}%` }"
+                        ></div>
+                    </div>
+
+                    <div class="flex flex-wrap items-center justify-between gap-3 text-xs">
+                        <div class="flex flex-wrap items-center gap-4">
+                            <span class="inline-flex items-center gap-1.5 text-ink-secondary">
+                                <span class="w-2.5 h-2.5 rounded-sm bg-semantic-success shrink-0"></span>
+                                <span>Realisasi:</span>
+                                <strong class="font-mono font-semibold text-ink tabular-nums">{{ formatRupiah(absorptionBar.realized) }}</strong>
+                            </span>
+                            <span class="inline-flex items-center gap-1.5 text-ink-secondary">
+                                <span class="w-2.5 h-2.5 rounded-sm bg-semantic-warning shrink-0"></span>
+                                <span>Terkunci:</span>
+                                <strong class="font-mono font-semibold text-ink tabular-nums">{{ formatRupiah(absorptionBar.locked) }}</strong>
+                            </span>
+                            <span class="inline-flex items-center gap-1.5 text-ink-secondary">
+                                <span class="w-2.5 h-2.5 rounded-sm bg-[#D6D0C4] border border-hairline shrink-0"></span>
+                                <span>Sisa Bebas:</span>
+                                <strong class="font-mono font-semibold text-ink tabular-nums">{{ formatRupiah(absorptionBar.remaining) }}</strong>
+                            </span>
+                        </div>
+                        <GovBadge v-if="absorptionBar.overCommitted" variant="danger" size="sm">
+                            Melebihi pagu (over-komitmen)
+                        </GovBadge>
+                    </div>
+                </div>
+            </GovCard>
+
             <!-- KPI Metrik Anggaran & SPJ (4 Cards) -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                 <!-- Card 1: Total Pagu Anggaran -->
                 <div class="bg-surface rounded-xl border border-hairline p-5 shadow-subtle">
                     <div class="text-xs font-medium text-ink-muted">
@@ -168,9 +311,9 @@ function handleGatekeeperSelected(context) {
             </div>
 
             <!-- Monitoring Grid: 12 Bulan RAK & Alokasi Unit -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 <!-- Kolom 1 & 2: Alokasi RAK 12 Bulan -->
-                <div class="lg:col-span-2">
+                <div class="xl:col-span-2">
                     <GovCard
                         title="Distribusi RAK 12 Bulan (Tahun Anggaran 2026)"
                         subtitle="Prinsip carry-over: sisa pagu bulan lalu dapat dibawa, pagu bulan depan terkunci"
@@ -310,8 +453,15 @@ function handleGatekeeperSelected(context) {
                 subtitle="Monitoring alur transaksi sebelum dibundel menjadi SPP"
                 :no-padding="true"
             >
-                <div v-if="dashboardData.recent_activities?.length === 0" class="p-8 text-center text-ink-muted text-xs">
-                    Belum ada aktivitas transaksi kuitansi yang tercatat.
+                <div v-if="dashboardData.recent_activities?.length === 0" class="p-8 text-center space-y-3">
+                    <p class="text-sm font-medium text-ink-secondary">Belum ada aktivitas transaksi kuitansi</p>
+                    <p class="text-xs text-ink-muted">Riwayat akan muncul otomatis setelah kuitansi pertama dibuat atau diajukan.</p>
+                    <div v-if="canCreateReceipt" class="pt-1">
+                        <GovButton variant="primary" size="sm" @click="showGatekeeperModal = true">
+                            <Plus class="w-4 h-4" :stroke-width="1.5" />
+                            Input Kuitansi Baru
+                        </GovButton>
+                    </div>
                 </div>
                 <div v-else class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-hairline text-left">
