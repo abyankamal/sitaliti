@@ -57,11 +57,11 @@ function resetView() {
                 </span>
             </div>
 
-            <div class="flex items-center gap-1.5 shrink-0">
+            <div class="flex items-center gap-1 sm:gap-1.5 shrink-0">
                 <button
                     type="button"
                     @click="zoomOut"
-                    class="p-1.5 rounded hover:bg-raised text-ink-secondary hover:text-ink"
+                    class="min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 p-1.5 inline-flex items-center justify-center rounded hover:bg-raised text-ink-secondary hover:text-ink focus-visible:ring-2 focus-visible:ring-accent"
                     title="Zoom Out"
                 >
                     <ZoomOut class="w-4 h-4" :stroke-width="1.5" />
@@ -70,7 +70,7 @@ function resetView() {
                 <button
                     type="button"
                     @click="zoomIn"
-                    class="p-1.5 rounded hover:bg-raised text-ink-secondary hover:text-ink"
+                    class="min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 p-1.5 inline-flex items-center justify-center rounded hover:bg-raised text-ink-secondary hover:text-ink focus-visible:ring-2 focus-visible:ring-accent"
                     title="Zoom In"
                 >
                     <ZoomIn class="w-4 h-4" :stroke-width="1.5" />
@@ -79,7 +79,7 @@ function resetView() {
                 <button
                     type="button"
                     @click="rotateDoc"
-                    class="p-1.5 rounded hover:bg-raised text-ink-secondary hover:text-ink"
+                    class="min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 p-1.5 inline-flex items-center justify-center rounded hover:bg-raised text-ink-secondary hover:text-ink focus-visible:ring-2 focus-visible:ring-accent"
                     title="Putar Dokumen 90 Derajat"
                 >
                     <RotateCw class="w-4 h-4" :stroke-width="1.5" />
@@ -87,7 +87,7 @@ function resetView() {
                 <button
                     type="button"
                     @click="resetView"
-                    class="px-2 py-1 text-xs rounded hover:bg-raised text-ink-muted hover:text-ink"
+                    class="min-h-[44px] sm:min-h-0 px-2.5 py-1 text-xs rounded hover:bg-raised text-ink-muted hover:text-ink focus-visible:ring-2 focus-visible:ring-accent"
                 >
                     Reset
                 </button>
@@ -98,26 +98,34 @@ function resetView() {
         <div class="flex-1 min-h-0 overflow-auto scrollbar-thin p-4 bg-raised relative">
             <div
                 v-if="fileUrl"
-                class="transition-transform duration-150 ease-unslop shadow-subtle origin-top-left bg-surface rounded border border-hairline overflow-hidden h-full min-h-[420px] w-full flex flex-col"
+                class="min-w-full min-h-full flex items-start justify-start"
                 :style="{
-                    transform: `scale(${zoomLevel / 100}) rotate(${rotation}deg)`
+                    width: `${Math.max(100, zoomLevel)}%`,
+                    height: rotation % 180 !== 0 ? `${Math.max(100, zoomLevel)}%` : '100%',
                 }"
             >
-                <!-- Image Viewer untuk Foto Nota/Kuitansi Fisik -->
-                <img
-                    v-if="isImage"
-                    :src="fileUrl"
-                    :alt="fileName"
-                    class="max-w-full max-h-full object-contain m-auto p-2"
-                />
+                <div
+                    class="transition-transform duration-150 ease-unslop shadow-subtle origin-top-left bg-surface rounded border border-hairline overflow-hidden h-full min-h-[420px] w-full flex flex-col"
+                    :style="{
+                        transform: `scale(${zoomLevel / 100}) rotate(${rotation}deg)`
+                    }"
+                >
+                    <!-- Image Viewer untuk Foto Nota/Kuitansi Fisik -->
+                    <img
+                        v-if="isImage"
+                        :src="fileUrl"
+                        :alt="fileName"
+                        class="max-w-full max-h-full object-contain m-auto p-2"
+                    />
 
-                <!-- Native Iframe Viewer untuk Dokumen PDF -->
-                <iframe
-                    v-else
-                    :src="fileUrl"
-                    class="w-full flex-1 min-h-[420px] border-0"
-                    title="PDF Viewer"
-                ></iframe>
+                    <!-- Native Iframe Viewer untuk Dokumen PDF -->
+                    <iframe
+                        v-else
+                        :src="fileUrl"
+                        class="w-full flex-1 min-h-[420px] border-0"
+                        title="PDF Viewer"
+                    ></iframe>
+                </div>
             </div>
 
             <div v-else class="text-center text-ink-muted text-xs py-16">

@@ -1,9 +1,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { ArrowLeft, Download, Check, RotateCcw, ClipboardList, Clock } from 'lucide-vue-next';
+import { ArrowLeft, Download, Check, RotateCcw, ClipboardList, Clock, AlertCircle, RefreshCw } from 'lucide-vue-next';
 import GovButton from '@/Components/UI/GovButton.vue';
 import GovBadge from '@/Components/UI/GovBadge.vue';
+import GovSkeleton from '@/Components/UI/GovSkeleton.vue';
 import PdfViewer from '@/Modules/Verification/PdfViewer.vue';
 import RevisionDrawer from '@/Modules/Verification/RevisionDrawer.vue';
 import AuditTimeline from '@/Components/UI/AuditTimeline.vue';
@@ -11,7 +12,7 @@ import { verificationService } from '@/Services/verificationService';
 import { receiptService } from '@/Services/receiptService';
 import { formatRupiah } from '@/Utils/currency';
 import { formatTanggalIndo } from '@/Utils/date';
-import { STATUS_LABELS, STATUS_VARIANTS } from '@/Constants/workflowStatus';
+import { getStatusMeta } from '@/Constants/workflowStatus';
 import { useToast } from '@/Composables/useToast';
 import { useConfirm } from '@/Composables/useConfirm';
 
@@ -41,8 +42,11 @@ const loadingHistory = ref(false);
 // Modal Revision State
 const showRevisionModal = ref(false);
 const revisionActionType = ref('REVISION_MINOR');
+const errorMessage = ref('');
 
-onMounted(async () => {
+async function loadDetail() {
+    loading.value = true;
+    errorMessage.value = '';
     try {
         const res = await verificationService.getDetail(props.id);
         if (res) {
@@ -62,9 +66,16 @@ onMounted(async () => {
             detail.value = res;
         }
         fetchHistory();
+    } catch (err) {
+        errorMessage.value =
+            err?.response?.data?.message || 'Gagal memuat detail berkas verifikasi dari server.';
     } finally {
         loading.value = false;
     }
+}
+
+onMounted(() => {
+    loadDetail();
 });
 
 async function fetchHistory() {
@@ -216,12 +227,12 @@ async function openQuickAuth(type) {
 
     <!-- Fullscreen Workspace Layout -->
     <div class="min-h-screen lg:h-screen flex flex-col bg-canvas lg:overflow-hidden font-sans text-ink">
-        <!-- Top Workspace Bar -->
-        <header class="bg-surface text-ink border-b border-hairline px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3 shrink-0">
+        <!-- Top Workspace Bar (Sticky on mobile/tablet so decision actions stay reachable) -->
+        <header class="sticky top-0 z-20 lg:static bg-surface text-ink border-b border-hairline px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3 shrink-0">
             <div class="flex items-center gap-3 min-w-0">
                 <Link
                     :href="route('verification.index')"
-                    class="p-1.5 rounded-lg text-ink-secondary hover:text-ink hover:bg-raised flex items-center gap-1.5 text-xs shrink-0"
+                    class="min-h-[44px] sm:min-h-0 px-2.5 py-1.5 rounded-lg text-ink-secondary hover:text-ink hover:bg-raised flex items-center gap-1.5 text-xs shrink-0 focus-visible:ring-2 focus-visible:ring-accent"
                 >
                     <ArrowLeft class="w-4 h-4" :stroke-width="1.5" />
                     <span>Kembali ke Antrean</span>
@@ -231,10 +242,10 @@ async function openQuickAuth(type) {
 
                 <div v-if="detail" class="flex items-center gap-2.5 min-w-0 flex-wrap">
                     <span class="font-semibold text-sm text-ink tracking-wide font-mono truncate">{{ detail.nomor_kuitansi || detail.id }}</span>
-                    <GovBadge :variant="STATUS_VARIANTS[detail.status]">
-                        {{ STATUS_LABELS[detail.status] }}
+                    <GovBadge :variant="getStatusMeta(detail.status).variant">
+                        {{ getStatusMeta(detail.status).label }}
                     </GovBadge>
-                    <span class="text-xs text-ink-muted">{{ formatTanggalIndo(detail.tanggal_transaksi || detail.tanggal) }}</span>
+                    <span class="text-xs text-ink-muted tabular-nums">{{ formatTanggalIndo(detail.tanggal_transaksi || detail.tanggal) }}</span>
                 </div>
             </div>
 
@@ -286,8 +297,44 @@ async function openQuickAuth(type) {
             </div>
         </header>
 
+        <!-- Loading Skeleton State -->
+        <div v-if="loading" class="flex-1 flex flex-col lg:flex-row p-3 gap-3 min-h-0" aria-busy="true" aria-label="Memuat workspace verifikasi">
+            <div class="w-full lg:w-[55%] bg-surface rounded-xl border border-hairline p-5">
+                <GovSkeleton variant="text" :rows="6" />
+            </div>
+            <div class="w-full lg:w-[45%] bg-surface rounded-xl border border-hairline p-5 space-y-4">
+                <GovSkeleton variant="card" />
+                <GovSkeleton variant="table-row" :rows="4" :columns="2" />
+            </div>
+        </div>
+
+        <!-- Error State -->
+        <div v-else-if="errorMessage" class="flex-1 flex items-center justify-center p-6">
+            <div role="alert" class="max-w-lg w-full bg-red-50 border border-red-200 rounded-xl p-6 space-y-4">
+                <div class="flex items-start gap-3">
+                    <AlertCircle class="w-5 h-5 text-semantic-danger shrink-0 mt-0.5" :stroke-width="1.5" />
+                    <div>
+                        <h2 class="text-sm font-semibold text-red-900">Berkas Verifikasi Gagal Dimuat</h2>
+                        <p class="text-xs text-red-800 mt-1">{{ errorMessage }}</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2.5">
+                    <GovButton variant="secondary" size="sm" @click="loadDetail">
+                        <RefreshCw class="w-4 h-4" :stroke-width="1.5" />
+                        Muat Ulang
+                    </GovButton>
+                    <Link
+                        :href="route('verification.index')"
+                        class="inline-flex items-center h-8 px-3 rounded-lg text-xs font-medium text-ink-secondary hover:bg-raised border border-hairline bg-surface"
+                    >
+                        Kembali ke Antrean
+                    </Link>
+                </div>
+            </div>
+        </div>
+
         <!-- Main Split-Screen Workspace (55% Kiri / 45% Kanan di Desktop, Stack di Mobile) -->
-        <div v-if="detail" class="flex-1 flex flex-col lg:flex-row lg:overflow-hidden p-3 gap-3 min-h-0">
+        <div v-else-if="detail" class="flex-1 flex flex-col lg:flex-row lg:overflow-hidden p-3 gap-3 min-h-0">
             <!-- SISI KIRI (55%): PDF / Document Viewer -->
             <div class="w-full lg:w-[55%] min-h-[420px] lg:h-full flex flex-col gap-2 min-h-0">
                 <div v-if="lampiranList.length > 0" class="flex items-center gap-1.5 overflow-x-auto scrollbar-thin pb-1 shrink-0">
@@ -475,7 +522,7 @@ async function openQuickAuth(type) {
 
                     <div
                         v-if="lampiranList.length === 0"
-                        class="p-3 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-800"
+                        class="p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-900"
                     >
                         Belum ada berkas lampiran yang diunggah pada kuitansi ini.
                     </div>
@@ -483,16 +530,19 @@ async function openQuickAuth(type) {
                     <div
                         v-for="(item, idx) in detail.checklist || []"
                         :key="item.item_id || item.kode_item || idx"
-                        @click="selectAttachmentForChecklist(item)"
-                        class="p-3 rounded-lg border transition-colors duration-150 ease-unslop cursor-pointer text-xs border-hairline bg-surface hover:bg-raised"
+                        class="p-3 rounded-lg border transition-colors duration-150 ease-unslop text-xs border-hairline bg-surface hover:bg-raised"
                     >
                         <div class="flex items-start justify-between gap-2">
-                            <div class="flex items-start gap-2 flex-1">
+                            <button
+                                type="button"
+                                @click="selectAttachmentForChecklist(item)"
+                                class="flex items-start gap-2 flex-1 text-left rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                            >
                                 <span
                                     class="w-5 h-5 rounded-md flex items-center justify-center shrink-0 text-xs font-semibold"
                                     :class="[
                                         item.ui_status === 'VALID' ? 'bg-emerald-100 text-emerald-800' :
-                                        item.ui_status === 'REVISION_NEEDED' ? 'bg-rose-100 text-rose-800' : 'bg-raised text-ink-secondary'
+                                        item.ui_status === 'REVISION_NEEDED' ? 'bg-red-100 text-red-800' : 'bg-raised text-ink-secondary'
                                     ]"
                                 >
                                     {{ idx + 1 }}
@@ -501,7 +551,7 @@ async function openQuickAuth(type) {
                                     <div class="flex items-center gap-1.5 flex-wrap">
                                         <span class="font-mono text-xs text-ink-muted">{{ item.kode_item }}</span>
                                         <h4 class="font-semibold text-ink">{{ item.nama_item }}</h4>
-                                        <span v-if="item.is_required" class="text-xs font-semibold text-semantic-danger bg-rose-50 px-1 rounded">
+                                        <span v-if="item.is_required" class="text-xs font-semibold text-semantic-danger bg-red-50 px-1 rounded">
                                             Wajib
                                         </span>
                                         <span v-else class="text-xs font-medium text-ink-muted bg-raised px-1 rounded">
@@ -510,7 +560,7 @@ async function openQuickAuth(type) {
                                     </div>
                                     <p v-if="item.deskripsi" class="text-xs text-ink-muted mt-0.5">{{ item.deskripsi }}</p>
                                 </div>
-                            </div>
+                            </button>
 
                             <!-- Document Status Buttons (Khusus Verifikator) atau Status Badge -->
                             <div v-if="isVerifikator" class="flex items-center gap-1 shrink-0">

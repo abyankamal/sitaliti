@@ -93,7 +93,7 @@ function handleRemoveFile(index) {
         <!-- Upload Error Banner -->
         <div
             v-if="uploadError"
-            class="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between"
+            class="p-3 rounded-lg bg-red-50 border border-red-200 text-red-900 text-xs flex items-center justify-between"
         >
             <span>{{ uploadError }}</span>
             <button type="button" class="font-semibold underline ml-3" @click="uploadError = ''">Tutup</button>
@@ -136,7 +136,7 @@ function handleRemoveFile(index) {
                                 <h4 class="text-xs font-semibold text-ink">{{ doc.name }}</h4>
                                 <span
                                     v-if="doc.required"
-                                    class="text-xs font-semibold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200"
+                                    class="text-xs font-semibold text-red-800 bg-red-50 px-1.5 py-0.5 rounded border border-red-200"
                                 >
                                     Wajib
                                 </span>
