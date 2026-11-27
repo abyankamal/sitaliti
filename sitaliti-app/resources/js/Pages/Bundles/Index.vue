@@ -328,7 +328,7 @@ const BUNDLE_STATUS_LABELS = {
                             : 'Penyatuan kuitansi-kuitansi yang telah Lolos Verifikasi menjadi berkas bundel pengesahan SPP-GU / TU / LS' }}
                     </p>
                 </div>
-                <GovButton v-if="canCreateBundle" variant="gold" size="sm" @click="openCreateModal">
+                <GovButton v-if="canCreateBundle" variant="primary" size="sm" @click="openCreateModal">
                     <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
@@ -505,7 +505,7 @@ const BUNDLE_STATUS_LABELS = {
                         <template v-else-if="(bundle.status || bundle.status_bundel) === 'MENUNGGU_PPK'">
                             <GovButton
                                 v-if="canApprovePpk"
-                                variant="gold"
+                                variant="primary"
                                 size="sm"
                                 @click="openApprovePpkModal(bundle)"
                             >
@@ -625,7 +625,7 @@ const BUNDLE_STATUS_LABELS = {
 
                     <div class="bg-raised px-6 py-4 border-t border-hairline flex justify-end gap-3">
                         <GovButton variant="secondary" size="sm" @click="showCreateModal = false">Batal</GovButton>
-                        <GovButton variant="gold" size="sm" :loading="isSubmitting" @click="handleCreateBundle">
+                        <GovButton variant="primary" size="sm" :loading="isSubmitting" @click="handleCreateBundle">
                             Sahkan & Simpan Bundel
                         </GovButton>
                     </div>

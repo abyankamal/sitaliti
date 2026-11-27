@@ -270,7 +270,7 @@ async function submitEdit() {
                         Tambahkan kode rekening belanja baru beserta jadwal alokasi pagu kas 12 bulan untuk seluruh unit kerja.
                     </p>
                 </div>
-                <GovButton variant="gold" size="sm" @click="openCreateModal">
+                <GovButton variant="primary" size="sm" @click="openCreateModal">
                     + Tambah Kode Rekening
                 </GovButton>
             </div>
@@ -307,11 +307,11 @@ async function submitEdit() {
 
             <!-- Table -->
             <div class="bg-surface rounded-xl border border-hairline shadow-subtle overflow-hidden">
-                <div class="overflow-x-auto">
+                <div class="overflow-x-auto scrollbar-thin">
                     <table class="min-w-full divide-y divide-hairline text-sm">
-                        <thead class="bg-raised text-xs font-bold  text-ink-secondary">
+                        <thead class="bg-raised text-xs font-semibold text-ink-secondary">
                             <tr>
-                                <th class="px-4 py-3 text-left">Unit Kerja</th>
+                                <th class="sticky left-0 z-10 bg-raised px-4 py-3 text-left border-r border-hairline">Unit Kerja</th>
                                 <th class="px-4 py-3 text-left">Subkegiatan</th>
                                 <th class="px-4 py-3 text-left">Kode &amp; Uraian Rekening</th>
                                 <th class="px-4 py-3 text-center">Kategori</th>
@@ -329,7 +329,7 @@ async function submitEdit() {
                                 <td colspan="8" class="px-4 py-8 text-center text-ink-muted">Belum ada rekening yang sesuai filter.</td>
                             </tr>
                             <tr v-for="row in rekenings" :key="row.id" class="hover:bg-raised/70">
-                                <td class="px-4 py-3 text-xs font-medium text-ink-secondary">
+                                <td class="sticky left-0 z-10 bg-surface px-4 py-3 text-xs font-medium text-ink-secondary border-r border-hairline">
                                     {{ row.unit_kerja?.nama_unit || '-' }}
                                 </td>
                                 <td class="px-4 py-3">
@@ -505,7 +505,7 @@ async function submitEdit() {
                         <GovButton type="button" variant="secondary" :disabled="saving" @click="showCreateModal = false">
                             Batal
                         </GovButton>
-                        <GovButton type="submit" variant="gold" :disabled="saving">
+                        <GovButton type="submit" variant="primary" :disabled="saving">
                             {{ saving ? 'Menyimpan...' : 'Simpan Kode Rekening' }}
                         </GovButton>
                     </div>
@@ -563,7 +563,7 @@ async function submitEdit() {
                         <GovButton type="button" variant="secondary" :disabled="savingEdit" @click="showEditModal = false">
                             Batal
                         </GovButton>
-                        <GovButton type="submit" variant="gold" :disabled="savingEdit">
+                        <GovButton type="submit" variant="primary" :disabled="savingEdit">
                             {{ savingEdit ? 'Menyimpan...' : 'Simpan Perubahan Pagu' }}
                         </GovButton>
                     </div>
