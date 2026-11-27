@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, nextTick } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 import { Lock, X, Check } from 'lucide-vue-next';
 import GovButton from '@/Components/UI/GovButton.vue';
@@ -17,6 +17,39 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['close', 'select']);
+
+const dialogRef = ref(null);
+const pointerStartedOnBackdrop = ref(false);
+
+watch(
+    () => props.show,
+    async (open) => {
+        await nextTick();
+        const el = dialogRef.value;
+        if (!el) return;
+        if (open) {
+            if (!el.open) el.showModal();
+        } else if (el.open) {
+            el.close();
+        }
+    }
+);
+
+function handleNativeCancel(event) {
+    event.preventDefault();
+    emit('close');
+}
+
+function handlePointerDown(event) {
+    pointerStartedOnBackdrop.value = event.target === dialogRef.value;
+}
+
+function handleBackdropClick(event) {
+    if (pointerStartedOnBackdrop.value && event.target === dialogRef.value) {
+        emit('close');
+    }
+    pointerStartedOnBackdrop.value = false;
+}
 
 const page = usePage();
 const currentUser = computed(() => page.props.auth?.user);
@@ -132,35 +165,40 @@ function handleConfirm() {
 </script>
 
 <template>
-    <div v-if="show" class="fixed inset-0 z-50 overflow-y-auto">
-        <!-- Backdrop -->
-        <div class="fixed inset-0 bg-ink/40 transition-opacity" @click="$emit('close')"></div>
-
-        <div class="flex min-h-full items-center justify-center p-4">
-            <div class="relative w-full max-w-4xl rounded-xl bg-surface shadow-floating border border-hairline overflow-hidden">
-                <!-- Modal Header -->
-                <div class="bg-surface px-6 py-4 flex items-center justify-between border-b border-hairline">
-                    <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-lg bg-accent-soft border border-accent-border flex items-center justify-center text-accent shrink-0">
-                            <Lock class="w-4 h-4" :stroke-width="1.5" />
-                        </div>
-                        <div>
-                            <h3 class="text-base font-semibold text-ink">
-                                Pre-Entry Gatekeeper & RAK Selector
-                            </h3>
-                            <p class="text-xs text-ink-muted mt-0.5">
-                                Kunci unit organisasi, subkegiatan, rekening belanja, dan bulan alokasi RAK sebelum memulai kuitansi
-                            </p>
-                        </div>
+    <dialog
+        ref="dialogRef"
+        aria-labelledby="rak-selector-title"
+        class="w-[calc(100vw-2rem)] max-w-4xl rounded-xl bg-surface text-ink border border-hairline p-0 shadow-floating backdrop:bg-ink/40"
+        @cancel="handleNativeCancel"
+        @pointerdown="handlePointerDown"
+        @click="handleBackdropClick"
+    >
+        <div class="overflow-hidden">
+            <!-- Modal Header -->
+            <div class="bg-surface px-6 py-4 flex items-center justify-between border-b border-hairline">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-lg bg-accent-soft border border-accent-border flex items-center justify-center text-accent shrink-0">
+                        <Lock class="w-4 h-4" :stroke-width="1.5" />
                     </div>
-                    <button
-                        @click="$emit('close')"
-                        class="w-8 h-8 inline-flex items-center justify-center text-ink-muted hover:text-ink hover:bg-raised rounded-lg transition-colors duration-150 ease-unslop"
-                        title="Tutup"
-                    >
-                        <X class="w-4 h-4" :stroke-width="1.5" />
-                    </button>
+                    <div>
+                        <h3 id="rak-selector-title" class="text-base font-semibold text-ink">
+                            Pre-Entry Gatekeeper & RAK Selector
+                        </h3>
+                        <p class="text-xs text-ink-muted mt-0.5">
+                            Kunci unit organisasi, subkegiatan, rekening belanja, dan bulan alokasi RAK sebelum memulai kuitansi
+                        </p>
+                    </div>
                 </div>
+                <button
+                    type="button"
+                    @click="$emit('close')"
+                    class="min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 sm:w-8 sm:h-8 inline-flex items-center justify-center text-ink-muted hover:text-ink hover:bg-raised rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent transition-colors duration-150 ease-unslop"
+                    title="Tutup"
+                    aria-label="Tutup"
+                >
+                    <X class="w-4 h-4" :stroke-width="1.5" />
+                </button>
+            </div>
 
                 <!-- Modal Body: 2 Columns Layout -->
                 <div class="p-6 grid grid-cols-1 md:grid-cols-12 gap-6 bg-canvas">
@@ -349,8 +387,7 @@ function handleConfirm() {
                         </div>
                     </div>
                 </div>
-            </div>
         </div>
-    </div>
+    </dialog>
 </template>
 

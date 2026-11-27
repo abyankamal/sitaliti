@@ -370,7 +370,7 @@ async function handleSubmitDraft(andSubmit = true) {
                         Simpan Draft
                     </GovButton>
                     <GovButton
-                        variant="gold"
+                        variant="primary"
                         size="sm"
                         :loading="isSubmitting"
                         :disabled="isExceedingBudget || totalNilaiBelanja === 0"
@@ -414,7 +414,7 @@ async function handleSubmitDraft(andSubmit = true) {
             </div>
 
             <!-- Error Banner jika transaksi melebihi pagu -->
-            <div v-if="isExceedingBudget" class="p-4 bg-rose-50 border border-rose-300 rounded-xl text-rose-800 text-xs flex items-center gap-3">
+            <div v-if="isExceedingBudget" class="p-4 bg-red-50 border border-red-200 rounded-xl text-red-900 text-xs flex items-center gap-3">
                 <AlertTriangle class="w-5 h-5 text-semantic-danger shrink-0" :stroke-width="1.5" />
                 <div>
                     <strong>Pagu RAK Tidak Mencukupi:</strong> Total belanja ({{ formatRupiah(totalNilaiBelanja) }}) melampaui sisa pagu bulan berjalan ({{ formatRupiah(budgetContext.rakContext?.sisa_dapat_digunakan) }}). Silakan kurangi volume barang atau sesuaikan alokasi.

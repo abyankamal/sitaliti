@@ -13,7 +13,7 @@ import GovBadge from '@/Components/UI/GovBadge.vue';
 import DynamicChecklistTable from '@/Modules/Checklist/DynamicChecklistTable.vue';
 import SppdParticipantsSection from '@/Components/SppdParticipantsSection.vue';
 import { formatRupiah } from '@/Utils/currency';
-import { STATUS_LABELS } from '@/Constants/workflowStatus';
+import { getStatusMeta } from '@/Constants/workflowStatus';
 import { receiptService } from '@/Services/receiptService';
 
 const props = defineProps({
@@ -69,18 +69,7 @@ const sppdGroupPhoto = ref(null);
 const sppdRemoveGroupPhoto = ref(false);
 const sppdHasConflict = ref(false);
 
-const statusMeta = computed(() => {
-    const status = receipt.value?.status || 'DRAFT';
-    const variants = {
-        DRAFT: 'neutral',
-        REVISI_MINOR: 'warning',
-        REVISI_MAYOR: 'danger',
-    };
-    return {
-        label: STATUS_LABELS[status] || status,
-        variant: variants[status] || 'neutral',
-    };
-});
+const statusMeta = computed(() => getStatusMeta(receipt.value?.status || 'DRAFT'));
 
 const revisionNote = computed(() => {
     if (!receipt.value) return null;
@@ -578,7 +567,7 @@ async function openDeleteAttachmentModal(att) {
                                 <button
                                     v-if="!isMinorRevision && form.items.length > 1"
                                     type="button"
-                                    class="text-xs font-semibold text-rose-600 hover:text-rose-800 px-2 py-2"
+                                    class="text-xs font-semibold text-semantic-danger hover:text-red-800 px-2 py-2"
                                     @click="removeItemRow(idx)"
                                 >
                                     Hapus
