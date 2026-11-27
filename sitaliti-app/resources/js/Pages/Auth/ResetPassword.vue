@@ -35,6 +35,15 @@ const submit = () => {
     <GuestLayout>
         <Head title="Atur Ulang Kata Sandi" />
 
+        <div class="mb-5">
+            <h2 class="text-lg font-semibold tracking-tight text-ink">
+                Atur Ulang Kata Sandi
+            </h2>
+            <p class="mt-1 text-xs text-ink-muted">
+                Buat kata sandi baru untuk akun dinas Anda.
+            </p>
+        </div>
+
         <form @submit.prevent="submit" class="space-y-4">
             <div>
                 <InputLabel for="email" value="Alamat Email" />

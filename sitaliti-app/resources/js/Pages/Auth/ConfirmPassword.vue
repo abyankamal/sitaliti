@@ -21,8 +21,13 @@ const submit = () => {
     <GuestLayout>
         <Head title="Konfirmasi Kata Sandi" />
 
-        <div class="mb-4 text-sm text-ink-secondary">
-            Ini adalah area aman aplikasi. Harap konfirmasi kata sandi Anda sebelum melanjutkan.
+        <div class="mb-5">
+            <h2 class="text-lg font-semibold tracking-tight text-ink">
+                Konfirmasi Kata Sandi
+            </h2>
+            <p class="mt-1 text-xs text-ink-secondary leading-relaxed">
+                Ini adalah area aman aplikasi. Harap konfirmasi kata sandi Anda sebelum melanjutkan.
+            </p>
         </div>
 
         <form @submit.prevent="submit" class="space-y-4">

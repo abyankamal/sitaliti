@@ -25,13 +25,18 @@ const submit = () => {
     <GuestLayout>
         <Head title="Lupa Kata Sandi" />
 
-        <div class="mb-4 text-sm text-ink-secondary">
-            Lupa kata sandi Anda? Tidak masalah. Masukkan alamat email Anda dan kami akan mengirimkan tautan pengaturan ulang kata sandi agar Anda dapat membuat kata sandi baru.
+        <div class="mb-5">
+            <h2 class="text-lg font-semibold tracking-tight text-ink">
+                Lupa Kata Sandi
+            </h2>
+            <p class="mt-1 text-xs text-ink-secondary leading-relaxed">
+                Masukkan alamat email dinas Anda untuk menerima tautan pengaturan ulang kata sandi.
+            </p>
         </div>
 
         <div
             v-if="status"
-            class="mb-4 text-sm font-medium text-semantic-success"
+            class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-900"
         >
             {{ status }}
         </div>
