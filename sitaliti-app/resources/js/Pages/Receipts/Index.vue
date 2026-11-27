@@ -8,6 +8,7 @@ import GovButton from '@/Components/UI/GovButton.vue';
 import ReceiptDetailDrawer from '@/Pages/Receipts/Partials/ReceiptDetailDrawer.vue';
 import { formatRupiah } from '@/Utils/currency';
 import { formatTanggalIndo, NAMA_BULAN } from '@/Utils/date';
+import { getStatusMeta } from '@/Constants/workflowStatus';
 
 const page = usePage();
 const currentUser = computed(() => page.props.auth?.user);
@@ -223,34 +224,6 @@ function handleExport(format) {
     }, 1500);
 }
 
-// Mapping status badge variant
-function getStatusBadge(status) {
-    switch (status) {
-        case 'DRAFT':
-            return { variant: 'neutral', label: 'Draft' };
-        case 'MENUNGGU_PPTK':
-            return { variant: 'info', label: 'Menunggu PPTK' };
-        case 'MENUNGGU_LURAH':
-            return { variant: 'warning', label: 'Menunggu Lurah' };
-        case 'MENUNGGU_VERIFIKASI':
-            return { variant: 'primary', label: 'Menunggu Verifikasi' };
-        case 'REVISI_MINOR':
-            return { variant: 'warning', label: 'Revisi Minor' };
-        case 'REVISI_MAYOR':
-            return { variant: 'danger', label: 'Revisi Mayor' };
-        case 'TERVERIFIKASI':
-        case 'LOLOS_VERIFIKASI':
-            return { variant: 'success', label: 'Lolos Verifikasi' };
-        case 'DIBUNDEL':
-            return { variant: 'info', label: 'Dibundel (SPP)' };
-        case 'SELESAI_SP2D':
-        case 'SYNCED_SIPD':
-            return { variant: 'success', label: 'Cair (SIPD-RI)' };
-        default:
-            return { variant: 'neutral', label: status };
-    }
-}
-
 // State Drawer (disiapkan untuk Task 15.3)
 const selectedReceiptId = ref(null);
 const isDrawerOpen = ref(false);
@@ -340,7 +313,7 @@ function openReceiptDetail(receipt) {
 
             <!-- Filter Bar Multi-Dimensi -->
             <div class="bg-surface p-4 rounded-xl border border-hairline shadow-subtle space-y-3">
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
                     <!-- Search Input -->
                     <div class="lg:col-span-2 relative">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-ink-muted">
@@ -561,8 +534,8 @@ function openReceiptDetail(receipt) {
 
                                 <!-- Status Badge & SLA -->
                                 <td class="whitespace-nowrap px-3 py-3 text-center">
-                                    <GovBadge :variant="getStatusBadge(receipt.status).variant" size="sm">
-                                        {{ getStatusBadge(receipt.status).label }}
+                                    <GovBadge :variant="getStatusMeta(receipt.status).variant" size="sm">
+                                        {{ getStatusMeta(receipt.status).label }}
                                     </GovBadge>
 
                                     <!-- Indikator SLA Keterlambatan jika Revisi Minor -->

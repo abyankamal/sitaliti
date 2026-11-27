@@ -10,6 +10,7 @@ import { useToast } from '@/Composables/useToast';
 import { useConfirm } from '@/Composables/useConfirm';
 import { formatRupiah } from '@/Utils/currency';
 import { formatTanggalIndo } from '@/Utils/date';
+import { getStatusMeta } from '@/Constants/workflowStatus';
 
 const props = defineProps({
     show: {
@@ -245,8 +246,8 @@ function getStatusBadge(status) {
                             <h2 class="font-mono font-semibold text-base tracking-tight text-ink">
                                 {{ receipt?.nomor_kuitansi || 'Memuat Data...' }}
                             </h2>
-                            <GovBadge v-if="receipt" :variant="getStatusBadge(receipt.status).variant" size="sm">
-                                {{ getStatusBadge(receipt.status).label }}
+                            <GovBadge v-if="receipt" :variant="getStatusMeta(receipt.status).variant" size="sm">
+                                {{ getStatusMeta(receipt.status).label }}
                             </GovBadge>
                         </div>
                         <p class="text-xs text-ink-muted mt-0.5">
@@ -256,7 +257,7 @@ function getStatusBadge(status) {
 
                     <button
                         @click="closeDrawer"
-                        class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-ink-muted hover:text-ink hover:bg-raised focus:outline-none transition-colors duration-150 ease-unslop"
+                        class="min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 sm:w-8 sm:h-8 inline-flex items-center justify-center rounded-lg text-ink-muted hover:text-ink hover:bg-raised focus:outline-none focus-visible:ring-2 focus-visible:ring-accent transition-colors duration-150 ease-unslop"
                         title="Tutup Panel (ESC)"
                     >
                         <X class="w-4 h-4" :stroke-width="1.5" />
