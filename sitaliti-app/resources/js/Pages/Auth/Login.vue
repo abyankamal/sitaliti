@@ -31,9 +31,18 @@ const submit = () => {
 
 <template>
     <GuestLayout>
-        <Head title="Masuk — E - Verifikatur Kecamatan Tarogong Kidul" />
+        <Head title="Masuk ke E - Verifikatur Kecamatan Tarogong Kidul" />
 
-        <div v-if="status" class="mb-4 text-sm font-medium text-semantic-success">
+        <div class="mb-6">
+            <h2 class="text-lg font-semibold tracking-tight text-ink">
+                Masuk ke Sistem
+            </h2>
+            <p class="mt-1 text-xs text-ink-muted">
+                Gunakan akun dinas yang terdaftar untuk mengakses ruang kerja SPJ.
+            </p>
+        </div>
+
+        <div v-if="status" class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-900">
             {{ status }}
         </div>
 
