@@ -41,38 +41,6 @@ export default {
                     danger: '#B91C1C',
                     info: '#1D4ED8',
                 },
-                // Deep Government Navy Theme (dipertahankan untuk kompatibilitas transisi bertahap)
-                gov: {
-                    navy: {
-                        50: '#F0F4F8',
-                        100: '#D9E2EC',
-                        200: '#BCCCDC',
-                        300: '#9FB3C8',
-                        400: '#829AB1',
-                        500: '#627D98',
-                        600: '#486581',
-                        700: '#334E68',
-                        800: '#1E3E62', // Secondary dark
-                        900: '#0F2537', // Deep Navy Base
-                        950: '#071520', // Ultra dark sidebar/header
-                    },
-                    gold: {
-                        50: '#FFFDF5',
-                        100: '#FFF8E1',
-                        200: '#FFECB3',
-                        300: '#FFE082',
-                        400: '#FFD54F',
-                        500: '#EAB308',
-                        600: '#D97706',
-                        700: '#B45309',
-                    },
-                    surface: {
-                        DEFAULT: '#FFFFFF',
-                        subtle: '#F8FAFC',
-                        muted: '#F1F5F9',
-                        border: '#E2E8F0',
-                    }
-                }
             },
             boxShadow: {
                 subtle: '0 1px 2px rgba(0, 0, 0, 0.04)',

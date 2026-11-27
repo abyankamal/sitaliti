@@ -5,7 +5,7 @@ defineProps({
     variant: {
         type: String,
         default: 'primary',
-        validator: (value) => ['primary', 'secondary', 'gold', 'danger', 'success', 'ghost'].includes(value),
+        validator: (value) => ['primary', 'secondary', 'danger', 'success', 'ghost'].includes(value),
     },
     size: {
         type: String,
@@ -33,7 +33,7 @@ defineProps({
             size === 'lg' && 'h-11 px-5 text-sm gap-2',
 
             // Variants
-            (variant === 'primary' || variant === 'gold') && 'bg-accent text-white hover:bg-accent-hover focus-visible:ring-accent shadow-subtle',
+            variant === 'primary' && 'bg-accent text-white hover:bg-accent-hover focus-visible:ring-accent shadow-subtle',
             variant === 'secondary' && 'bg-surface text-ink border border-hairline hover:bg-raised focus-visible:ring-accent shadow-subtle',
             variant === 'danger' && 'bg-semantic-danger text-white hover:bg-red-800 focus-visible:ring-red-700 shadow-subtle',
             variant === 'success' && 'bg-semantic-success text-white hover:bg-emerald-800 focus-visible:ring-emerald-700 shadow-subtle',
