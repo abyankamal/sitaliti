@@ -158,8 +158,8 @@ async function savePos() {
 async function openDeleteModal(item) {
   await confirm({
     title: 'Hapus Pos Rekap?',
-    message: `Anda yakin ingin menghapus pos ${item.kode} — ${item.nama}? Kode rekening yang terpetakan akan kembali berstatus belum dipetakan.`,
-    details: `${item.kode} — ${item.nama}`,
+    message: `Anda yakin ingin menghapus pos ${item.kode} - ${item.nama}? Kode rekening yang terpetakan akan kembali berstatus belum dipetakan.`,
+    details: `${item.kode} - ${item.nama}`,
     variant: 'danger',
     confirmText: 'Ya, Hapus',
     onConfirm: async () => {
@@ -223,7 +223,7 @@ onMounted(() => {
 
       <!-- Table -->
       <div class="bg-surface border border-hairline rounded-xl overflow-hidden">
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto scrollbar-thin">
           <table class="min-w-full divide-y divide-hairline text-sm">
             <thead class="bg-canvas text-ink-muted text-xs ">
               <tr>
@@ -426,7 +426,7 @@ onMounted(() => {
                   </div>
                   <div class="text-ink-muted truncate">{{ opt.nama_rekening }}</div>
                   <div v-if="opt.is_mapped && !opt.is_current_pos && opt.mapped_to" class="text-xs text-amber-700 mt-0.5">
-                    Sudah dipetakan ke: {{ opt.mapped_to.kode }} — {{ opt.mapped_to.nama }}
+                    Sudah dipetakan ke: {{ opt.mapped_to.kode }} · {{ opt.mapped_to.nama }}
                   </div>
                 </div>
               </label>

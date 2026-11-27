@@ -195,7 +195,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <Head title="Master Pegawai — E-Verifikatur" />
+  <Head title="Master Pegawai | E-Verifikatur" />
 
   <GovAppLayout title="Master Pegawai">
     <template #header>
@@ -268,7 +268,7 @@ onMounted(async () => {
 
     <!-- Tabel Master Pegawai -->
     <div class="bg-surface border border-hairline rounded-xl overflow-hidden">
-      <div tabindex="0" role="region" aria-labelledby="pegawai-table-caption" class="overflow-x-auto">
+      <div tabindex="0" role="region" aria-labelledby="pegawai-table-caption" class="overflow-x-auto scrollbar-thin">
         <table class="w-full text-left border-collapse">
           <caption id="pegawai-table-caption" class="sr-only">Daftar Master Pegawai Pelaksana SPPD</caption>
           <thead>
@@ -294,8 +294,8 @@ onMounted(async () => {
             <tr v-for="item in pegawaiList" v-else :key="item.id" class="hover:bg-canvas/60 transition-colors">
               <td class="px-4 py-2.5 font-mono tabular-nums text-ink whitespace-nowrap">{{ item.nip }}</td>
               <td class="px-4 py-2.5 font-medium text-ink">{{ item.nama }}</td>
-              <td class="px-4 py-2.5 text-ink-secondary">{{ item.jabatan || '—' }}</td>
-              <td class="px-4 py-2.5 text-ink-secondary">{{ item.golongan || '—' }}</td>
+              <td class="px-4 py-2.5 text-ink-secondary">{{ item.jabatan || '-' }}</td>
+              <td class="px-4 py-2.5 text-ink-secondary">{{ item.golongan || '-' }}</td>
               <td class="px-4 py-2.5 text-ink-secondary">{{ item.unit_kerja?.nama_unit || 'Umum / Lintas Unit' }}</td>
               <td class="px-4 py-2.5 text-center">
                 <GovBadge :variant="item.is_active ? 'success' : 'neutral'" size="sm">

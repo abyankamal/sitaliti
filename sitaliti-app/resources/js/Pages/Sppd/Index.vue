@@ -161,7 +161,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <Head title="Laporan Rekap SPPD — E-Verifikatur" />
+  <Head title="Laporan Rekap SPPD | E-Verifikatur" />
 
   <GovAppLayout title="Laporan Rekap SPPD">
     <template #header>
@@ -262,7 +262,7 @@ onMounted(async () => {
               :key="`${sub.unit_kerja_id}-${sub.kode_sub_kegiatan}`"
               :value="sub.kode_sub_kegiatan"
             >
-              {{ sub.kode_sub_kegiatan }} — {{ sub.nama_sub_kegiatan }}
+              {{ sub.kode_sub_kegiatan }} · {{ sub.nama_sub_kegiatan }}
             </option>
           </select>
         </div>
@@ -327,7 +327,7 @@ onMounted(async () => {
 
     <!-- Tabel Rekap SPPD -->
     <div class="bg-surface border border-hairline rounded-xl overflow-hidden">
-      <div tabindex="0" role="region" aria-labelledby="sppd-report-caption" class="overflow-x-auto">
+      <div tabindex="0" role="region" aria-labelledby="sppd-report-caption" class="overflow-x-auto scrollbar-thin">
         <table class="w-full text-left border-collapse">
           <caption id="sppd-report-caption" class="sr-only">Tabel Rekapitulasi Laporan Perjalanan Dinas (SPPD)</caption>
           <thead>
@@ -367,7 +367,7 @@ onMounted(async () => {
                 <div class="text-ink truncate" :title="row.nama_sub_kegiatan">{{ row.nama_sub_kegiatan }}</div>
                 <div class="text-xs text-ink-muted">{{ row.unit_kerja }}</div>
               </td>
-              <td class="px-4 py-2.5 text-ink-secondary">{{ row.tujuan || '—' }}</td>
+              <td class="px-4 py-2.5 text-ink-secondary">{{ row.tujuan || '-' }}</td>
               <td class="px-4 py-2.5 whitespace-nowrap">
                 <div class="font-mono text-xs font-medium text-ink mb-1">
                   <Link :href="route('receipts.index', { search: row.nomor_kuitansi })" class="text-accent hover:underline inline-flex items-center gap-1">
@@ -436,7 +436,7 @@ onMounted(async () => {
       <div class="px-5 py-3 border-b border-hairline flex items-center justify-between">
         <div>
           <h2 id="sppd-photo-modal-title" class="text-sm font-semibold text-ink">
-            Foto Keberangkatan — {{ activePhoto.nama_pegawai }}
+            Foto Keberangkatan · {{ activePhoto.nama_pegawai }}
           </h2>
           <p class="text-xs text-ink-muted font-mono tabular-nums">
             NIP {{ activePhoto.nip }} • {{ activePhoto.nomor_kuitansi }} • {{ activePhoto.tanggal_berangkat }} s/d {{ activePhoto.tanggal_pulang }}
@@ -460,7 +460,7 @@ onMounted(async () => {
           class="max-h-[70vh] w-auto rounded-lg border border-hairline object-contain"
         />
         <div class="w-full flex items-center justify-between text-xs text-ink-secondary">
-          <span>Tujuan: {{ activePhoto.tujuan || '—' }}</span>
+          <span>Tujuan: {{ activePhoto.tujuan || '-' }}</span>
           <a :href="activePhoto.url" target="_blank" class="text-accent font-medium underline">Buka di Tab Baru</a>
         </div>
       </div>

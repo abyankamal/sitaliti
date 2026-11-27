@@ -203,7 +203,7 @@ onMounted(() => {
           >
             <option value="">Semua Pos Rekap</option>
             <option v-for="pos in posOptions" :key="pos.id" :value="pos.id">
-              {{ pos.kode }} — {{ pos.nama }}
+              {{ pos.kode }} · {{ pos.nama }}
             </option>
             <option value="unmapped">Belum Dipetakan</option>
           </select>
@@ -244,7 +244,7 @@ onMounted(() => {
 
       <!-- Tabel Rekap -->
       <div class="bg-surface border border-hairline rounded-xl overflow-hidden">
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto scrollbar-thin">
           <table class="min-w-full divide-y divide-hairline text-sm">
             <thead class="bg-canvas text-ink-muted text-xs ">
               <tr>
@@ -307,7 +307,7 @@ onMounted(() => {
         <div class="px-5 py-4 border-b border-hairline flex items-center justify-between">
           <div>
             <h2 class="text-base font-bold text-ink">
-              Rincian Pos: {{ selectedPos?.kode }} — {{ selectedPos?.nama }}
+              Rincian Pos: {{ selectedPos?.kode }} · {{ selectedPos?.nama }}
             </h2>
             <p class="text-xs text-ink-muted mt-0.5 font-mono tabular-nums">
               Pagu: {{ formatCurrency(selectedPos?.pagu_tahunan) }} | Realisasi SP2D: {{ formatCurrency(selectedPos?.realisasi_sp2d) }}
@@ -338,7 +338,7 @@ onMounted(() => {
         <div class="p-5 overflow-y-auto flex-1">
           <div v-if="drilldownLoading" class="py-8 text-center text-sm text-ink-muted">Memuat rincian...</div>
 
-          <div v-else-if="drilldownTab === 'rekening'" class="overflow-x-auto">
+          <div v-else-if="drilldownTab === 'rekening'" class="overflow-x-auto scrollbar-thin">
             <table class="min-w-full divide-y divide-hairline text-xs">
               <thead class="bg-canvas text-ink-muted uppercase">
                 <tr>
@@ -355,7 +355,7 @@ onMounted(() => {
                   <td class="px-3 py-2 font-mono font-semibold">{{ r.kode_rekening }}</td>
                   <td class="px-3 py-2">
                     <div class="font-medium text-ink">{{ r.nama_rekening }}</div>
-                    <div class="text-xs text-ink-muted">{{ r.kode_sub_kegiatan }} — {{ r.nama_sub_kegiatan }}</div>
+                    <div class="text-xs text-ink-muted">{{ r.kode_sub_kegiatan }} · {{ r.nama_sub_kegiatan }}</div>
                   </td>
                   <td class="px-3 py-2 text-ink-muted">{{ r.unit_kerja }}</td>
                   <td class="px-3 py-2 text-right font-mono tabular-nums">{{ formatCurrency(r.pagu_tahunan) }}</td>
@@ -366,7 +366,7 @@ onMounted(() => {
             </table>
           </div>
 
-          <div v-else class="overflow-x-auto">
+          <div v-else class="overflow-x-auto scrollbar-thin">
             <table class="min-w-full divide-y divide-hairline text-xs">
               <thead class="bg-canvas text-ink-muted uppercase">
                 <tr>
