@@ -171,7 +171,8 @@ class ReceiptService
                             $kuitansi,
                             is_array($data['sppd_peserta'] ?? null) ? $data['sppd_peserta'] : [],
                             ($data['sppd_foto'] ?? null) instanceof UploadedFile ? $data['sppd_foto'] : null,
-                            filter_var($data['sppd_foto_remove'] ?? false, FILTER_VALIDATE_BOOLEAN)
+                            filter_var($data['sppd_foto_remove'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                            isset($data['exclude_sppd_assignment_id']) ? (int) $data['exclude_sppd_assignment_id'] : null
                         );
                     }
 

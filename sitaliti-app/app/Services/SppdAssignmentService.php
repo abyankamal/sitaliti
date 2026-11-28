@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\AnggaranRekening;
+use App\Models\Kuitansi;
 use App\Models\SppdAssignment;
 use App\Models\UnitKerja;
 use App\Models\User;
@@ -167,6 +169,199 @@ class SppdAssignmentService
         }
 
         $assignment->delete();
+    }
+
+    /**
+     * Mengonversi penugasan SPPD menjadi Kuitansi SPJ baru (kategori B.4) secara atomik.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function convertToKuitansi(User $user, SppdAssignment $assignment, array $data): SppdAssignment
+    {
+        if ($assignment->kuitansi_id !== null) {
+            throw ValidationException::withMessages([
+                'kuitansi_id' => ['Penugasan SPPD ini sudah terhubung dengan Kuitansi SPJ.'],
+            ]);
+        }
+
+        $rekening = AnggaranRekening::findOrFail((int) $data['anggaran_rekening_id']);
+        if ((int) $rekening->unit_kerja_id !== (int) $assignment->unit_kerja_id) {
+            throw ValidationException::withMessages([
+                'anggaran_rekening_id' => ['Rekening belanja harus berasal dari unit kerja yang sama dengan penugasan SPPD.'],
+            ]);
+        }
+
+        if (! $this->scheduleService->isSppdRekening($rekening)) {
+            throw ValidationException::withMessages([
+                'anggaran_rekening_id' => ['Rekening yang dipilih bukan kategori Perjalanan Dinas (B.4 / 5.1.02.04).'],
+            ]);
+        }
+
+        $assignment->loadMissing(['peserta.pegawai', 'peserta.biayaItems']);
+
+        $items = [];
+        $totalBiaya = 0.0;
+        foreach ($assignment->peserta as $peserta) {
+            $nama = $peserta->pegawai?->nama ?? "Peserta #{$peserta->pegawai_id}";
+            foreach ($peserta->biayaItems as $biaya) {
+                $nominal = (float) $biaya->nominal;
+                if ($nominal <= 0) {
+                    continue;
+                }
+                $totalBiaya += $nominal;
+                $items[] = [
+                    'nama_barang' => "{$nama} - {$biaya->uraian_biaya}",
+                    'volume' => 1,
+                    'satuan' => 'Kegiatan',
+                    'harga_satuan' => $nominal,
+                ];
+            }
+        }
+
+        if ($items === [] || $totalBiaya <= 0) {
+            throw ValidationException::withMessages([
+                'peserta' => ['Rincian biaya perjalanan dinas harus diisi lebih dari Rp 0 sebelum dikonversi ke Kuitansi SPJ.'],
+            ]);
+        }
+
+        $pesertaCount = $assignment->peserta->count();
+        $firstNama = $assignment->peserta->first()?->pegawai?->nama ?? 'Pelaksana SPPD';
+        $namaPenerima = $pesertaCount > 1
+            ? "{$firstNama} (Rombongan {$pesertaCount} Org)"
+            : $firstNama;
+
+        $sppdPesertaPayload = $assignment->peserta->map(fn ($p) => [
+            'pegawai_id' => $p->pegawai_id,
+            'tanggal_berangkat' => $assignment->tanggal_berangkat->toDateString(),
+            'tanggal_pulang' => $assignment->tanggal_kembali->toDateString(),
+            'tujuan' => $assignment->tempat_tujuan,
+        ])->values()->all();
+
+        $golonganAsn = $this->resolveGolonganAsn($assignment);
+
+        return DB::transaction(function () use ($user, $assignment, $rekening, $data, $items, $namaPenerima, $sppdPesertaPayload, $golonganAsn): SppdAssignment {
+            $receiptService = app(ReceiptService::class);
+            $kuitansi = $receiptService->createDraft([
+                'anggaran_rekening_id' => $rekening->id,
+                'bulan_anggaran' => (int) $data['bulan_anggaran'],
+                'tanggal_transaksi' => $data['tanggal_transaksi'] ?? $assignment->tanggal_kembali->toDateString(),
+                'uraian' => $data['uraian'] ?? $assignment->maksud_perjalanan,
+                'nama_penerima' => $namaPenerima,
+                'metode_pembayaran' => $data['metode_pembayaran'] ?? 'NON_TUNAI_IBC',
+                'golongan_asn' => $golonganAsn,
+                'items' => $items,
+                'sppd_peserta' => $sppdPesertaPayload,
+                'exclude_sppd_assignment_id' => $assignment->id,
+            ], [], $user);
+
+            $assignment->update([
+                'kuitansi_id' => $kuitansi->id,
+                'anggaran_rekening_id' => $rekening->id,
+                'status' => 'SELESAI',
+            ]);
+
+            return $assignment->fresh(['unitKerja', 'rekening', 'kuitansi.rekening', 'peserta.pegawai', 'peserta.biayaItems']);
+        });
+    }
+
+    /**
+     * Menautkan penugasan SPPD ke Kuitansi SPJ existing dengan guard integritas lengkap.
+     */
+    public function linkExistingKuitansi(SppdAssignment $assignment, int $kuitansiId): SppdAssignment
+    {
+        if ($assignment->kuitansi_id !== null) {
+            throw ValidationException::withMessages([
+                'kuitansi_id' => ['Penugasan SPPD ini sudah terhubung dengan Kuitansi SPJ.'],
+            ]);
+        }
+
+        $kuitansi = Kuitansi::with('rekening')->findOrFail($kuitansiId);
+
+        if ((int) $kuitansi->unit_kerja_id !== (int) $assignment->unit_kerja_id) {
+            throw ValidationException::withMessages([
+                'kuitansi_id' => ['Kuitansi harus berasal dari unit kerja yang sama dengan penugasan SPPD.'],
+            ]);
+        }
+
+        if (! $this->scheduleService->isSppdRekening($kuitansi->rekening)) {
+            throw ValidationException::withMessages([
+                'kuitansi_id' => ['Kuitansi yang ditautkan harus menggunakan rekening Perjalanan Dinas (B.4 / 5.1.02.04).'],
+            ]);
+        }
+
+        if (! in_array($kuitansi->status, ['DRAFT', 'REVISI_MAYOR'], true)) {
+            throw ValidationException::withMessages([
+                'kuitansi_id' => ["Hanya Kuitansi berstatus DRAFT atau REVISI_MAYOR yang dapat ditautkan (status saat ini: {$kuitansi->status})."],
+            ]);
+        }
+
+        if (SppdAssignment::where('kuitansi_id', $kuitansi->id)->exists()) {
+            throw ValidationException::withMessages([
+                'kuitansi_id' => ['Kuitansi ini sudah tertaut ke penugasan SPPD lain.'],
+            ]);
+        }
+
+        $assignment->loadMissing(['peserta.biayaItems']);
+        $totalBiaya = (float) $assignment->peserta->sum(fn ($p) => $p->totalBiaya());
+        if ($totalBiaya > 0 && abs($totalBiaya - (float) $kuitansi->nominal_bruto) >= 0.01) {
+            throw ValidationException::withMessages([
+                'kuitansi_id' => ['Total rincian biaya peserta SPPD harus sama persis dengan nominal bruto Kuitansi.'],
+            ]);
+        }
+
+        $sppdPesertaPayload = $assignment->peserta->map(fn ($p) => [
+            'pegawai_id' => $p->pegawai_id,
+            'tanggal_berangkat' => $assignment->tanggal_berangkat->toDateString(),
+            'tanggal_pulang' => $assignment->tanggal_kembali->toDateString(),
+            'tujuan' => $assignment->tempat_tujuan,
+        ])->values()->all();
+
+        return DB::transaction(function () use ($assignment, $kuitansi, $sppdPesertaPayload): SppdAssignment {
+            $this->scheduleService->syncParticipantsAndPhotos(
+                $kuitansi,
+                $sppdPesertaPayload,
+                null,
+                false,
+                $assignment->id
+            );
+
+            $assignment->update([
+                'kuitansi_id' => $kuitansi->id,
+                'anggaran_rekening_id' => $kuitansi->anggaran_rekening_id,
+                'status' => 'SELESAI',
+            ]);
+
+            return $assignment->fresh(['unitKerja', 'rekening', 'kuitansi.rekening', 'peserta.pegawai', 'peserta.biayaItems']);
+        });
+    }
+
+    private function resolveGolonganAsn(SppdAssignment $assignment): string
+    {
+        $peserta = $assignment->peserta;
+        if ($peserta->isEmpty()) {
+            return 'GOLONGAN_III';
+        }
+
+        $allNonAsn = $peserta->every(fn ($p) => ($p->pegawai?->status_kepegawaian ?? 'ASN') === 'NON_ASN');
+        if ($allNonAsn) {
+            return 'NON_ASN';
+        }
+
+        $gol = strtoupper((string) ($peserta->first()?->pegawai?->golongan ?? ''));
+        if (str_contains($gol, 'IV/')) {
+            return 'GOLONGAN_IV';
+        }
+        if (str_contains($gol, 'III/')) {
+            return 'GOLONGAN_III';
+        }
+        if (str_contains($gol, 'II/')) {
+            return 'GOLONGAN_II';
+        }
+        if (str_contains($gol, 'I/')) {
+            return 'GOLONGAN_I';
+        }
+
+        return 'GOLONGAN_III';
     }
 
     /**

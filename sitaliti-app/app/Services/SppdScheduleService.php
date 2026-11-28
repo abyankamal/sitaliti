@@ -238,9 +238,10 @@ class SppdScheduleService
         Kuitansi $kuitansi,
         array $participants,
         ?UploadedFile $groupPhoto = null,
-        bool $removeGroupPhoto = false
+        bool $removeGroupPhoto = false,
+        ?int $excludeSppdAssignmentId = null
     ): void {
-        $this->assertNoConflictsWithLock($participants, $kuitansi->id);
+        $this->assertNoConflictsWithLock($participants, $kuitansi->id, $excludeSppdAssignmentId);
 
         $newlyStoredPaths = [];
         $pathsToDeleteAfterCommit = [];

@@ -149,6 +149,8 @@ Route::prefix('v1')->group(function () {
             Route::get('{id}', [SppdAssignmentApiController::class, 'show']);
             Route::put('{id}', [SppdAssignmentApiController::class, 'update']);
             Route::delete('{id}', [SppdAssignmentApiController::class, 'destroy']);
+            Route::post('{id}/convert-kuitansi', [SppdAssignmentApiController::class, 'convertToKuitansi']);
+            Route::post('{id}/link-kuitansi', [SppdAssignmentApiController::class, 'linkKuitansi']);
         });
 
         // Master Pegawai Endpoints (Dropdown terbuka untuk view/create; CRUD untuk BP, BPP, & Kasubag/VERIFIKATOR)

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ConvertSppdToKuitansiRequest;
 use App\Http\Requests\StoreSppdAssignmentRequest;
 use App\Http\Requests\UpdateSppdAssignmentRequest;
 use App\Http\Resources\ApiResponseTrait;
@@ -138,6 +139,50 @@ class SppdAssignmentApiController extends Controller
             'has_conflicts' => ! empty($conflicts),
             'conflicts' => $conflicts,
         ], 'Pemeriksaan bentrok jadwal SPPD selesai');
+    }
+
+    public function convertToKuitansi(ConvertSppdToKuitansiRequest $request, int $id): JsonResponse
+    {
+        $assignment = SppdAssignment::find($id);
+        if (! $assignment) {
+            return $this->errorResponse('SPPD_NOT_FOUND', 'Penugasan SPPD tidak ditemukan.', null, 404);
+        }
+
+        if (! $this->canMutate($request->user(), $assignment)) {
+            return $this->errorResponse('FORBIDDEN', 'Anda tidak berwenang mengonversi penugasan SPPD ini.', null, 403);
+        }
+
+        try {
+            $converted = $this->assignmentService->convertToKuitansi($request->user(), $assignment, $request->validated());
+
+            return $this->successResponse($converted, 'Penugasan SPPD berhasil dikonversi ke Kuitansi SPJ');
+        } catch (ValidationException $e) {
+            return $this->errorResponse('SPPD_CONVERT_REJECTED', $e->getMessage(), $e->errors(), 422);
+        }
+    }
+
+    public function linkKuitansi(Request $request, int $id): JsonResponse
+    {
+        $assignment = SppdAssignment::find($id);
+        if (! $assignment) {
+            return $this->errorResponse('SPPD_NOT_FOUND', 'Penugasan SPPD tidak ditemukan.', null, 404);
+        }
+
+        if (! $this->canMutate($request->user(), $assignment)) {
+            return $this->errorResponse('FORBIDDEN', 'Anda tidak berwenang menautkan penugasan SPPD ini.', null, 403);
+        }
+
+        $validated = $request->validate([
+            'kuitansi_id' => ['required', 'integer', 'exists:kuitansi,id'],
+        ]);
+
+        try {
+            $linked = $this->assignmentService->linkExistingKuitansi($assignment, (int) $validated['kuitansi_id']);
+
+            return $this->successResponse($linked, 'Penugasan SPPD berhasil ditautkan ke Kuitansi SPJ');
+        } catch (ValidationException $e) {
+            return $this->errorResponse('SPPD_LINK_REJECTED', $e->getMessage(), $e->errors(), 422);
+        }
     }
 
     private function canAccess(?User $user, SppdAssignment $assignment): bool
