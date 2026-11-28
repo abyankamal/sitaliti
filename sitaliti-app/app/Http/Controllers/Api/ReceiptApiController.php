@@ -12,6 +12,7 @@ use App\Models\Pegawai;
 use App\Services\ReceiptExportService;
 use App\Services\ReceiptQueryService;
 use App\Services\ReceiptService;
+use App\Services\SppdScheduleService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -183,6 +184,10 @@ class ReceiptApiController extends Controller
             return $this->errorResponse('FORBIDDEN', 'Anda tidak berwenang membuat kuitansi dengan kode rekening dari unit kerja lain.', null, 403);
         }
 
+        if ($user && ! $user->isSkpdWide() && $user->unit_kerja_id !== null) {
+            $validated['unit_kerja_id'] = $user->unit_kerja_id;
+        }
+
         $attachments = $this->extractAttachmentsFromRequest($request);
 
         try {
@@ -344,6 +349,19 @@ class ReceiptApiController extends Controller
             $targetRekening = AnggaranRekening::find($validated['anggaran_rekening_id']);
             if ($user && $targetRekening && ! $user->canInputRekening($targetRekening)) {
                 return $this->errorResponse('FORBIDDEN', 'Anda tidak berwenang memindahkan kuitansi ke rekening unit kerja lain.', null, 403);
+            }
+
+            if ($targetRekening && (int) $targetRekening->unit_kerja_id !== (int) $kuitansi->unit_kerja_id) {
+                $kuitansi->loadMissing('rekening');
+                $sppdService = app(SppdScheduleService::class);
+                if (! $sppdService->isSppdRekening($kuitansi->rekening) || ! $sppdService->isSppdRekening($targetRekening)) {
+                    return $this->errorResponse(
+                        'INVALID_REKENING_CROSS_UNIT',
+                        'Rekening lintas unit hanya diperbolehkan untuk kategori Perjalanan Dinas (SPPD / B.4).',
+                        ['anggaran_rekening_id' => ['Kuitansi non-SPPD tidak dapat dipindahkan ke rekening Kecamatan.']],
+                        422
+                    );
+                }
             }
         }
 

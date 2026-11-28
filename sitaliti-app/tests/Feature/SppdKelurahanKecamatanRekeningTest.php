@@ -115,4 +115,93 @@ class SppdKelurahanKecamatanRekeningTest extends TestCase
 
         $this->assertTrue($pptkKelA->canAccessReceipt($kuitansi));
     }
+
+    public function test_kelurahan_receipt_preserves_unit_kerja_id_on_create_and_update_and_blocks_non_sppd_switch(): void
+    {
+        [, $kelurahanA, , $rekSppdKec] = $this->seedUnitsAndRekening();
+        $bppKelA = User::factory()->create(['role' => 'BPP', 'unit_kerja_id' => $kelurahanA->id]);
+
+        $rekHibahKelA = AnggaranRekening::create([
+            'unit_kerja_id' => $kelurahanA->id,
+            'tahun_anggaran' => 2026,
+            'kode_sub_kegiatan' => '7.01.02.2.01.01',
+            'nama_sub_kegiatan' => 'Hibah Kelurahan Jayawaras',
+            'kode_rekening' => '5.1.05.05.01.0001',
+            'nama_rekening' => 'Belanja Hibah',
+            'kategori_belanja' => 'B.1',
+            'pagu_dpa' => 5000000,
+        ]);
+
+        // 1. Store via API dengan rekening SPPD Kecamatan tetap mencatat unit_kerja_id Kelurahan A
+        $storeRes = $this->actingAs($bppKelA)
+            ->postJson('/api/v1/receipts', [
+                'anggaran_rekening_id' => $rekSppdKec->id,
+                'bulan_anggaran' => 10,
+                'tanggal_transaksi' => '2026-10-19',
+                'uraian' => 'Perjadin Kelurahan Jayawaras',
+                'nama_penerima' => 'Lina Maryati',
+                'golongan_asn' => 'GOLONGAN_III',
+                'items' => [
+                    ['nama_barang' => 'Uang Transpor Lokal', 'volume' => 1, 'satuan' => 'Kegiatan', 'harga_satuan' => 70000],
+                ],
+            ])
+            ->assertCreated();
+
+        $kuitansiId = $storeRes->json('data.id');
+        $this->assertDatabaseHas('kuitansi', [
+            'id' => $kuitansiId,
+            'unit_kerja_id' => $kelurahanA->id,
+            'anggaran_rekening_id' => $rekSppdKec->id,
+        ]);
+
+        // 2. Update via API tidak menggeser unit_kerja_id ke Kecamatan
+        $this->actingAs($bppKelA)
+            ->putJson("/api/v1/receipts/{$kuitansiId}", [
+                'anggaran_rekening_id' => $rekSppdKec->id,
+                'bulan_anggaran' => 10,
+                'tanggal_transaksi' => '2026-10-19',
+                'uraian' => 'Perjadin Kelurahan Jayawaras (Revisi)',
+                'nama_penerima' => 'Lina Maryati',
+                'golongan_asn' => 'GOLONGAN_III',
+                'items' => [
+                    ['nama_barang' => 'Uang Transpor Lokal', 'volume' => 1, 'satuan' => 'Kegiatan', 'harga_satuan' => 70000],
+                ],
+            ])
+            ->assertOk();
+
+        $this->assertDatabaseHas('kuitansi', [
+            'id' => $kuitansiId,
+            'unit_kerja_id' => $kelurahanA->id,
+        ]);
+
+        // 3. Kuitansi non-SPPD (B.1) ditolak 422 jika dipindah ke rekening SPPD Kecamatan
+        $nonSppd = Kuitansi::create([
+            'nomor_kuitansi' => 'KW-HIBAH-01',
+            'unit_kerja_id' => $kelurahanA->id,
+            'anggaran_rekening_id' => $rekHibahKelA->id,
+            'user_id' => $bppKelA->id,
+            'bulan_anggaran' => 10,
+            'tanggal_transaksi' => '2026-10-19',
+            'uraian' => 'Hibah',
+            'nama_penerima' => 'Penerima',
+            'nominal_bruto' => 100000,
+            'total_pajak' => 0,
+            'nominal_neto' => 100000,
+            'status' => 'DRAFT',
+        ]);
+
+        $this->actingAs($bppKelA)
+            ->putJson("/api/v1/receipts/{$nonSppd->id}", [
+                'anggaran_rekening_id' => $rekSppdKec->id,
+                'bulan_anggaran' => 10,
+                'tanggal_transaksi' => '2026-10-19',
+                'uraian' => 'Coba pindah ke SPPD Kecamatan',
+                'nama_penerima' => 'Penerima',
+                'items' => [
+                    ['nama_barang' => 'Item', 'volume' => 1, 'satuan' => 'Paket', 'harga_satuan' => 100000],
+                ],
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'INVALID_REKENING_CROSS_UNIT');
+    }
 }

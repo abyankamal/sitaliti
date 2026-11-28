@@ -144,7 +144,7 @@ class ReceiptService
 
                     $kuitansi = Kuitansi::create([
                         'nomor_kuitansi' => $nomorKuitansi,
-                        'unit_kerja_id' => $rekening->unit_kerja_id,
+                        'unit_kerja_id' => $data['unit_kerja_id'] ?? $rekening->unit_kerja_id,
                         'anggaran_rekening_id' => $rekening->id,
                         'user_id' => $userId,
                         'bulan_anggaran' => $bulan,
@@ -279,7 +279,6 @@ class ReceiptService
             }
 
             $kuitansi->update([
-                'unit_kerja_id' => $rekening->unit_kerja_id,
                 'anggaran_rekening_id' => $rekening->id,
                 'bulan_anggaran' => $targetBulan,
                 'nomor_bukti_toko' => array_key_exists('nomor_bukti_toko', $data) ? $data['nomor_bukti_toko'] : $kuitansi->nomor_bukti_toko,
