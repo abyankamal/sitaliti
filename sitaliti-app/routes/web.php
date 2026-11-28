@@ -69,7 +69,18 @@ Route::middleware('auth')->group(function () {
         return Inertia::render('Sppd/Index');
     })->middleware('permission:kuitansi.view')->name('sppd.report.index');
 
+    Route::get('/sppd-assignments', [SppdAssignmentController::class, 'index'])
+        ->name('sppd-assignments.index');
+    Route::get('/sppd-assignments/create', [SppdAssignmentController::class, 'create'])
+        ->name('sppd-assignments.create');
+    Route::get('/sppd-assignments/{id}', [SppdAssignmentController::class, 'show'])
+        ->whereNumber('id')
+        ->name('sppd-assignments.show');
+    Route::get('/sppd-assignments/{id}/edit', [SppdAssignmentController::class, 'edit'])
+        ->whereNumber('id')
+        ->name('sppd-assignments.edit');
     Route::get('/sppd-assignments/{id}/pdf', [SppdAssignmentController::class, 'pdf'])
+        ->whereNumber('id')
         ->name('sppd-assignments.pdf');
 
     // Routes Bundles / SPP

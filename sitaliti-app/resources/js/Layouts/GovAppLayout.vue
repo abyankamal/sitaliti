@@ -90,6 +90,13 @@ const rawNavGroups = [
         label: 'Laporan & Rekap',
         items: [
             {
+                name: 'Penugasan SPPD',
+                route: 'sppd-assignments.index',
+                activeRoutes: ['sppd-assignments.*'],
+                iconComponent: Route,
+                roles: ['BPP', 'BP', 'PPTK', 'VERIFIKATOR', 'KPA', 'LURAH'],
+            },
+            {
                 name: 'Laporan SPPD',
                 route: 'sppd.report.index',
                 activeRoutes: ['sppd.report.index'],
