@@ -6,6 +6,7 @@ use App\Models\AnggaranRekening;
 use App\Models\Kuitansi;
 use App\Models\KuitansiSppdPeserta;
 use App\Models\Pegawai;
+use App\Models\SppdPeserta;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -46,8 +47,11 @@ class SppdScheduleService
      * @param  array<int, array<string, mixed>>  $participants
      * @return array<int, array<string, mixed>>
      */
-    public function findConflicts(array $participants, ?int $excludeKuitansiId = null): array
-    {
+    public function findConflicts(
+        array $participants,
+        ?int $excludeKuitansiId = null,
+        ?int $excludeSppdAssignmentId = null
+    ): array {
         if (empty($participants)) {
             return [];
         }
@@ -94,7 +98,7 @@ class SppdScheduleService
                 continue;
             }
 
-            $overlapping = KuitansiSppdPeserta::query()
+            $overlappingReceipts = KuitansiSppdPeserta::query()
                 ->with(['kuitansi.rekening', 'kuitansi.unitKerja'])
                 ->where('pegawai_id', $pegawaiId)
                 ->whereDate('tanggal_berangkat', '<=', $end)
@@ -105,12 +109,17 @@ class SppdScheduleService
                         $q->where('id', '!=', $excludeKuitansiId);
                     }
                 })
-                ->first();
+                ->get();
 
-            if ($overlapping && $overlapping->kuitansi) {
-                $pegawai = $pegawaiMap->get($pegawaiId);
-                $nama = $pegawai?->nama ?? "Pegawai #{$pegawaiId}";
-                $nip = $pegawai?->nip ?? '-';
+            $pegawai = $pegawaiMap->get($pegawaiId);
+            $nama = $pegawai?->nama ?? "Pegawai #{$pegawaiId}";
+            $nipLabel = $pegawai?->nip ? "NIP {$pegawai->nip}" : 'Non-ASN';
+
+            foreach ($overlappingReceipts as $overlapping) {
+                if (! $overlapping->kuitansi) {
+                    continue;
+                }
+
                 $kuitansiBentrok = $overlapping->kuitansi;
                 $subKegiatan = $kuitansiBentrok->rekening?->nama_sub_kegiatan ?? '-';
                 $tglMulai = $overlapping->tanggal_berangkat?->format('d/m/Y') ?? $start;
@@ -120,15 +129,58 @@ class SppdScheduleService
                     'index' => $index,
                     'pegawai_id' => $pegawaiId,
                     'pegawai_nama' => $nama,
-                    'pegawai_nip' => $nip,
+                    'pegawai_nip' => $pegawai?->nip ?? '-',
                     'type' => 'SCHEDULE_OVERLAP',
+                    'source' => 'KUITANSI',
                     'kuitansi_id' => $kuitansiBentrok->id,
                     'nomor_kuitansi' => $kuitansiBentrok->nomor_kuitansi,
                     'sub_kegiatan' => $subKegiatan,
                     'unit_kerja' => $kuitansiBentrok->unitKerja?->nama_unit ?? '-',
                     'tanggal_berangkat' => $overlapping->tanggal_berangkat?->toDateString(),
                     'tanggal_pulang' => $overlapping->tanggal_pulang?->toDateString(),
-                    'message' => "{$nama} (NIP {$nip}) sudah terjadwal berangkat pada {$tglMulai} s/d {$tglSelesai} di Kuitansi {$kuitansiBentrok->nomor_kuitansi} ({$subKegiatan}).",
+                    'message' => "{$nama} ({$nipLabel}) sudah terjadwal berangkat pada {$tglMulai} s/d {$tglSelesai} di Kuitansi {$kuitansiBentrok->nomor_kuitansi} ({$subKegiatan}).",
+                ];
+            }
+
+            $overlappingAssignments = SppdPeserta::query()
+                ->with(['assignment.unitKerja', 'assignment.rekening'])
+                ->where('pegawai_id', $pegawaiId)
+                ->whereHas('assignment', function ($q) use ($start, $end, $excludeSppdAssignmentId) {
+                    $q->whereNull('kuitansi_id')
+                        ->whereIn('status', ['DRAFT', 'TERBIT'])
+                        ->whereDate('tanggal_berangkat', '<=', $end)
+                        ->whereDate('tanggal_kembali', '>=', $start);
+
+                    if ($excludeSppdAssignmentId !== null) {
+                        $q->where('id', '!=', $excludeSppdAssignmentId);
+                    }
+                })
+                ->get();
+
+            foreach ($overlappingAssignments as $overlappingAssignment) {
+                $assignmentBentrok = $overlappingAssignment->assignment;
+                if (! $assignmentBentrok) {
+                    continue;
+                }
+
+                $nomorSt = $assignmentBentrok->nomor_surat_tugas ?: "Penugasan #{$assignmentBentrok->id}";
+                $tglMulai = $assignmentBentrok->tanggal_berangkat?->format('d/m/Y') ?? $start;
+                $tglSelesai = $assignmentBentrok->tanggal_kembali?->format('d/m/Y') ?? $end;
+
+                $conflicts[] = [
+                    'index' => $index,
+                    'pegawai_id' => $pegawaiId,
+                    'pegawai_nama' => $nama,
+                    'pegawai_nip' => $pegawai?->nip ?? '-',
+                    'type' => 'SCHEDULE_OVERLAP',
+                    'source' => 'SPPD_ASSIGNMENT',
+                    'sppd_assignment_id' => $assignmentBentrok->id,
+                    'nomor_surat_tugas' => $nomorSt,
+                    'sub_kegiatan' => $assignmentBentrok->rekening?->nama_sub_kegiatan ?? '-',
+                    'unit_kerja' => $assignmentBentrok->unitKerja?->nama_unit ?? '-',
+                    'tanggal_berangkat' => $assignmentBentrok->tanggal_berangkat?->toDateString(),
+                    'tanggal_pulang' => $assignmentBentrok->tanggal_kembali?->toDateString(),
+                    'message' => "{$nama} ({$nipLabel}) sudah terjadwal berangkat pada {$tglMulai} s/d {$tglSelesai} di Penugasan SPPD {$nomorSt}.",
                 ];
             }
         }
@@ -143,8 +195,11 @@ class SppdScheduleService
      *
      * @throws ValidationException
      */
-    public function assertNoConflictsWithLock(array $participants, ?int $excludeKuitansiId = null): void
-    {
+    public function assertNoConflictsWithLock(
+        array $participants,
+        ?int $excludeKuitansiId = null,
+        ?int $excludeSppdAssignmentId = null
+    ): void {
         $pegawaiIds = collect($participants)
             ->pluck('pegawai_id')
             ->filter()
@@ -161,7 +216,7 @@ class SppdScheduleService
                 ->get(['id']);
         }
 
-        $conflicts = $this->findConflicts($participants, $excludeKuitansiId);
+        $conflicts = $this->findConflicts($participants, $excludeKuitansiId, $excludeSppdAssignmentId);
         if (! empty($conflicts)) {
             $messages = array_values(array_unique(array_map(
                 fn (array $conflict) => (string) $conflict['message'],
