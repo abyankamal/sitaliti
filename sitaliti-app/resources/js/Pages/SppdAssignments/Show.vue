@@ -55,16 +55,18 @@ async function fetchDetail() {
 
 async function openConvertModal() {
   try {
-    const subs = await budgetService.getSubActivitiesByUnit(assignment.value.unit_kerja_id);
+    const subs = await budgetService.getSubActivitiesByUnit(assignment.value.unit_kerja_id, {
+      include_kecamatan_sppd: 1,
+    });
     const allRek = [];
     for (const sub of subs) {
       for (const rek of sub.rekening || sub.anggaran_rekening || []) {
-        const kode = String(rek.kode_rekening || '');
-        const kat = String(rek.kategori_belanja || '').toUpperCase();
+        const kode = String(rek.code || rek.kode_rekening || '');
+        const kat = String(rek.kategori || rek.kategori_belanja || '').toUpperCase();
         if (kode.startsWith('5.1.02.04') || ['B.4', 'B4', 'B4_PERJADIN'].includes(kat)) {
           allRek.push({
             id: rek.id,
-            label: `${rek.kode_rekening} - ${rek.nama_rekening} (${sub.nama_sub_kegiatan})`,
+            label: `${kode} - ${rek.name || rek.nama_rekening} (${sub.name || sub.nama_sub_kegiatan})`,
           });
         }
       }

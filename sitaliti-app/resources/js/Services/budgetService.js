@@ -43,10 +43,10 @@ export const budgetService = {
     /**
      * Dapatkan subkegiatan berdasarkan unit_id terpilih
      */
-    async getSubActivitiesByUnit(unitId) {
+    async getSubActivitiesByUnit(unitId, extraParams = {}) {
         if (!unitId) return [];
         const response = await axios.get(`${API_BASE}/sub-activities`, {
-            params: { unit_id: unitId },
+            params: { ...extraParams, unit_id: unitId },
         });
         const data = response.data?.data;
         return Array.isArray(data) ? data : [];

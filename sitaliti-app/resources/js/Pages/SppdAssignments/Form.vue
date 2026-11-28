@@ -6,6 +6,7 @@ import GovButton from '@/Components/UI/GovButton.vue';
 import GovBadge from '@/Components/UI/GovBadge.vue';
 import { sppdAssignmentService } from '@/Services/sppdAssignmentService';
 import { sppdService } from '@/Services/sppdService';
+import { budgetService } from '@/Services/budgetService';
 import { useToast } from '@/Composables/useToast';
 import { ArrowLeft, Plus, Trash2, AlertTriangle, Lock } from 'lucide-vue-next';
 
@@ -21,6 +22,7 @@ const toast = useToast();
 const loading = ref(false);
 const saving = ref(false);
 const pegawaiOptions = ref([]);
+const sppdRekeningOptions = ref([]);
 const conflicts = ref([]);
 const formErrorGeneral = ref('');
 const formErrors = ref({});
@@ -32,6 +34,7 @@ const isLockedByKuitansi = computed(() => {
 });
 
 const form = ref({
+  anggaran_rekening_id: '',
   nomor_surat_tugas: '',
   maksud_perjalanan: '',
   alat_angkut: 'Kendaraan Dinas / Umum',
@@ -125,10 +128,14 @@ async function loadInitialData() {
       unit_kerja_id: currentUser.value?.unit_kerja_id || undefined,
     });
 
+    let targetUnitId = currentUser.value?.unit_kerja_id;
+
     if (isEditing.value) {
       const data = await sppdAssignmentService.get(props.assignmentId);
       linkedKuitansi.value = data.kuitansi ?? null;
+      targetUnitId = data.unit_kerja_id ?? targetUnitId;
       form.value = {
+        anggaran_rekening_id: data.anggaran_rekening_id || '',
         nomor_surat_tugas: data.nomor_surat_tugas || '',
         maksud_perjalanan: data.maksud_perjalanan || '',
         alat_angkut: data.alat_angkut || '',
@@ -155,6 +162,26 @@ async function loadInitialData() {
         })),
       };
     }
+
+    if (targetUnitId) {
+      const subs = await budgetService.getSubActivitiesByUnit(targetUnitId, {
+        include_kecamatan_sppd: 1,
+      });
+      const opts = [];
+      for (const sub of subs) {
+        for (const rek of sub.rekening || []) {
+          const kode = String(rek.code || '');
+          const kat = String(rek.kategori || '').toUpperCase();
+          if (kode.startsWith('5.1.02.04') || ['B.4', 'B4', 'B4_PERJADIN'].includes(kat)) {
+            opts.push({
+              id: rek.id,
+              label: `${kode} - ${rek.name} (${sub.name})`,
+            });
+          }
+        }
+      }
+      sppdRekeningOptions.value = opts;
+    }
   } catch {
     toast.error('Gagal memuat data penugasan SPPD.');
   } finally {
@@ -171,6 +198,7 @@ async function handleSubmit() {
 
   const payload = {
     ...form.value,
+    anggaran_rekening_id: form.value.anggaran_rekening_id ? Number(form.value.anggaran_rekening_id) : null,
     nomor_surat_tugas: form.value.nomor_surat_tugas || null,
     pemberi_perintah_nama: form.value.pemberi_perintah_nama || null,
     pemberi_perintah_nip: form.value.pemberi_perintah_nip || null,
@@ -258,10 +286,18 @@ onMounted(loadInitialData);
         <div class="bg-surface border border-hairline rounded-xl p-5 space-y-4">
           <h2 class="text-sm font-semibold text-ink border-b border-hairline pb-2">Informasi Surat Tugas &amp; Perjalanan</h2>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label for="sppd-nomor-st" class="block text-xs font-medium text-ink-secondary mb-1">Nomor Surat Tugas (Opsional)</label>
               <input id="sppd-nomor-st" v-model="form.nomor_surat_tugas" type="text" :disabled="isLockedByKuitansi" placeholder="Contoh: 001/Tarkid/SPPD/X/2026" class="w-full h-9 px-3 text-xs bg-canvas border border-hairline rounded-lg text-ink" />
+            </div>
+
+            <div>
+              <label for="sppd-rekening" class="block text-xs font-medium text-ink-secondary mb-1">Mata Anggaran SPPD (Opsional)</label>
+              <select id="sppd-rekening" v-model="form.anggaran_rekening_id" :disabled="isLockedByKuitansi" class="w-full h-9 px-3 text-xs bg-canvas border border-hairline rounded-lg text-ink">
+                <option value="">-- Pilih Rekening SPPD (B.4) --</option>
+                <option v-for="r in sppdRekeningOptions" :key="r.id" :value="r.id">{{ r.label }}</option>
+              </select>
             </div>
 
             <div>
