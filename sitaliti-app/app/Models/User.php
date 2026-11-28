@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Services\SppdScheduleService;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -323,7 +324,21 @@ class User extends Authenticatable
             return false;
         }
 
-        return (int) $this->unit_kerja_id === (int) $rekening->unit_kerja_id;
+        if ((int) $this->unit_kerja_id === (int) $rekening->unit_kerja_id) {
+            return true;
+        }
+
+        $this->loadMissing('unitKerja');
+        $rekening->loadMissing('unitKerja');
+
+        if (
+            $this->unitKerja?->tipe === 'KELURAHAN'
+            && app(SppdScheduleService::class)->isSppdRekening($rekening)
+        ) {
+            return $rekening->unitKerja?->tipe === 'KECAMATAN';
+        }
+
+        return false;
     }
 
     /**
@@ -379,11 +394,16 @@ class User extends Authenticatable
         $unitId = (int) $kuitansi->unit_kerja_id;
 
         if ($this->role === 'PPTK') {
-            $kodeSubKegiatan = $kuitansi->rekening?->kode_sub_kegiatan;
-            if ($kodeSubKegiatan === null) {
-                $kuitansi->loadMissing('rekening');
-                $kodeSubKegiatan = $kuitansi->rekening?->kode_sub_kegiatan ?? '';
+            $kuitansi->loadMissing('rekening');
+            if (
+                (int) $this->unit_kerja_id === $unitId
+                && $kuitansi->rekening
+                && app(SppdScheduleService::class)->isSppdRekening($kuitansi->rekening)
+            ) {
+                return true;
             }
+
+            $kodeSubKegiatan = $kuitansi->rekening?->kode_sub_kegiatan ?? '';
 
             return $this->canAccessPptkSubkegiatan($unitId, $kodeSubKegiatan);
         }
@@ -415,7 +435,21 @@ class User extends Authenticatable
             );
         }
 
-        return (int) $this->unit_kerja_id === (int) $rekening->unit_kerja_id;
+        if ((int) $this->unit_kerja_id === (int) $rekening->unit_kerja_id) {
+            return true;
+        }
+
+        $this->loadMissing('unitKerja');
+        $rekening->loadMissing('unitKerja');
+
+        if (
+            $this->unitKerja?->tipe === 'KELURAHAN'
+            && app(SppdScheduleService::class)->isSppdRekening($rekening)
+        ) {
+            return $rekening->unitKerja?->tipe === 'KECAMATAN';
+        }
+
+        return false;
     }
 
     /**
