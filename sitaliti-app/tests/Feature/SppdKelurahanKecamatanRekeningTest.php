@@ -10,6 +10,8 @@ use App\Models\PptkSubkegiatanAssignment;
 use App\Models\UnitKerja;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class SppdKelurahanKecamatanRekeningTest extends TestCase
@@ -326,7 +328,7 @@ class SppdKelurahanKecamatanRekeningTest extends TestCase
         AnggaranKasBulanan::create([
             'anggaran_rekening_id' => $rekSppdKec->id,
             'bulan' => 10,
-            'pagu_bulan' => 2000000,
+            'alokasi_pagu' => 2000000,
             'terkunci_bulan' => 0,
             'realisasi_bulan' => 0,
         ]);
@@ -338,5 +340,108 @@ class SppdKelurahanKecamatanRekeningTest extends TestCase
         $this->actingAs($bppKelA)
             ->getJson("/api/v1/budget/rak-context/{$rekAtkKec->id}?month=10")
             ->assertForbidden();
+    }
+
+    public function test_end_to_end_kelurahan_sppd_using_kecamatan_rekening_flows_through_lurah_and_reserves_kecamatan_pagu(): void
+    {
+        Storage::fake('local');
+
+        [, $kelurahanA, , $rekSppdKec] = $this->seedUnitsAndRekening();
+
+        AnggaranKasBulanan::create([
+            'anggaran_rekening_id' => $rekSppdKec->id,
+            'bulan' => 10,
+            'alokasi_pagu' => 2000000,
+            'terkunci_bulan' => 0,
+            'realisasi_bulan' => 0,
+        ]);
+
+        $bppKelA = User::factory()->create(['role' => 'BPP', 'unit_kerja_id' => $kelurahanA->id]);
+        $pptkKelA = User::factory()->create(['role' => 'PPTK', 'unit_kerja_id' => $kelurahanA->id]);
+        $lurahKelA = User::factory()->create(['role' => 'LURAH', 'unit_kerja_id' => $kelurahanA->id]);
+
+        $pegawai = Pegawai::create([
+            'unit_kerja_id' => $kelurahanA->id,
+            'status_kepegawaian' => 'NON_ASN',
+            'nip' => null,
+            'nama' => 'Teguh Rahayu',
+            'jabatan' => 'Pelaksana',
+            'is_active' => true,
+        ]);
+
+        // 1. Buat penugasan SPPD Kelurahan memakai rekening Kecamatan
+        $createRes = $this->actingAs($bppKelA)
+            ->postJson('/api/v1/sppd-assignments', [
+                'anggaran_rekening_id' => $rekSppdKec->id,
+                'maksud_perjalanan' => 'Koordinasi Kecamatan',
+                'tempat_berangkat' => 'Jayawaras',
+                'tempat_tujuan' => 'Kecamatan Tarogong Kidul',
+                'tanggal_berangkat' => '2026-10-19',
+                'tanggal_kembali' => '2026-10-19',
+                'peserta' => [
+                    [
+                        'pegawai_id' => $pegawai->id,
+                        'nomor_spd' => '001/SPD/JW/X/2026',
+                        'biaya_items' => [
+                            ['uraian_biaya' => 'Uang Transpor Lokal', 'nominal' => 70000],
+                        ],
+                    ],
+                ],
+            ])
+            ->assertCreated();
+
+        $assignmentId = $createRes->json('data.id');
+
+        // 2. Konversi ke Kuitansi SPJ
+        $convertRes = $this->actingAs($bppKelA)
+            ->postJson("/api/v1/sppd-assignments/{$assignmentId}/convert-kuitansi", [
+                'anggaran_rekening_id' => $rekSppdKec->id,
+                'bulan_anggaran' => 10,
+            ])
+            ->assertOk();
+
+        $kuitansiId = $convertRes->json('data.kuitansi_id');
+
+        // 3. Unggah lampiran & foto keberangkatan -> unit_kerja_id tetap Kelurahan A
+        $this->actingAs($bppKelA)
+            ->post("/api/v1/receipts/{$kuitansiId}", [
+                '_method' => 'PUT',
+                'anggaran_rekening_id' => $rekSppdKec->id,
+                'bulan_anggaran' => 10,
+                'tanggal_transaksi' => '2026-10-19',
+                'uraian' => 'Perjadin Koordinasi Kecamatan',
+                'nama_penerima' => 'Teguh Rahayu',
+                'golongan_asn' => 'NON_ASN',
+                'items' => [
+                    ['nama_barang' => 'Uang Transpor Lokal', 'volume' => 1, 'satuan' => 'Kegiatan', 'harga_satuan' => 70000],
+                ],
+                'files' => [UploadedFile::fake()->create('nota.pdf', 50, 'application/pdf')],
+                'sppd_foto' => UploadedFile::fake()->image('berangkat.jpg'),
+                'sppd_peserta' => [[
+                    'pegawai_id' => $pegawai->id,
+                    'tanggal_berangkat' => '2026-10-19',
+                    'tanggal_pulang' => '2026-10-19',
+                    'tujuan' => 'Kecamatan Tarogong Kidul',
+                ]],
+            ])
+            ->assertOk();
+
+        $this->assertDatabaseHas('kuitansi', [
+            'id' => $kuitansiId,
+            'unit_kerja_id' => $kelurahanA->id,
+            'anggaran_rekening_id' => $rekSppdKec->id,
+        ]);
+
+        // 4. Submit -> memotong/mengunci pagu DPA Kecamatan
+        $submitRes = $this->actingAs($bppKelA)
+            ->postJson("/api/v1/receipts/{$kuitansiId}/submit");
+        $this->assertSame(200, $submitRes->status(), $submitRes->getContent());
+        $submitRes->assertJsonPath('data.status', 'MENUNGGU_VERIFIKASI');
+
+        $this->assertDatabaseHas('anggaran_kas_bulanan', [
+            'anggaran_rekening_id' => $rekSppdKec->id,
+            'bulan' => 10,
+            'terkunci_bulan' => '70000.00',
+        ]);
     }
 }
