@@ -37,7 +37,9 @@ const formErrors = ref({});
 const formErrorGeneral = ref('');
 
 const form = ref({
+  status_kepegawaian: 'ASN',
   nip: '',
+  nik: '',
   nama: '',
   jabatan: '',
   golongan: '',
@@ -82,7 +84,9 @@ function openCreateModal() {
   formErrors.value = {};
   formErrorGeneral.value = '';
   form.value = {
+    status_kepegawaian: 'ASN',
     nip: '',
+    nik: '',
     nama: '',
     jabatan: '',
     golongan: '',
@@ -98,7 +102,9 @@ function openEditModal(item) {
   formErrors.value = {};
   formErrorGeneral.value = '';
   form.value = {
+    status_kepegawaian: item.status_kepegawaian || 'ASN',
     nip: item.nip || '',
+    nik: item.nik || '',
     nama: item.nama || '',
     jabatan: item.jabatan || '',
     golongan: item.golongan || '',
@@ -118,7 +124,9 @@ async function submitForm() {
   formErrorGeneral.value = '';
 
   const payload = {
-    nip: form.value.nip,
+    status_kepegawaian: form.value.status_kepegawaian,
+    nip: form.value.status_kepegawaian === 'NON_ASN' ? (form.value.nip || null) : form.value.nip,
+    nik: form.value.nik || null,
     nama: form.value.nama,
     jabatan: form.value.jabatan || null,
     golongan: form.value.golongan || null,
@@ -152,7 +160,9 @@ async function submitForm() {
 async function toggleActiveStatus(item) {
   try {
     await sppdService.updatePegawai(item.id, {
+      status_kepegawaian: item.status_kepegawaian || 'ASN',
       nip: item.nip,
+      nik: item.nik,
       nama: item.nama,
       jabatan: item.jabatan,
       golongan: item.golongan,
@@ -292,7 +302,10 @@ onMounted(async () => {
               </td>
             </tr>
             <tr v-for="item in pegawaiList" v-else :key="item.id" class="hover:bg-canvas/60 transition-colors">
-              <td class="px-4 py-2.5 font-mono tabular-nums text-ink whitespace-nowrap">{{ item.nip }}</td>
+              <td class="px-4 py-2.5 font-mono tabular-nums text-ink whitespace-nowrap">
+                <template v-if="item.nip">{{ item.nip }}</template>
+                <span v-else class="text-ink-muted">Non-ASN</span>
+              </td>
               <td class="px-4 py-2.5 font-medium text-ink">{{ item.nama }}</td>
               <td class="px-4 py-2.5 text-ink-secondary">{{ item.jabatan || '-' }}</td>
               <td class="px-4 py-2.5 text-ink-secondary">{{ item.golongan || '-' }}</td>
@@ -385,18 +398,65 @@ onMounted(async () => {
           {{ formErrorGeneral }}
         </div>
 
-        <div>
-          <label for="form-nip" class="block text-xs font-medium text-ink-secondary mb-1">NIP / NIK <span class="text-semantic-danger">*</span></label>
-          <input
-            id="form-nip"
-            v-model="form.nip"
-            type="text"
-            required
-            autofocus
-            placeholder="Contoh: 198501012010011001"
-            class="w-full h-9 px-3 text-xs font-mono bg-canvas border border-hairline rounded-lg text-ink focus:ring-2 focus:ring-accent focus:border-accent"
-          />
-          <p v-if="formErrors.nip" class="text-xs text-semantic-danger mt-1">{{ formErrors.nip[0] }}</p>
+        <fieldset class="space-y-1.5">
+          <legend class="block text-xs font-medium text-ink-secondary">Status Kepegawaian <span class="text-semantic-danger">*</span></legend>
+          <div class="grid grid-cols-3 gap-2">
+            <label
+              v-for="opt in [
+                { value: 'ASN', label: 'ASN (PNS)' },
+                { value: 'PPPK', label: 'PPPK' },
+                { value: 'NON_ASN', label: 'Non-ASN' },
+              ]"
+              :key="opt.value"
+              class="flex items-center gap-2 px-3 py-2 rounded-lg border border-hairline bg-canvas text-xs text-ink cursor-pointer hover:border-accent"
+            >
+              <input
+                v-model="form.status_kepegawaian"
+                type="radio"
+                name="status_kepegawaian"
+                :value="opt.value"
+                class="text-accent focus:ring-accent"
+              />
+              <span>{{ opt.label }}</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label for="form-nip" class="block text-xs font-medium text-ink-secondary mb-1">
+              NIP <span v-if="form.status_kepegawaian !== 'NON_ASN'" class="text-semantic-danger">*</span>
+              <span v-else class="text-ink-muted font-normal">(Opsional)</span>
+            </label>
+            <input
+              id="form-nip"
+              v-model="form.nip"
+              type="text"
+              inputmode="numeric"
+              :required="form.status_kepegawaian !== 'NON_ASN'"
+              :aria-invalid="formErrors.nip ? 'true' : undefined"
+              aria-describedby="form-nip-help"
+              placeholder="Contoh: 198501012010011001"
+              class="w-full h-9 px-3 text-xs font-mono bg-canvas border border-hairline rounded-lg text-ink focus:ring-2 focus:ring-accent focus:border-accent"
+            />
+            <p id="form-nip-help" class="text-[11px] text-ink-muted mt-1">
+              {{ form.status_kepegawaian === 'NON_ASN' ? 'Kosongkan untuk Non-ASN; PDF mencetak tanda -.' : 'Wajib diisi untuk ASN/PPPK.' }}
+            </p>
+            <p v-if="formErrors.nip" role="alert" class="text-xs text-semantic-danger mt-1">{{ formErrors.nip[0] }}</p>
+          </div>
+
+          <div>
+            <label for="form-nik" class="block text-xs font-medium text-ink-secondary mb-1">NIK <span class="text-ink-muted font-normal">(Opsional)</span></label>
+            <input
+              id="form-nik"
+              v-model="form.nik"
+              type="text"
+              inputmode="numeric"
+              placeholder="16 digit NIK"
+              class="w-full h-9 px-3 text-xs font-mono bg-canvas border border-hairline rounded-lg text-ink focus:ring-2 focus:ring-accent focus:border-accent"
+            />
+            <p v-if="formErrors.nik" role="alert" class="text-xs text-semantic-danger mt-1">{{ formErrors.nik[0] }}</p>
+          </div>
         </div>
 
         <div>

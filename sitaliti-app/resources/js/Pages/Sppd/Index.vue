@@ -276,7 +276,7 @@ onMounted(async () => {
           >
             <option value="">Semua Pegawai</option>
             <option v-for="p in pegawaiOptions" :key="p.id" :value="p.id">
-              {{ p.nama }} ({{ p.nip }})
+              {{ p.nama }} ({{ p.nip || (p.status_kepegawaian === 'NON_ASN' ? 'Non-ASN' : '-') }})
             </option>
           </select>
         </div>
@@ -359,7 +359,7 @@ onMounted(async () => {
               <td class="px-4 py-2.5">
                 <div class="font-medium text-ink">{{ row.nama_pegawai }}</div>
                 <div class="text-xs font-mono tabular-nums text-ink-muted">
-                  NIP {{ row.nip }}<span v-if="row.jabatan"> • {{ row.jabatan }}</span>
+                  {{ row.nip ? `NIP ${row.nip}` : 'Non-ASN' }}<span v-if="row.jabatan"> • {{ row.jabatan }}</span>
                 </div>
               </td>
               <td class="px-4 py-2.5 max-w-xs">
@@ -439,7 +439,7 @@ onMounted(async () => {
             Foto Keberangkatan · {{ activePhoto.nama_pegawai }}
           </h2>
           <p class="text-xs text-ink-muted font-mono tabular-nums">
-            NIP {{ activePhoto.nip }} • {{ activePhoto.nomor_kuitansi }} • {{ activePhoto.tanggal_berangkat }} s/d {{ activePhoto.tanggal_pulang }}
+            {{ activePhoto.nip ? `NIP ${activePhoto.nip}` : 'Non-ASN' }} • {{ activePhoto.nomor_kuitansi }} • {{ activePhoto.tanggal_berangkat }} s/d {{ activePhoto.tanggal_pulang }}
           </p>
         </div>
         <button

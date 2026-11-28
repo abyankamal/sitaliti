@@ -38,7 +38,7 @@ class PegawaiApiController extends Controller
 
         $items = $query->orderBy('nama')
             ->limit($limit)
-            ->get(['id', 'unit_kerja_id', 'nip', 'nama', 'jabatan', 'golongan', 'is_active']);
+            ->get(['id', 'unit_kerja_id', 'status_kepegawaian', 'nip', 'nik', 'nama', 'jabatan', 'golongan', 'is_active']);
 
         return $this->successResponse($items, 'Daftar opsi pegawai berhasil dimuat');
     }
@@ -87,12 +87,23 @@ class PegawaiApiController extends Controller
             return $forbidden;
         }
 
+        $statusKepegawaian = strtoupper(trim((string) $request->input('status_kepegawaian', 'ASN')));
+
         $request->merge([
-            'nip' => Pegawai::normalizeNip((string) $request->input('nip', '')),
+            'status_kepegawaian' => $statusKepegawaian,
+            'nip' => Pegawai::normalizeNip($request->input('nip')),
         ]);
 
         $validated = $request->validate([
-            'nip' => ['required', 'string', 'max:30', 'unique:pegawai,nip'],
+            'status_kepegawaian' => ['required', 'string', Rule::in(['ASN', 'PPPK', 'NON_ASN'])],
+            'nip' => [
+                Rule::requiredIf(fn () => $statusKepegawaian !== 'NON_ASN'),
+                'nullable',
+                'string',
+                'max:30',
+                'unique:pegawai,nip',
+            ],
+            'nik' => ['nullable', 'string', 'max:20'],
             'nama' => ['required', 'string', 'max:200'],
             'jabatan' => ['nullable', 'string', 'max:150'],
             'golongan' => ['nullable', 'string', 'max:50'],
@@ -106,7 +117,9 @@ class PegawaiApiController extends Controller
 
         $pegawai = Pegawai::create([
             'unit_kerja_id' => $unitKerjaId,
-            'nip' => $validated['nip'],
+            'status_kepegawaian' => $validated['status_kepegawaian'],
+            'nip' => $validated['nip'] ?? null,
+            'nik' => isset($validated['nik']) ? trim((string) $validated['nik']) : null,
             'nama' => trim($validated['nama']),
             'jabatan' => isset($validated['jabatan']) ? trim($validated['jabatan']) : null,
             'golongan' => isset($validated['golongan']) ? trim($validated['golongan']) : null,
@@ -139,14 +152,24 @@ class PegawaiApiController extends Controller
             return $this->errorResponse('FORBIDDEN', 'Anda tidak berwenang mengubah data pegawai unit kerja lain.', null, 403);
         }
 
+        $statusKepegawaian = strtoupper(trim((string) $request->input('status_kepegawaian', $pegawai->status_kepegawaian ?? 'ASN')));
+
+        $mergePayload = ['status_kepegawaian' => $statusKepegawaian];
         if ($request->has('nip')) {
-            $request->merge([
-                'nip' => Pegawai::normalizeNip((string) $request->input('nip', '')),
-            ]);
+            $mergePayload['nip'] = Pegawai::normalizeNip($request->input('nip'));
         }
+        $request->merge($mergePayload);
 
         $validated = $request->validate([
-            'nip' => ['required', 'string', 'max:30', Rule::unique('pegawai', 'nip')->ignore($pegawai->id)],
+            'status_kepegawaian' => ['required', 'string', Rule::in(['ASN', 'PPPK', 'NON_ASN'])],
+            'nip' => [
+                Rule::requiredIf(fn () => $statusKepegawaian !== 'NON_ASN'),
+                'nullable',
+                'string',
+                'max:30',
+                Rule::unique('pegawai', 'nip')->ignore($pegawai->id),
+            ],
+            'nik' => ['nullable', 'string', 'max:20'],
             'nama' => ['required', 'string', 'max:200'],
             'jabatan' => ['nullable', 'string', 'max:150'],
             'golongan' => ['nullable', 'string', 'max:50'],
@@ -160,7 +183,11 @@ class PegawaiApiController extends Controller
 
         $pegawai->update([
             'unit_kerja_id' => $unitKerjaId,
-            'nip' => $validated['nip'],
+            'status_kepegawaian' => $validated['status_kepegawaian'],
+            'nip' => array_key_exists('nip', $validated) ? $validated['nip'] : $pegawai->nip,
+            'nik' => array_key_exists('nik', $validated)
+                ? ($validated['nik'] !== null ? trim((string) $validated['nik']) : null)
+                : $pegawai->nik,
             'nama' => trim($validated['nama']),
             'jabatan' => array_key_exists('jabatan', $validated)
                 ? ($validated['jabatan'] !== null ? trim($validated['jabatan']) : null)
@@ -244,6 +271,7 @@ class PegawaiApiController extends Controller
         $query->where(function ($q) use ($likeOperator, $keyword, $nipKeyword) {
             $q->where('nama', $likeOperator, $keyword)
                 ->orWhere('nip', $likeOperator, $nipKeyword)
+                ->orWhere('nik', $likeOperator, $nipKeyword)
                 ->orWhere('jabatan', $likeOperator, $keyword);
         });
     }

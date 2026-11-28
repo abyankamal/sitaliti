@@ -303,7 +303,7 @@ onBeforeUnmount(() => {
                         >
                             <option value="">{{ loadingPegawai ? 'Memuat...' : '-- Pilih Pegawai --' }}</option>
                             <option v-for="p in filteredPegawaiOptions" :key="p.id" :value="p.id">
-                                {{ p.nama }} ({{ p.nip }})
+                                {{ p.nama }} ({{ p.nip || (p.status_kepegawaian === 'NON_ASN' ? 'Non-ASN' : '-') }})
                             </option>
                         </select>
                     </div>
