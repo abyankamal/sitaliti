@@ -19,6 +19,14 @@ class UnitKerja extends Model
         'kode_unit',
         'nama_unit',
         'tipe',
+        'kop_alamat',
+        'kop_telepon_email',
+        'kop_kode_pos',
+        'pejabat_nama',
+        'pejabat_nip',
+        'pejabat_jabatan',
+        'bendahara_nama',
+        'bendahara_nip',
         'is_active',
     ];
 
