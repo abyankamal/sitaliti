@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AnggaranKasBulanan;
 use App\Models\AnggaranRekening;
 use App\Models\Kuitansi;
 use App\Models\Pegawai;
@@ -289,5 +290,53 @@ class SppdKelurahanKecamatanRekeningTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.kuitansi.unit_kerja_id', $kelurahanA->id)
             ->assertJsonPath('data.kuitansi.anggaran_rekening_id', $rekSppdKec->id);
+    }
+
+    public function test_budget_sub_activities_and_rak_context_support_kecamatan_sppd_for_kelurahan(): void
+    {
+        [$kecamatan, $kelurahanA, , $rekSppdKec, $rekAtkKec] = $this->seedUnitsAndRekening();
+
+        $bppKelA = User::factory()->create(['role' => 'BPP', 'unit_kerja_id' => $kelurahanA->id]);
+        $bpKec = User::factory()->create(['role' => 'BP', 'unit_kerja_id' => $kecamatan->id]);
+
+        // BPP Kelurahan dengan include_kecamatan_sppd=1 melihat B.4 Kecamatan, tidak melihat B.1 Kecamatan
+        $subRes = $this->actingAs($bppKelA)
+            ->getJson('/api/v1/budget/sub-activities?include_kecamatan_sppd=1')
+            ->assertOk();
+
+        $allCodes = collect($subRes->json('data'))
+            ->flatMap(fn ($sub) => collect($sub['rekening'] ?? [])->pluck('code'))
+            ->all();
+
+        $this->assertContains('5.1.02.04.01.0003', $allCodes);
+        $this->assertNotContains('5.1.02.01.01.0024', $allCodes);
+
+        // BP Kecamatan membuka penugasan Kelurahan A dengan unit_id + include_kecamatan_sppd=1 tetap mendapat B.4 Kecamatan
+        $skpdRes = $this->actingAs($bpKec)
+            ->getJson("/api/v1/budget/sub-activities?unit_id={$kelurahanA->id}&include_kecamatan_sppd=1")
+            ->assertOk();
+
+        $skpdCodes = collect($skpdRes->json('data'))
+            ->flatMap(fn ($sub) => collect($sub['rekening'] ?? [])->pluck('code'))
+            ->all();
+
+        $this->assertContains('5.1.02.04.01.0003', $skpdCodes);
+
+        // rakContext: BPP Kelurahan boleh akses B.4 Kecamatan, ditolak 403 untuk B.1 Kecamatan
+        AnggaranKasBulanan::create([
+            'anggaran_rekening_id' => $rekSppdKec->id,
+            'bulan' => 10,
+            'pagu_bulan' => 2000000,
+            'terkunci_bulan' => 0,
+            'realisasi_bulan' => 0,
+        ]);
+
+        $this->actingAs($bppKelA)
+            ->getJson("/api/v1/budget/rak-context/{$rekSppdKec->id}?month=10")
+            ->assertOk();
+
+        $this->actingAs($bppKelA)
+            ->getJson("/api/v1/budget/rak-context/{$rekAtkKec->id}?month=10")
+            ->assertForbidden();
     }
 }

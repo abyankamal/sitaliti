@@ -323,14 +323,38 @@ class BudgetApiController extends Controller
         $user = $request->user();
         $query = AnggaranRekening::query();
 
+        $targetUnitId = null;
         if ($user && (! $user->isSkpdWide() || ($request->boolean('for_input') && ! $user->canInputCrossUnit()))) {
             if ($user->unit_kerja_id) {
-                $query->where('unit_kerja_id', $user->unit_kerja_id);
+                $targetUnitId = (int) $user->unit_kerja_id;
             } else {
                 $query->whereRaw('1 = 0');
             }
         } elseif ($request->filled('unit_id')) {
-            $query->where('unit_kerja_id', $request->input('unit_id'));
+            $targetUnitId = (int) $request->input('unit_id');
+        }
+
+        if ($targetUnitId !== null) {
+            $includeKecamatanSppd = $request->boolean('include_kecamatan_sppd');
+            $targetUnit = $includeKecamatanSppd ? UnitKerja::find($targetUnitId) : null;
+
+            if ($includeKecamatanSppd && $targetUnit?->tipe === 'KELURAHAN') {
+                $kecamatanIds = UnitKerja::where('tipe', 'KECAMATAN')->pluck('id');
+                $query->where(function ($q) use ($targetUnitId, $kecamatanIds) {
+                    $q->where('unit_kerja_id', $targetUnitId);
+                    if ($kecamatanIds->isNotEmpty()) {
+                        $q->orWhere(function ($kq) use ($kecamatanIds) {
+                            $kq->whereIn('unit_kerja_id', $kecamatanIds)
+                                ->where(function ($sq) {
+                                    $sq->whereIn('kategori_belanja', ['B.4', 'B4', 'B4_PERJADIN'])
+                                        ->orWhere('kode_rekening', 'like', '5.1.02.04%');
+                                });
+                        });
+                    }
+                });
+            } else {
+                $query->where('unit_kerja_id', $targetUnitId);
+            }
         }
 
         if ($user && ($user->hasRole('PPTK') || $user->role === 'PPTK')) {
@@ -344,8 +368,8 @@ class BudgetApiController extends Controller
             ->orderBy('kode_rekening')
             ->get();
 
-        // Group by subkegiatan agar sesuai struktur RAKSelectorModal (subkegiatan memiliki anak array rekening)
-        $grouped = $records->groupBy('kode_sub_kegiatan')->map(function ($items) {
+        // Group by unit_kerja_id + subkegiatan agar sesuai struktur RAKSelectorModal tanpa kolisi lintas unit
+        $grouped = $records->groupBy(fn ($item) => $item->unit_kerja_id.'|'.$item->kode_sub_kegiatan)->map(function ($items) {
             $first = $items->first();
 
             return [
@@ -381,8 +405,11 @@ class BudgetApiController extends Controller
             return $this->errorResponse('REKENING_NOT_FOUND', 'Rekening anggaran tidak ditemukan.', null, 404);
         }
 
-        if ($user && ! $user->isSkpdWide() && (! $user->unit_kerja_id || (int) $rekening->unit_kerja_id !== (int) $user->unit_kerja_id)) {
-            return $this->errorResponse('FORBIDDEN', 'Anda tidak memiliki hak akses untuk melihat RAK rekening unit kerja lain.', null, 403);
+        if ($user && ! $user->isSkpdWide()) {
+            $sameUnit = $user->unit_kerja_id && (int) $rekening->unit_kerja_id === (int) $user->unit_kerja_id;
+            if (! $sameUnit && ! $user->canInputRekening($rekening)) {
+                return $this->errorResponse('FORBIDDEN', 'Anda tidak memiliki hak akses untuk melihat RAK rekening unit kerja lain.', null, 403);
+            }
         }
 
         if ($user && ($user->hasRole('PPTK') || $user->role === 'PPTK')) {
