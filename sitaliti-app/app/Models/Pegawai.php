@@ -19,7 +19,9 @@ class Pegawai extends Model
      */
     protected $fillable = [
         'unit_kerja_id',
+        'status_kepegawaian',
         'nip',
+        'nik',
         'nama',
         'jabatan',
         'golongan',
@@ -40,20 +42,27 @@ class Pegawai extends Model
     protected static function booted(): void
     {
         static::saving(function (Pegawai $pegawai) {
-            if (is_string($pegawai->nip)) {
-                $pegawai->nip = self::normalizeNip($pegawai->nip);
-            }
+            $pegawai->nip = self::normalizeNip($pegawai->nip);
         });
     }
 
     /**
-     * Menormalisasi NIP/NIK dengan menghapus spasi dan tanda hubung agar unik konsisten.
+     * Menormalisasi NIP dengan menghapus spasi dan tanda hubung; nilai kosong atau '-' menjadi null.
      */
-    public static function normalizeNip(string $nip): string
+    public static function normalizeNip(?string $nip): ?string
     {
-        $trimmed = trim($nip);
+        if ($nip === null) {
+            return null;
+        }
 
-        return preg_replace('/[\s-]+/', '', $trimmed) ?? $trimmed;
+        $trimmed = trim($nip);
+        if ($trimmed === '' || $trimmed === '-') {
+            return null;
+        }
+
+        $normalized = preg_replace('/[\s-]+/', '', $trimmed) ?? $trimmed;
+
+        return $normalized === '' ? null : $normalized;
     }
 
     /**
