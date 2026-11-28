@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\ReceiptWorkflowApiController;
 use App\Http\Controllers\Api\RekapBelanjaOperasiReportApiController;
 use App\Http\Controllers\Api\RekeningManagementApiController;
 use App\Http\Controllers\Api\SettlementApiController;
+use App\Http\Controllers\Api\SppdAssignmentApiController;
 use App\Http\Controllers\Api\SppdReportApiController;
 use App\Http\Controllers\Api\UserManagementApiController;
 use App\Http\Controllers\Api\VerificationApiController;
@@ -138,6 +139,16 @@ Route::prefix('v1')->group(function () {
                 ->middleware('permission:kuitansi.view');
             Route::get('report/export', [SppdReportApiController::class, 'export'])
                 ->middleware('permission:kuitansi.view');
+        });
+
+        // Penugasan SPPD Pra-Kuitansi Endpoints
+        Route::prefix('sppd-assignments')->group(function () {
+            Route::get('/', [SppdAssignmentApiController::class, 'index']);
+            Route::post('/', [SppdAssignmentApiController::class, 'store']);
+            Route::post('check-conflicts', [SppdAssignmentApiController::class, 'checkConflicts']);
+            Route::get('{id}', [SppdAssignmentApiController::class, 'show']);
+            Route::put('{id}', [SppdAssignmentApiController::class, 'update']);
+            Route::delete('{id}', [SppdAssignmentApiController::class, 'destroy']);
         });
 
         // Master Pegawai Endpoints (Dropdown terbuka untuk view/create; CRUD untuk BP, BPP, & Kasubag/VERIFIKATOR)
