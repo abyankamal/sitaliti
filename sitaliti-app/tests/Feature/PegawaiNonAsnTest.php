@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\Pegawai;
+use App\Models\SppdAssignment;
+use App\Models\SppdPeserta;
 use App\Models\UnitKerja;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -105,5 +107,43 @@ class PegawaiNonAsnTest extends TestCase
             ->getJson('/api/v1/pegawai/options')
             ->assertOk()
             ->assertJsonPath('data.0.status_kepegawaian', 'NON_ASN');
+    }
+
+    public function test_cannot_delete_pegawai_referenced_in_sppd_assignment_peserta(): void
+    {
+        $user = $this->createOperator();
+
+        $pegawai = Pegawai::create([
+            'unit_kerja_id' => $user->unit_kerja_id,
+            'status_kepegawaian' => 'NON_ASN',
+            'nip' => null,
+            'nama' => 'Teguh Rahayu',
+            'jabatan' => 'Pelaksana',
+            'is_active' => true,
+        ]);
+
+        $assignment = SppdAssignment::create([
+            'unit_kerja_id' => $user->unit_kerja_id,
+            'user_id' => $user->id,
+            'maksud_perjalanan' => 'Koordinasi Kelurahan',
+            'tempat_berangkat' => 'Kecamatan',
+            'tempat_tujuan' => 'Kelurahan Sukakarya',
+            'tanggal_berangkat' => '2026-10-19',
+            'tanggal_kembali' => '2026-10-19',
+            'pemberi_perintah_nama' => 'AHMAD MAWARDI,AP,.SE',
+            'pemberi_perintah_jabatan' => 'Camat Tarogong Kidul',
+            'status' => 'DRAFT',
+        ]);
+
+        SppdPeserta::create([
+            'sppd_assignment_id' => $assignment->id,
+            'pegawai_id' => $pegawai->id,
+            'urutan' => 1,
+        ]);
+
+        $this->actingAs($user)
+            ->deleteJson("/api/v1/pegawai/{$pegawai->id}")
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'PEGAWAI_IN_USE');
     }
 }

@@ -223,7 +223,7 @@ class PegawaiApiController extends Controller
             return $this->errorResponse('FORBIDDEN', 'Anda tidak berwenang menghapus data pegawai unit kerja lain.', null, 403);
         }
 
-        if ($pegawai->sppdPeserta()->exists()) {
+        if ($pegawai->sppdPeserta()->exists() || $pegawai->sppdAssignmentPeserta()->exists()) {
             return $this->errorResponse(
                 'PEGAWAI_IN_USE',
                 'Pegawai tidak dapat dihapus karena sudah memiliki riwayat perjalanan dinas (SPPD). Silakan nonaktifkan status pegawai ini.',

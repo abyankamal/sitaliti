@@ -82,4 +82,9 @@ class Pegawai extends Model
     {
         return $this->hasMany(KuitansiSppdPeserta::class, 'pegawai_id');
     }
+
+    public function sppdAssignmentPeserta(): HasMany
+    {
+        return $this->hasMany(SppdPeserta::class, 'pegawai_id');
+    }
 }
