@@ -1,1 +1,3 @@
 *.sqlite*
+docs/ideas
+docs/specs
