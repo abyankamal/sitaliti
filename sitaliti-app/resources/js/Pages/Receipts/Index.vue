@@ -495,8 +495,8 @@ function openReceiptDetail(receipt) {
 
                                 <!-- Unit & Rekening -->
                                 <td class="px-3 py-3 max-w-xs">
-                                    <div class="text-xs font-medium text-ink truncate" :title="receipt.rekening?.unit_kerja?.nama_unit">
-                                        {{ receipt.rekening?.unit_kerja?.nama_unit || '-' }}
+                                    <div class="text-xs font-medium text-ink truncate" :title="receipt.unit_kerja?.nama_unit || receipt.rekening?.unit_kerja?.nama_unit">
+                                        {{ receipt.unit_kerja?.nama_unit || receipt.rekening?.unit_kerja?.nama_unit || '-' }}
                                     </div>
                                     <div class="text-xs text-ink-secondary truncate mt-0.5 font-mono" :title="receipt.rekening?.kode_rekening">
                                         {{ receipt.rekening?.kode_rekening || '-' }}

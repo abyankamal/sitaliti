@@ -309,7 +309,7 @@ function getStatusBadge(status) {
                             <div class="grid grid-cols-2 gap-3 text-xs">
                                 <div>
                                     <span class="text-ink-muted block">Unit Kerja:</span>
-                                    <span class="font-semibold text-ink">{{ receipt.rekening?.unit_kerja?.nama_unit || '-' }}</span>
+                                    <span class="font-semibold text-ink">{{ receipt.unit_kerja?.nama_unit || receipt.rekening?.unit_kerja?.nama_unit || '-' }}</span>
                                 </div>
                                 <div>
                                     <span class="text-ink-muted block">Bulan Kas RAK:</span>
