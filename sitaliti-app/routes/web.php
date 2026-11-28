@@ -4,6 +4,7 @@ use App\Http\Controllers\ControlSheetPdfController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Public\QrVerificationPublicController;
 use App\Http\Controllers\ReceiptAttachmentController;
+use App\Http\Controllers\SppdAssignmentController;
 use App\Http\Controllers\SppdPhotoController;
 use App\Http\Controllers\Web\ReceiptWebController;
 use Illuminate\Http\Request;
@@ -67,6 +68,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/sppd-report', function () {
         return Inertia::render('Sppd/Index');
     })->middleware('permission:kuitansi.view')->name('sppd.report.index');
+
+    Route::get('/sppd-assignments/{id}/pdf', [SppdAssignmentController::class, 'pdf'])
+        ->name('sppd-assignments.pdf');
 
     // Routes Bundles / SPP
     Route::get('/bundles', function () {
