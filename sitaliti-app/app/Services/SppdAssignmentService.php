@@ -69,6 +69,7 @@ class SppdAssignmentService
             : (int) $user->unit_kerja_id;
 
         $unitKerja = UnitKerja::findOrFail($unitKerjaId);
+        $this->assertValidAssignmentRekening($unitKerja, $data['anggaran_rekening_id'] ?? null);
         $participantsPayload = $this->buildSchedulePayload($data['peserta'], $data);
 
         return DB::transaction(function () use ($user, $unitKerja, $data, $participantsPayload): SppdAssignment {
@@ -110,12 +111,16 @@ class SppdAssignmentService
      */
     public function update(SppdAssignment $assignment, array $data): SppdAssignment
     {
-        $assignment->loadMissing('kuitansi');
+        $assignment->loadMissing(['kuitansi', 'unitKerja']);
 
         if ($assignment->kuitansi && ! in_array($assignment->kuitansi->status, ['DRAFT', 'REVISI_MAYOR'], true)) {
             throw ValidationException::withMessages([
                 'kuitansi_id' => ["Penugasan SPPD terkunci karena Kuitansi {$assignment->kuitansi->nomor_kuitansi} sudah berstatus {$assignment->kuitansi->status}."],
             ]);
+        }
+
+        if (array_key_exists('anggaran_rekening_id', $data)) {
+            $this->assertValidAssignmentRekening($assignment->unitKerja, $data['anggaran_rekening_id']);
         }
 
         $participantsPayload = $this->buildSchedulePayload($data['peserta'], $data);
@@ -184,10 +189,12 @@ class SppdAssignmentService
             ]);
         }
 
-        $rekening = AnggaranRekening::findOrFail((int) $data['anggaran_rekening_id']);
-        if ((int) $rekening->unit_kerja_id !== (int) $assignment->unit_kerja_id) {
+        $assignment->loadMissing(['unitKerja', 'peserta.pegawai', 'peserta.biayaItems']);
+
+        $rekening = AnggaranRekening::with('unitKerja')->findOrFail((int) $data['anggaran_rekening_id']);
+        if (! $assignment->unitKerja || ! $this->canAssignmentUseRekening($assignment->unitKerja, $rekening)) {
             throw ValidationException::withMessages([
-                'anggaran_rekening_id' => ['Rekening belanja harus berasal dari unit kerja yang sama dengan penugasan SPPD.'],
+                'anggaran_rekening_id' => ['Rekening belanja harus berasal dari unit kerja yang sama atau rekening SPPD Kecamatan untuk unit Kelurahan.'],
             ]);
         }
 
@@ -196,8 +203,6 @@ class SppdAssignmentService
                 'anggaran_rekening_id' => ['Rekening yang dipilih bukan kategori Perjalanan Dinas (B.4 / 5.1.02.04).'],
             ]);
         }
-
-        $assignment->loadMissing(['peserta.pegawai', 'peserta.biayaItems']);
 
         $items = [];
         $totalBiaya = 0.0;
@@ -242,6 +247,7 @@ class SppdAssignmentService
         return DB::transaction(function () use ($user, $assignment, $rekening, $data, $items, $namaPenerima, $sppdPesertaPayload, $golonganAsn): SppdAssignment {
             $receiptService = app(ReceiptService::class);
             $kuitansi = $receiptService->createDraft([
+                'unit_kerja_id' => $assignment->unit_kerja_id,
                 'anggaran_rekening_id' => $rekening->id,
                 'bulan_anggaran' => (int) $data['bulan_anggaran'],
                 'tanggal_transaksi' => $data['tanggal_transaksi'] ?? $assignment->tanggal_kembali->toDateString(),
@@ -362,6 +368,44 @@ class SppdAssignmentService
         }
 
         return 'GOLONGAN_III';
+    }
+
+    /**
+     * Memeriksa apakah penugasan SPPD suatu unit kerja berhak memakai rekening tertentu.
+     */
+    public function canAssignmentUseRekening(UnitKerja $assignmentUnit, AnggaranRekening $rekening): bool
+    {
+        if ((int) $rekening->unit_kerja_id === (int) $assignmentUnit->id) {
+            return true;
+        }
+
+        if ($assignmentUnit->tipe === 'KELURAHAN' && $this->scheduleService->isSppdRekening($rekening)) {
+            $rekening->loadMissing('unitKerja');
+
+            return $rekening->unitKerja?->tipe === 'KECAMATAN';
+        }
+
+        return false;
+    }
+
+    private function assertValidAssignmentRekening(?UnitKerja $assignmentUnit, mixed $rekeningId): void
+    {
+        if ($rekeningId === null || $rekeningId === '') {
+            return;
+        }
+
+        $rekening = AnggaranRekening::with('unitKerja')->findOrFail((int) $rekeningId);
+        if (! $this->scheduleService->isSppdRekening($rekening)) {
+            throw ValidationException::withMessages([
+                'anggaran_rekening_id' => ['Mata anggaran penugasan SPPD harus menggunakan rekening Perjalanan Dinas (B.4 / 5.1.02.04).'],
+            ]);
+        }
+
+        if (! $assignmentUnit || ! $this->canAssignmentUseRekening($assignmentUnit, $rekening)) {
+            throw ValidationException::withMessages([
+                'anggaran_rekening_id' => ['Rekening belanja tidak tersedia untuk unit kerja penugasan SPPD ini.'],
+            ]);
+        }
     }
 
     /**

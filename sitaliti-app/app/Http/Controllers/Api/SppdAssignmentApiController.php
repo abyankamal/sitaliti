@@ -7,6 +7,7 @@ use App\Http\Requests\ConvertSppdToKuitansiRequest;
 use App\Http\Requests\StoreSppdAssignmentRequest;
 use App\Http\Requests\UpdateSppdAssignmentRequest;
 use App\Http\Resources\ApiResponseTrait;
+use App\Models\AnggaranRekening;
 use App\Models\SppdAssignment;
 use App\Models\User;
 use App\Services\SppdAssignmentService;
@@ -152,8 +153,14 @@ class SppdAssignmentApiController extends Controller
             return $this->errorResponse('FORBIDDEN', 'Anda tidak berwenang mengonversi penugasan SPPD ini.', null, 403);
         }
 
+        $validated = $request->validated();
+        $rekening = AnggaranRekening::with('unitKerja')->find((int) $validated['anggaran_rekening_id']);
+        if (! $request->user() || ! $rekening || ! $request->user()->canInputRekening($rekening)) {
+            return $this->errorResponse('FORBIDDEN', 'Anda tidak berwenang mengonversi SPPD ke rekening tersebut.', null, 403);
+        }
+
         try {
-            $converted = $this->assignmentService->convertToKuitansi($request->user(), $assignment, $request->validated());
+            $converted = $this->assignmentService->convertToKuitansi($request->user(), $assignment, $validated);
 
             return $this->successResponse($converted, 'Penugasan SPPD berhasil dikonversi ke Kuitansi SPJ');
         } catch (ValidationException $e) {

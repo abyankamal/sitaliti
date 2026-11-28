@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\AnggaranRekening;
 use App\Models\Kuitansi;
+use App\Models\Pegawai;
 use App\Models\PptkSubkegiatanAssignment;
 use App\Models\UnitKerja;
 use App\Models\User;
@@ -203,5 +204,90 @@ class SppdKelurahanKecamatanRekeningTest extends TestCase
             ])
             ->assertStatus(422)
             ->assertJsonPath('error.code', 'INVALID_REKENING_CROSS_UNIT');
+    }
+
+    public function test_kelurahan_sppd_assignment_validates_rekening_and_converts_to_kelurahan_kuitansi(): void
+    {
+        [, $kelurahanA, , $rekSppdKec, $rekAtkKec, $rekHibahKelB] = $this->seedUnitsAndRekening();
+
+        $bppKelA = User::factory()->create(['role' => 'BPP', 'unit_kerja_id' => $kelurahanA->id]);
+        $pptkKelA = User::factory()->create(['role' => 'PPTK', 'unit_kerja_id' => $kelurahanA->id]);
+
+        $pegawai = Pegawai::create([
+            'unit_kerja_id' => $kelurahanA->id,
+            'status_kepegawaian' => 'ASN',
+            'nip' => '196612111986032003',
+            'nama' => 'Lina Maryati',
+            'jabatan' => 'Kasi Pemerintahan',
+            'golongan' => 'Penata III/c',
+            'is_active' => true,
+        ]);
+
+        // Rekening non-SPPD Kecamatan ditolak 422
+        $this->actingAs($bppKelA)
+            ->postJson('/api/v1/sppd-assignments', [
+                'anggaran_rekening_id' => $rekAtkKec->id,
+                'maksud_perjalanan' => 'Rapat PBB',
+                'tempat_berangkat' => 'Jayawaras',
+                'tempat_tujuan' => 'Kecamatan',
+                'tanggal_berangkat' => '2026-10-21',
+                'tanggal_kembali' => '2026-10-21',
+                'peserta' => [['pegawai_id' => $pegawai->id]],
+            ])
+            ->assertStatus(422);
+
+        // Rekening Kelurahan lain ditolak 422
+        $this->actingAs($bppKelA)
+            ->postJson('/api/v1/sppd-assignments', [
+                'anggaran_rekening_id' => $rekHibahKelB->id,
+                'maksud_perjalanan' => 'Rapat PBB',
+                'tempat_berangkat' => 'Jayawaras',
+                'tempat_tujuan' => 'Kecamatan',
+                'tanggal_berangkat' => '2026-10-21',
+                'tanggal_kembali' => '2026-10-21',
+                'peserta' => [['pegawai_id' => $pegawai->id]],
+            ])
+            ->assertStatus(422);
+
+        // Rekening SPPD Kecamatan diterima 201
+        $createRes = $this->actingAs($bppKelA)
+            ->postJson('/api/v1/sppd-assignments', [
+                'anggaran_rekening_id' => $rekSppdKec->id,
+                'maksud_perjalanan' => 'Rapat PBB',
+                'tempat_berangkat' => 'Jayawaras',
+                'tempat_tujuan' => 'Kecamatan',
+                'tanggal_berangkat' => '2026-10-21',
+                'tanggal_kembali' => '2026-10-21',
+                'peserta' => [
+                    [
+                        'pegawai_id' => $pegawai->id,
+                        'nomor_spd' => '001/SPD/KEL/X/2026',
+                        'biaya_items' => [
+                            ['uraian_biaya' => 'Uang Transpor Lokal', 'nominal' => 70000],
+                        ],
+                    ],
+                ],
+            ])
+            ->assertCreated();
+
+        $assignmentId = $createRes->json('data.id');
+
+        // PPTK ditolak 403 saat mencoba konversi
+        $this->actingAs($pptkKelA)
+            ->postJson("/api/v1/sppd-assignments/{$assignmentId}/convert-kuitansi", [
+                'anggaran_rekening_id' => $rekSppdKec->id,
+                'bulan_anggaran' => 10,
+            ])
+            ->assertForbidden();
+
+        // BPP Kelurahan konversi -> Kuitansi unit_kerja_id Kelurahan A, rekening Kecamatan
+        $this->actingAs($bppKelA)
+            ->postJson("/api/v1/sppd-assignments/{$assignmentId}/convert-kuitansi", [
+                'anggaran_rekening_id' => $rekSppdKec->id,
+                'bulan_anggaran' => 10,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.kuitansi.unit_kerja_id', $kelurahanA->id)
+            ->assertJsonPath('data.kuitansi.anggaran_rekening_id', $rekSppdKec->id);
     }
 }
