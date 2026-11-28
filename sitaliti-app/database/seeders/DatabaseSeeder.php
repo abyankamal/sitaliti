@@ -25,6 +25,7 @@ class DatabaseSeeder extends Seeder
         // 1. Seed Master Data Unit Kerja & Checklist terlebih dahulu
         $this->call([
             UnitKerjaSeeder::class,
+            PegawaiSeeder::class,
             MasterChecklistSeeder::class,
             ComplianceRulesSeeder::class,
         ]);
