@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AnggaranRekening;
 use App\Models\KuitansiSppdPeserta;
+use App\Models\UnitKerja;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -184,7 +185,15 @@ class SppdReportService
             if ($user->unit_kerja_id === null) {
                 return [];
             }
-            $query->where('unit_kerja_id', $user->unit_kerja_id);
+
+            $user->loadMissing('unitKerja');
+            $unitIds = [(int) $user->unit_kerja_id];
+            if ($user->unitKerja?->tipe === 'KELURAHAN') {
+                $kecamatanIds = UnitKerja::where('tipe', 'KECAMATAN')->pluck('id')->map(fn ($id) => (int) $id)->all();
+                $unitIds = array_values(array_unique(array_merge($unitIds, $kecamatanIds)));
+            }
+
+            $query->whereIn('unit_kerja_id', $unitIds);
 
             if ($user->hasRole('PPTK') || $user->role === 'PPTK') {
                 $assignedCodes = $user->assignedSubkegiatanCodes();

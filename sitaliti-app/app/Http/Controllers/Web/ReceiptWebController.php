@@ -61,7 +61,24 @@ class ReceiptWebController extends Controller
         if ($user && ! $user->isSkpdWide()) {
             if ($user->unit_kerja_id) {
                 $unitKerjaQuery->where('id', $user->unit_kerja_id);
-                $rekeningBaseQuery->where('unit_kerja_id', $user->unit_kerja_id);
+                $user->loadMissing('unitKerja');
+                if ($user->unitKerja?->tipe === 'KELURAHAN') {
+                    $kecamatanIds = UnitKerja::where('tipe', 'KECAMATAN')->pluck('id');
+                    $rekeningBaseQuery->where(function ($q) use ($user, $kecamatanIds) {
+                        $q->where('unit_kerja_id', $user->unit_kerja_id);
+                        if ($kecamatanIds->isNotEmpty()) {
+                            $q->orWhere(function ($kq) use ($kecamatanIds) {
+                                $kq->whereIn('unit_kerja_id', $kecamatanIds)
+                                    ->where(function ($sq) {
+                                        $sq->whereIn('kategori_belanja', ['B.4', 'B4', 'B4_PERJADIN'])
+                                            ->orWhere('kode_rekening', 'like', '5.1.02.04%');
+                                    });
+                            });
+                        }
+                    });
+                } else {
+                    $rekeningBaseQuery->where('unit_kerja_id', $user->unit_kerja_id);
+                }
             } else {
                 $unitKerjaQuery->whereRaw('1 = 0');
                 $rekeningBaseQuery->whereRaw('1 = 0');

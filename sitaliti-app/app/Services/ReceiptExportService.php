@@ -304,7 +304,7 @@ class ReceiptExportService
         return [
             (string) $kuitansi->nomor_kuitansi,
             $kuitansi->tanggal_transaksi ? $kuitansi->tanggal_transaksi->format('Y-m-d') : '',
-            (string) ($kuitansi->rekening?->unitKerja?->nama_unit ?? '-'),
+            (string) ($kuitansi->unitKerja?->nama_unit ?? $kuitansi->rekening?->unitKerja?->nama_unit ?? '-'),
             (string) ($kuitansi->rekening?->kode_rekening ?? '-'),
             (string) ($kuitansi->rekening?->nama_rekening ?? '-'),
             (string) $kuitansi->uraian,

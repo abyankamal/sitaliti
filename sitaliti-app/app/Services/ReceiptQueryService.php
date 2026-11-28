@@ -18,7 +18,7 @@ class ReceiptQueryService
 
         $query = $this->buildFilteredQuery($user, $filters);
 
-        return $query->with(['rekening.unitKerja', 'lampiran', 'pajak', 'pptkUser'])
+        return $query->with(['unitKerja', 'rekening.unitKerja', 'lampiran', 'pajak', 'pptkUser'])
             ->orderBy('tanggal_transaksi', 'desc')
             ->orderBy('id', 'desc')
             ->paginate($perPage)
