@@ -15,7 +15,11 @@
     $bendaharaNama = $unit?->bendahara_nama ?: '-';
     $bendaharaNip = $unit?->bendahara_nip;
     $tglTransaksi = ($assignment->kuitansi?->tanggal_transaksi ?? $assignment->tanggal_kembali ?? $assignment->tanggal_berangkat)?->locale('id')->translatedFormat('d F Y') ?? '-';
-    $kodeRekening = $assignment->kuitansi?->rekening?->kode_rekening ?? $assignment->rekening?->kode_rekening ?? '5.1.02.04.01.0003';
+    $rekening = $assignment->kuitansi?->rekening ?? $assignment->rekening;
+    $kodeRekening = $rekening?->kode_rekening ?? '5.1.02.04.01.0003';
+    $bendaharaSumber = ($rekening && (int) $rekening->unit_kerja_id !== (int) $assignment->unit_kerja_id)
+        ? ($rekening->unitKerja?->nama_unit ?? 'Kecamatan Tarogong Kidul') . ' (qq. ' . ($unit?->nama_unit ?? '-') . ')'
+        : ($unit?->nama_unit ?? 'Kecamatan Tarogong Kidul');
 @endphp
 <div class="doc-page">
     <div class="doc-title" style="margin-bottom: 8px;">KWITANSI (TANDA PEMBAYARAN)</div>
@@ -45,7 +49,7 @@
         <tr>
             <td style="width: 175px; padding: 4px 0; vertical-align: top; font-weight: bold;">SUDAH TERIMA DARI</td>
             <td style="width: 12px; padding: 4px 0; vertical-align: top;">:</td>
-            <td style="padding: 4px 0;">Bendahara Pengeluaran {{ $unit?->nama_unit ?? 'Kecamatan Tarogong Kidul' }}</td>
+            <td style="padding: 4px 0;">Bendahara Pengeluaran {{ $bendaharaSumber }}</td>
         </tr>
         <tr>
             <td style="padding: 4px 0; vertical-align: top; font-weight: bold;">BANYAKNYA UANG</td>

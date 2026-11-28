@@ -21,10 +21,10 @@ class SppdPdfService
 
         $assignment->loadMissing([
             'unitKerja',
-            'rekening',
+            'rekening.unitKerja',
             'peserta.pegawai',
             'peserta.biayaItems',
-            'kuitansi.rekening',
+            'kuitansi.rekening.unitKerja',
         ]);
 
         $lamaHari = ($assignment->tanggal_berangkat && $assignment->tanggal_kembali)

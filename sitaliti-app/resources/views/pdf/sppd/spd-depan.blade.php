@@ -2,6 +2,10 @@
     $pegawai = $peserta->pegawai;
     $isNonAsn = ($pegawai?->status_kepegawaian ?? 'ASN') === 'NON_ASN' || empty($pegawai?->nip);
     $pengikut = is_array($peserta->pengikut) ? $peserta->pengikut : [];
+    $rekening = $assignment->kuitansi?->rekening ?? $assignment->rekening;
+    $instansiAnggaran = ($rekening && (int) $rekening->unit_kerja_id !== (int) $assignment->unit_kerja_id)
+        ? ($rekening->unitKerja?->nama_unit ?? 'Kecamatan Tarogong Kidul') . ' (qq. ' . ($assignment->unitKerja?->nama_unit ?? '-') . ')'
+        : ($assignment->unitKerja?->nama_unit ?? 'Kecamatan Tarogong Kidul');
 @endphp
 <div class="doc-page">
     @include('pdf.sppd.kop-surat', ['assignment' => $assignment, 'logoDataUri' => $logoDataUri ?? null])
@@ -126,12 +130,12 @@
             <td class="text-center" rowspan="2">9.</td>
             <td>Pembebanan Anggaran<br>a. Instansi</td>
             <td class="text-center">a.</td>
-            <td>{{ $assignment->unitKerja?->nama_unit ?? 'Kecamatan Tarogong Kidul' }}</td>
+            <td>{{ $instansiAnggaran }}</td>
         </tr>
         <tr>
             <td>b. Mata Anggaran</td>
             <td class="text-center">b.</td>
-            <td>{{ $assignment->rekening?->kode_rekening ?? $assignment->kuitansi?->rekening?->kode_rekening ?? '5.1.02.04.01.0003' }}</td>
+            <td>{{ $rekening?->kode_rekening ?? '5.1.02.04.01.0003' }}</td>
         </tr>
         <tr>
             <td class="text-center">10.</td>
